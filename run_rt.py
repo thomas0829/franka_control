@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from robot_env import RobotEnv
 
+import os
 import base64
 import requests
 import time
@@ -12,7 +13,7 @@ from helpers import inverse_discretize
 import imageio
 import cv2
 
-horizon=40
+horizon=20
 
 def call_rt(msg):
     ip_address = 'https://contributions-provides-bound-spanking.trycloudflare.com'
@@ -35,11 +36,11 @@ def call_rt(msg):
 env = RobotEnv(
     hz=10, # 1 for RT
     DoF=3,
-    robot_model="FR3",
+    robot_model="panda", # "FR3",
     randomize_ee_on_reset=False,
     hand_centric_view=False,
     third_person_view=True,
-    ip_address="172.16.0.1",
+    ip_address="localhost", # "172.16.0.1",
     local_cameras=True,
     camera_model="realsense",
     max_lin_vel=0.05,
@@ -66,6 +67,7 @@ for i in range(horizon):
     img = obs["third_person_img_obs"]
 
 date_str = datetime.datetime.now().strftime("%m_%d_%Y-%H_%M_%S")
+os.makedirs("results", exist_ok=True)
 np.save(f"results/{date_str}-acts", acts)
 np.save(f"results/{date_str}-obs", imgs)
 np.save(f"results/{date_str}-msg", np.array(msg))

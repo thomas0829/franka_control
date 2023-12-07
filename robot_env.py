@@ -10,7 +10,6 @@ import gym
 
 from transformations import add_angles, angle_diff
 from camera_utils.multi_camera_wrapper import MultiCameraWrapper
-from server.robot_interface import RobotInterface
 from gym.spaces import Box, Dict
 
 
@@ -172,7 +171,11 @@ class RobotEnv(gym.Env):
             if camera_model == "realsense":
                 from camera_utils.realsense_camera import gather_realsense_cameras
 
-                cameras = gather_realsense_cameras(height=480, width=640)
+                try:
+                    cameras = gather_realsense_cameras(height=480, width=640)
+                except:
+                    cameras = gather_realsense_cameras()
+
             elif camera_model == "zed":
                 from zed_camera import gather_zed_cameras
 
@@ -693,7 +696,11 @@ class RobotEnv(gym.Env):
         # set images
         # obs_first = current_images[0]['array']
         # obs_third = current_images[1]['array']
-        obs_first = current_images[0]["color_image"]
+        try:
+            obs_first = current_images[0]["color_image"]
+        except:
+            obs_first = current_images[0]["array"]
+
         obs_third = obs_first # current_images[2]["color_image"]
 
         # set gripper width

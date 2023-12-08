@@ -21,7 +21,7 @@ import torchcontrol as toco
 
 from torchcontrol.utils import to_tensor
 
-from quat_math import quat2euler, euler2quat
+from helpers.quat_math import quat2euler, euler2quat
 
 import argparse
 

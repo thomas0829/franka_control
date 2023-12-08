@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from robot_env import RobotEnv
+from robot.robot_env import RobotEnv
 
 import os
 import base64
@@ -8,14 +8,18 @@ import requests
 import time
 import datetime
 
-from helpers import inverse_discretize
+from helpers.discretization import inverse_discretize
 
 import imageio
 import cv2
 
 horizon=20
 
-def call_rt(msg):
+def resize_image(image, resolution=(336,336)):
+    return cv2.resize(image, resolution)
+
+def call_rt(image, msg):
+    plt.imsave("obs.png", image)
     ip_address = 'https://contributions-provides-bound-spanking.trycloudflare.com'
     # IP address always changes every time the server is rebooted. Please check the text-generation-webui cli interface
     start = time.time()
@@ -36,11 +40,11 @@ def call_rt(msg):
 env = RobotEnv(
     hz=10, # 1 for RT
     DoF=3,
-    robot_model="panda", # "FR3",
+    robot_model="FR3", # "panda",
     randomize_ee_on_reset=False,
     hand_centric_view=False,
     third_person_view=True,
-    ip_address="localhost", # "172.16.0.1",
+    ip_address="172.16.0.1", # "localhost",
     local_cameras=True,
     camera_model="realsense",
     max_lin_vel=0.05,
@@ -55,10 +59,8 @@ imgs = [img]
 acts = []
 
 for i in range(horizon):
-    obs_resize = cv2.resize(obs["third_person_img_obs"], (336,336))
-    plt.imsave("obs.png", obs_resize)
     start = time.time()
-    # act = call_rt(msg)
+    act = call_rt(resize_image(img), msg)
     act = - np.array([0., 1.0, 0., 0.])
     print(act, time.time() - start)
     obs, reward, done, _ = env.step(act)

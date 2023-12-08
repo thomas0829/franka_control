@@ -162,7 +162,7 @@ class RobotEnv(gym.Env):
             self._robot = FrankaRobot(control_hz=self.hz)
         else:
             # self._robot = RobotInterface(ip_address=ip_address, gripper=gripper)
-            from robot import FrankaArm
+            from robot.franka import FrankaArm
 
             self._robot = FrankaArm(name=robot_model, ip_address=ip_address)
 
@@ -177,7 +177,7 @@ class RobotEnv(gym.Env):
                     cameras = gather_realsense_cameras()
 
             elif camera_model == "zed":
-                from zed_camera import gather_zed_cameras
+                from cameras.zed_camera import gather_zed_cameras
 
                 cameras = gather_zed_cameras()
 

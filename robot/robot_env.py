@@ -58,6 +58,8 @@ class RobotEnv(gym.Env):
         self._max_path_length = max_path_length
         self._curr_path_length = 0
 
+        self.camera_ids = camera_ids
+
         # resetting configuration
         self._randomize_ee_on_reset = randomize_ee_on_reset
         self._pause_after_reset = pause_after_reset
@@ -144,7 +146,7 @@ class RobotEnv(gym.Env):
         # TODO add sim here
         # robot configuration
         if ip_address is not None:
-            from robot.franka import FrankaArm
+            from robot.real.franka import FrankaArm
             self._robot = FrankaArm(name=robot_model, ip_address=ip_address, control_hz=self.hz)
 
             if camera_model == "realsense":
@@ -165,7 +167,6 @@ class RobotEnv(gym.Env):
         else:
             self._use_local_cameras = False
             self._robot = sim
-        self.camera_ids = camera_ids
 
     def step(self, action):
         start_time = time.time()

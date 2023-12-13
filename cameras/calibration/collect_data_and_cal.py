@@ -14,7 +14,7 @@ import pickle
 import json
 import sys
 from collections import namedtuple
-from cameras.calibration.calibration_utils import uncompress_image
+from cameras.calibration.utils import uncompress_image
 
 import numpy as np
 import torch
@@ -24,10 +24,10 @@ import cv2
 # from polymetis import RobotInterface
 from realsense_wrapper import RealsenseAPI
 
-from robot.franka import FrankaArm
+from robot.real.franka import FrankaArm
 from helpers.quat_math import quat2euler, euler2quat
 
-from cameras.calibration.calibration_utils import detect_corners, quat2rotvec, build_proj_matrix, mean_loss, find_parameter, rotmat, dist_in_hull, \
+from cameras.calibration.utils import detect_corners, quat2rotvec, build_proj_matrix, mean_loss, find_parameter, rotmat, dist_in_hull, \
     hand_marker_proj_world_camera, world_marker_proj_hand_camera
 
 
@@ -131,8 +131,8 @@ def main(argv):
     parser.add_argument('--datafile', default='caldata.pkl', help="file to either load or save camera data")
     parser.add_argument('--overwrite', default=False, action='store_true', help="overwrite existing datafile, if it exists")
     parser.add_argument('--marker-id', default=12, type=int, help="ID of the ARTag marker in the image")
-    parser.add_argument('--calibration-file', default='calibration.json', help="file to save final calibration data")
-    parser.add_argument('--points-file', default='calibration_points.json', help="file to load convex hull to sample points from")
+    parser.add_argument('--calibration-file', default='cameras/calibration/calibration.json', help="file to save final calibration data")
+    parser.add_argument('--points-file', default='cameras/calibration/calibration_points.json', help="file to load convex hull to sample points from")
     parser.add_argument('--num-points', default=20, type=int, help="number of points to sample from convex hull")
     parser.add_argument('--time-to-go', default=3, type=float, help="time_to_go in seconds for each movement")
     parser.add_argument('--imagedir', default=None, help="folder to save debug images")

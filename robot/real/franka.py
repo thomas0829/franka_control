@@ -11,12 +11,12 @@ import numpy as np
 import torch
 
 from polymetis import RobotInterface, GripperInterface
-from inverse_kinematics.robot_ik_solver import RobotIKSolver
+from robot.real.inverse_kinematics.robot_ik_solver import RobotIKSolver
 
 # from robohive.robot.hardware_base import hardwareBase
 # from robohive.utils.min_jerk import generate_joint_space_min_jerk
 
-from controllers.mixed_cartesian_impedance import MixedCartesianImpedanceControl
+from robot.controllers.mixed_cartesian_impedance import MixedCartesianImpedanceControl
 
 from helpers.quat_math import quat2euler, euler2quat
 

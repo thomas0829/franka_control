@@ -135,7 +135,7 @@ def main(argv):
     parser.add_argument('--num-points', default=20, type=int, help="number of points to sample from convex hull")
     parser.add_argument('--time-to-go', default=3, type=float, help="time_to_go in seconds for each movement")
     parser.add_argument('--imagedir', default=None, help="folder to save debug images")
-    parser.add_argument('--pixel-tolerance', default=2.0, type=float, help="mean pixel error tolerance (stage 2)")
+    parser.add_argument('--pixel-tolerance', default=0.05, type=float, help="mean pixel error tolerance (stage 2)")
     proj_funcs = {'hand_marker_proj_world_camera' :hand_marker_proj_world_camera, 
                   'world_marker_proj_hand_camera' :world_marker_proj_hand_camera,
                   'wrist_camera': world_marker_proj_hand_camera,

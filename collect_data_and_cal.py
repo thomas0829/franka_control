@@ -126,7 +126,7 @@ def main(argv):
     parser=argparse.ArgumentParser()
 
     parser.add_argument('--seed', default=0, type=int, help="random seed for initializing solution")
-    parser.add_argument('--ip', default='172.16.0.2', help="robot ip address")
+    parser.add_argument('--ip', default='172.16.0.1', help="robot ip address")
     parser.add_argument('--robot_model', default='FR3', help="robot model, e.g., panda, FR3")
     parser.add_argument('--datafile', default='caldata.pkl', help="file to either load or save camera data")
     parser.add_argument('--overwrite', default=False, action='store_true', help="overwrite existing datafile, if it exists")

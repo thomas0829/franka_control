@@ -23,25 +23,21 @@ class RobotEnv(gym.Env):
         # control frequency
         hz=10,
         DoF=3,
+        gripper=True,
         robot_model="panda",
         # randomize arm position on reset
-        randomize_ee_on_reset=True,
+        randomize_ee_on_reset=False,
         # allows user to pause to reset reset of the environment
         pause_after_reset=False,
         # observation space configuration
-        hand_centric_view=True,
-        third_person_view=True,
         qpos=True,
         ee_pos=True,
         # pass IP if not running on NUC
         ip_address=None,
-        # for state only experiments
-        goal_state=None,
         # specify path length if resetting after a fixed length
         max_path_length=None,
-        # use local cameras, else use images from NUC
-        local_cameras=False,
         # camera type to use: 'realsense', 'zed'
+        camera_ids=[], # [0, 1, 2, ...]
         camera_model="realsense",
         # max vel
         max_lin_vel=0.2,
@@ -55,31 +51,22 @@ class RobotEnv(gym.Env):
         self.max_lin_vel = max_lin_vel
         self.max_rot_vel = max_rot_vel
         self.DoF = DoF
+        self.gripper = gripper
         self.hz = hz
 
         self._episode_count = 0
         self._max_path_length = max_path_length
         self._curr_path_length = 0
 
-        # reward config, relevant only for state only experiments
-        self._goal_state = None
-        if goal_state == "left_open":
-            self._goal_state = [1, -1, 1, 1]
-        elif goal_state == "right_closed":
-            self._goal_state = [1, 1, 1, -1]
-
         # resetting configuration
-        self._peg_insert = True
         self._randomize_ee_on_reset = randomize_ee_on_reset
         self._pause_after_reset = pause_after_reset
-        self._gripper_angle = 0.1 if self._peg_insert else 1.544
+        self._gripper_angle = 1.544
         self._reset_joint_qpos = np.array(
             [0, 0.423, 0, -1.944, 0.013, 2.219, self._gripper_angle]
         )
 
         # observation space config
-        self._first_person = hand_centric_view
-        self._third_person = third_person_view
         self._qpos = qpos
         self._ee_pos = ee_pos
 
@@ -110,6 +97,7 @@ class RobotEnv(gym.Env):
                 np.array([0.73, 0.28, 0.35, 0.0, 0.0, 0.0, 0.085]),
             )
 
+        # TODO get actual workspace limits
         # increase workspace height
         self.ee_space.high[2] = 0.8
 
@@ -139,15 +127,13 @@ class RobotEnv(gym.Env):
 
         # final observation space configuration
         env_obs_spaces = {
-            "hand_img_obs": Box(0, 255, (100, 100, 3), np.uint8),
-            "third_person_img_obs": Box(0, 255, (100, 100, 3), np.uint8),
             "lowdim_ee": self.ee_space,
             "lowdim_qpos": self.qpos_space,
         }
-        if not self._first_person:
-            env_obs_spaces.pop("hand_img_obs", None)
-        if not self._third_person:
-            env_obs_spaces.pop("third_person_img_obs", None)
+        
+        for id in self.camera_ids:
+            env_obs_spaces[f"img_obs_{id}"] = Box(0, 255, (100, 100, 3), np.uint8)
+
         if not self._qpos:
             env_obs_spaces.pop("lowdim_qpos", None)
         if not self._ee_pos:
@@ -155,19 +141,12 @@ class RobotEnv(gym.Env):
         self.observation_space = Dict(env_obs_spaces)
         print(f"configured observation space: {self.observation_space}")
 
+        # TODO add sim here
         # robot configuration
-        if ip_address is None:
-            from franka.robot import FrankaRobot
-
-            self._robot = FrankaRobot(control_hz=self.hz)
-        else:
-            # self._robot = RobotInterface(ip_address=ip_address, gripper=gripper)
+        if ip_address is not None:
             from robot.franka import FrankaArm
-
             self._robot = FrankaArm(name=robot_model, ip_address=ip_address, control_hz=self.hz)
 
-        self._use_local_cameras = local_cameras
-        if self._use_local_cameras:
             if camera_model == "realsense":
                 from camera_utils.realsense_camera import gather_realsense_cameras
 
@@ -182,10 +161,11 @@ class RobotEnv(gym.Env):
                 cameras = gather_zed_cameras()
 
             self._camera_reader = MultiCameraWrapper(cameras)
-
-        self._hook_safety = False
-        self._bowl_safety = False
-        self._safety = self._hook_safety or self._bowl_safety
+                
+        else:
+            self._use_local_cameras = False
+            self._robot = sim
+        self.camera_ids = camera_ids
 
     def step(self, action):
         start_time = time.time()
@@ -211,12 +191,6 @@ class RobotEnv(gym.Env):
         time.sleep(sleep_left)
         obs = self.get_observation()
 
-        # reward defaults to 0., unless a goal is specified
-        reward = (
-            -np.linalg.norm(obs["lowdim_ee"] - self._goal_state)
-            if self._goal_state is not None
-            else 0.0
-        )
         self._curr_path_length += 1
         done = False
         if (
@@ -224,7 +198,7 @@ class RobotEnv(gym.Env):
             and self._curr_path_length >= self._max_path_length
         ):
             done = True
-        return obs, reward, done, {}
+        return obs, 0.0, done, {}
 
     def normalize_ee_obs(self, obs):
         """Normalizes low-dim obs between [-1,1]."""
@@ -257,36 +231,6 @@ class RobotEnv(gym.Env):
         self._robot.update_gripper(0)
 
     def reset(self):
-        # to move safely, always move up to the highest positions before resetting joints
-        if self._safety and self._episode_count > 0:
-            cur_pos = self.normalize_ee_obs(np.concatenate([self._curr_pos, [0.0]]))[:3]
-
-            if self._hook_safety:
-                # if inside the hook, push it back
-                while (
-                    -0.04 <= cur_pos[0] <= 0.3
-                    and 0.66 <= cur_pos[1] <= 0.75
-                    and 0.78 <= cur_pos[2] <= 0.98
-                ):
-                    self.step(np.array([-0.2, 0.0, 0.0, -1.0]))
-                    cur_pos = self.normalize_ee_obs(
-                        np.concatenate([self._curr_pos, [0.0]])
-                    )[:3]
-
-                # push to the left, till its clear of the hook
-                while cur_pos[1] >= 0.10:
-                    self.step(np.array([0.0, -0.2, 0.0, 1.0]))
-                    cur_pos = self.normalize_ee_obs(
-                        np.concatenate([self._curr_pos, [0.0]])
-                    )[:3]
-
-            if self._bowl_safety:
-                # raise the gripper and then reset it
-                while cur_pos[2] <= 0.5:
-                    self.step(np.array([0.0, 0.0, 1.0, 1.0]))
-                    cur_pos = self.normalize_ee_obs(
-                        np.concatenate([self._curr_pos, [0.0]])
-                    )[:3]
 
         # self.reset_gripper()
         # for _ in range(5):
@@ -378,241 +322,6 @@ class RobotEnv(gym.Env):
         pos[1] = pos[1].clip(y_low, y_high)  # new y
         pos[2] = pos[2].clip(z_low, z_high)  # new z
 
-        """Prevents robot from entering unsafe territory.
-
-        Unsafe cube is specified as a set of constraints:
-        [(x_low, y_low, z_low), (x_high, y_high, z_high)]. Whenever, (x, y, z) falls into 
-        any of the boxes, constrained is violated. When specifying one-sided constraint,
-        use 2.5/-2.5 as the other limit.
-
-        Assumption: you can only violate _exactly_ one constraint at a time."""
-        if self._safety:
-            MAX_LIM = 2.5
-            # constraints are computed for normalized observation
-            cur_pos = self.normalize_ee_obs(np.concatenate([pos, [0.0]]))[:3]
-            assert np.linalg.norm(
-                pos - self.unnormalize_ee_obs(np.concatenate([cur_pos, [0.0]]))[:3]
-                <= 1e-6
-            )
-
-            unsafe_box = []
-
-            if self._hook_safety:
-                # DO NOT open gripper if passing through the hook
-                if (
-                    0.08 <= cur_pos[0] <= 0.3
-                    and 0.66 <= cur_pos[1] <= 0.75
-                    and 0.78 <= cur_pos[2] <= 0.98
-                ):
-                    gripper = -1
-
-                # open gripper
-                if gripper >= -0.8:
-                    # when height is high enough
-                    unsafe_box.append(
-                        np.array([[-0.22, 0.14, 0.02], [0.36, MAX_LIM, 0.96]])
-                    )
-                    # wrist camera hits the hook
-                    unsafe_box.append(
-                        np.array([[-0.66, 0.14, -MAX_LIM], [0.58, MAX_LIM, 0.02]])
-                    )
-                # gripper closed
-                else:
-                    # tunnel for cloth draping
-                    unsafe_box.append(
-                        np.array([[-0.22, 0.14, 0.78], [0.36, 0.66, MAX_LIM]])
-                    )
-                    unsafe_box.append(
-                        np.array([[-0.22, 0.75, 0.78], [0.36, MAX_LIM, MAX_LIM]])
-                    )
-                    # height is high enough not to risk wrist camera hitting the hook, so can come closer
-                    unsafe_box.append(
-                        np.array([[-0.22, 0.14, 0.05], [0.36, MAX_LIM, 0.78]])
-                    )
-                    # wrist camera hits the hook
-                    unsafe_box.append(
-                        np.array([[-0.66, 0.14, -MAX_LIM], [0.58, MAX_LIM, 0.05]])
-                    )
-
-            elif self._bowl_safety and False:
-                width_out = 0.04
-                width = 0.04
-                # approximate outside dimensions
-                y1_out, y2_out = -0.64, 0.69
-                x1_out, x2_out = -0.45, 0.66
-                z_out = 0.21
-                z_out_g = 0.45
-                # approximate inside dimensions, y varies based on whether gripper is closed or open
-                y1_in_g, y2_in_g = -0.20, 0.25
-                y1_in, y2_in = -0.06, 0.12
-                x1_in, x2_in = -0.06, 0.42
-                z_in = -0.35
-                z_in_g = -0.4
-
-                if gripper >= 0.8:
-                    # outside, y-axis boxes
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x1_out, y1_out - width_out, -MAX_LIM],
-                                [x2_out, y1_out, z_out_g],
-                            ]
-                        )
-                    )
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x1_out, y2_out, -MAX_LIM],
-                                [x2_out, y2_out + width_out, z_out_g],
-                            ]
-                        )
-                    )
-                    # outside, x-axis boxes
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x1_out - width_out, y1_out, -MAX_LIM],
-                                [x1_out, y2_out, z_out_g],
-                            ]
-                        )
-                    )
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x2_out, y1_out, -MAX_LIM],
-                                [x2_out + width_out, y2_out, z_out_g],
-                            ]
-                        )
-                    )
-                    # inside, y-axis boxes
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x1_in, y1_in_g, -MAX_LIM],
-                                [x2_in, y1_in_g + width, z_in_g],
-                            ]
-                        )
-                    )
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x1_in, y2_in_g - width, -MAX_LIM],
-                                [x2_in, y2_in_g, z_in_g],
-                            ]
-                        )
-                    )
-                    # inside, x-axis boxes
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x1_in, y1_in_g, -MAX_LIM],
-                                [x1_in + width, y2_in_g, z_in_g],
-                            ]
-                        )
-                    )
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x2_in - width, y1_in_g, -MAX_LIM],
-                                [x2_in, y2_in_g, z_in_g],
-                            ]
-                        )
-                    )
-                else:
-                    # outside, y-axis boxes
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x1_out, y1_out - width_out, -MAX_LIM],
-                                [x2_out, y1_out, z_out],
-                            ]
-                        )
-                    )
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x1_out, y2_out, -MAX_LIM],
-                                [x2_out, y2_out + width_out, z_out],
-                            ]
-                        )
-                    )
-                    # outside, x-axis boxes
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x1_out - width_out, y1_out, -MAX_LIM],
-                                [x1_out, y2_out, z_out],
-                            ]
-                        )
-                    )
-                    unsafe_box.append(
-                        np.array(
-                            [
-                                [x2_out, y1_out, -MAX_LIM],
-                                [x2_out + width_out, y2_out, z_out],
-                            ]
-                        )
-                    )
-                    # inside, y-axis boxes
-                    unsafe_box.append(
-                        np.array(
-                            [[x1_in, y1_in, -MAX_LIM], [x2_in, y1_in + width, z_in]]
-                        )
-                    )
-                    unsafe_box.append(
-                        np.array(
-                            [[x1_in, y2_in - width, -MAX_LIM], [x2_in, y2_in, z_in]]
-                        )
-                    )
-                    # inside, x-axis boxes
-                    unsafe_box.append(
-                        np.array(
-                            [[x1_in, y1_in, -MAX_LIM], [x1_in + width, y2_in, z_in]]
-                        )
-                    )
-                    unsafe_box.append(
-                        np.array(
-                            [[x2_in - width, y1_in, -MAX_LIM], [x2_in, y2_in, z_in]]
-                        )
-                    )
-
-            def _violate(pos):
-                for _, constraint in enumerate(unsafe_box):
-                    if (
-                        np.min(
-                            np.concatenate([pos - constraint[0], constraint[1] - pos])
-                        )
-                        >= 0.0
-                    ):
-                        return True
-                return False
-
-            """It is possible that it is still violating the constraint after the first projection.
-            Keep trying different axes till it is not violating ANY constraint."""
-            for constraint in unsafe_box:
-                slacks = np.concatenate(
-                    [cur_pos - constraint[0], constraint[1] - cur_pos]
-                )
-                if np.min(slacks) >= 0.0:
-                    print("too close to the hook!")
-                    num_tries = 0
-                    while _violate(cur_pos) and num_tries < 3:
-                        # reset pos before trying another dimension
-                        cur_pos = self.normalize_ee_obs(np.concatenate([pos, [0.0]]))[
-                            :3
-                        ]
-                        min_idx = np.argmin(slacks)
-                        if min_idx // 3:
-                            cur_pos[min_idx % 3] += slacks[min_idx] + 1e-2
-                        else:
-                            cur_pos[min_idx % 3] -= slacks[min_idx] + 1e-2
-                        slacks[min_idx % 3] = slacks[min_idx % 3 + 3] = np.inf
-                        num_tries += 1
-                    return (
-                        self.unnormalize_ee_obs(np.concatenate([cur_pos, [0.0]]))[:3],
-                        gripper,
-                    )
-
         return pos, gripper
 
     def _update_robot(self, pos, angle, gripper):
@@ -693,16 +402,6 @@ class RobotEnv(gym.Env):
         current_state = self.get_state()
         current_images = self.get_images()
 
-        # set images
-        # obs_first = current_images[0]['array']
-        # obs_third = current_images[1]['array']
-        try:
-            obs_first = current_images[0]["color_image"]
-        except:
-            obs_first = current_images[0]["array"]
-
-        obs_third = obs_first # current_images[2]["color_image"]
-
         # set gripper width
         gripper_width = current_state["current_pose"][-1:]
         # compute and normalize ee/qpos state
@@ -721,16 +420,13 @@ class RobotEnv(gym.Env):
         normalized_qpos = self.normalize_qpos(qpos)
 
         obs_dict = {
-            "hand_img_obs": obs_first,
-            "third_person_img_obs": obs_third,
             "lowdim_ee": normalized_ee_pos,
             "lowdim_qpos": normalized_qpos,
         }
 
-        if not self._first_person:
-            obs_dict.pop("hand_img_obs", None)
-        if not self._third_person:
-            obs_dict.pop("third_person_img_obs", None)
+        for id in self.camera_ids:
+            obs_dict[f"img_obs_{id}"] = current_images[id]["array"]
+
         if not self._qpos:
             obs_dict.pop("lowdim_qpos", None)
         if not self._ee_pos:

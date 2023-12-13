@@ -6,7 +6,6 @@ import imageio
 import numpy as np
 
 from robot.robot_env import RobotEnv
-from helpers.discretization import inverse_discretize
 
 horizon=20
 

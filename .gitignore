@@ -3,3 +3,4 @@ results/
 *.png
 *.zip
 models/
+caldata.pkl

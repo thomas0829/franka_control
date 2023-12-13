@@ -20,7 +20,7 @@ import numpy as np
 import torch
 import cv2
 
-from torchcontrol.transform import Rotation as R
+# from torchcontrol.transform import Rotation as R
 # from polymetis import RobotInterface
 from realsense_wrapper import RealsenseAPI
 
@@ -61,7 +61,8 @@ def sample_poses_from_data(xyz_points, orient_points, num_points):
     for point in points:
         for orient in orient_points:
             pos = torch.Tensor(point)
-            ori = R.from_quat(torch.Tensor(orient))
+            # ori = R.from_quat(torch.Tensor(orient))
+            ori = euler2quat(torch.Tensor(orient))
             yield pos, ori
 
 def robot_poses(ip_address, robot_model, pose_generator, time_to_go=3):

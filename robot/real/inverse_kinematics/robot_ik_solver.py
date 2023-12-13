@@ -5,7 +5,7 @@ from dm_robotics.moma.effectors import (arm_effector,
 from scipy.spatial.transform import Rotation as R
 from robot.real.inverse_kinematics.arm import FrankaArm
 import torch
-from helpers.quat_math import quat2euler, euler2quat
+from helpers.transformations import quat_to_euler, euler_to_quat
 
 def quat_diff(target, source, return_euler=False):
     result = R.from_quat(target) * R.from_quat(source).inv()
@@ -52,7 +52,7 @@ class RobotIKSolver:
 		qpos = self._robot.get_joint_positions()
 		qvel = self._robot.get_joint_velocities()
 		curr_pos, curr_euler = self._robot.get_ee_pose()
-		curr_quat = euler2quat(curr_euler)
+		curr_quat = euler_to_quat(curr_euler)
 
 		lin_vel = desired_ee_pos - curr_pos
 		rot_vel = quat_diff(desired_ee_quat, curr_quat, return_euler=True)

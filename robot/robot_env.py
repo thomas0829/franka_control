@@ -4,6 +4,7 @@ Robot Specific Functions: self._update_pose(), self.get_ee_pos(), self.get_ee_an
 Camera Specific Functions: self.render_obs()
 Experiment Specific Functions: self.get_info(), self.get_reward(), self.get_observation()
 """
+import torch
 import numpy as np
 import time
 import gym
@@ -63,9 +64,8 @@ class RobotEnv(gym.Env):
         # resetting configuration
         self._randomize_ee_on_reset = randomize_ee_on_reset
         self._pause_after_reset = pause_after_reset
-        self._gripper_angle = 1.544
         self._reset_joint_qpos = np.array(
-            [0, 0.423, 0, -1.944, 0.013, 2.219, self._gripper_angle]
+            [-0.1394, -0.0205, -0.0520, -2.0691,  0.0506,  2.0029, -0.9168]
         )
 
         # observation space config
@@ -232,7 +232,10 @@ class RobotEnv(gym.Env):
 
         self.reset_gripper()
         for _ in range(5):
-            self._robot.update_joints(self._reset_joint_qpos)
+            if self.sim:
+                self._robot.update_joints(self._reset_joint_qpos)
+            else:
+                self._robot.update_joints_slow(torch.tensor(self._reset_joint_qpos))
             if self.is_robot_reset():
                 break
             else:

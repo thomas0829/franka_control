@@ -44,4 +44,4 @@ def rmat_to_quat(rot_mat, degrees=False):
     return quat
 
 def quat_to_rmat(quat, degrees=False):
-    return R.from_quat(euler, degrees=degrees).as_matrix()
+    return R.from_quat(quat, degrees=degrees).as_matrix()

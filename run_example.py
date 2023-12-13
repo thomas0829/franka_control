@@ -25,9 +25,8 @@ imgs = [img]
 acts = []
 
 for i in range(horizon):
-    env._robot.render(mode="human")
     start = time.time()
-    act = - np.array([0., 1.0, 0., 0.])
+    act = - np.array([0., 1.0, 0., -1 if i%2 else 1])
     print(act, time.time() - start)
     obs, reward, done, _ = env.step(act)
     imgs.append(img)

@@ -7,11 +7,10 @@ os.environ["MUJOCO_GL"] = "egl"
 import numpy as np
 import mujoco
 from robot.real.inverse_kinematics.robot_ik_solver import RobotIKSolver
-from scipy.spatial.transform import Rotation as R
 import mujoco_viewer
 import copy
 
-from helpers.transformations import euler_to_quat, quat_to_euler
+from helpers.transformations import euler_to_quat, quat_to_euler, rmat_to_quat, rmat_to_euler
 
 
 class FrankaMujoco(FrankaBase):
@@ -90,8 +89,7 @@ class FrankaMujoco(FrankaBase):
     
     def get_ee_angle(self, quat=False):
         ee_mat = self.data.site_xmat[self.ee_site_id].copy().reshape(3, 3)
-        ee_angle = R.from_matrix(ee_mat)
-        ee_angle = ee_angle.as_euler("xyz")
+        ee_angle = rmat_to_euler(ee_mat)
         if quat:
             return euler_to_quat(ee_angle)
         else:
@@ -119,7 +117,8 @@ class FrankaMujoco(FrankaBase):
         self.data.ctrl[: len(desired_qpos)] = desired_qpos
 
         if gripper is not None:
-            self.data.ctrl[-1] = gripper
+        # TODO gripper in sim
+            self.data.ctrl[-1] = gripper * 255
             
         # advance simulation, use control callback to obtain external force and control.
         mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
@@ -135,7 +134,8 @@ class FrankaMujoco(FrankaBase):
         mujoco.mj_forward(self.model, self.data)
 
     def update_gripper(self, gripper):
-        self.data.ctrl[-1] = gripper
+        # TODO gripper in sim
+        self.data.ctrl[-1] = gripper * 255
         mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
 
     def apply_action_drop(self, pos, angle):

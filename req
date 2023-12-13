@@ -1,16 +1,13 @@
+install
 mamba create -n polymetis python=3.8
 mamba activate polymetis
 mamba install -c pytorch -c fair-robotics -c aihabitat -c conda-forge polymetis
-
 mujoco
 mujoco-python-viewer
 
-
-add sim
-- obs
-- implement interface sim
+TODO
 - camera intr. extr, pts functionality
-- get_pose return quat, get_angle returns euler
+- sim camera from calibration file
 
 def _value_to_range(self, value, r_max, r_min, t_max, t_min):
         """scales value in range [r_max, r_min] to range [t_max, t_min]"""

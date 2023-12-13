@@ -230,13 +230,13 @@ class RobotEnv(gym.Env):
 
     def reset(self):
 
-        # self.reset_gripper()
-        # for _ in range(5):
-        #     self._robot.update_joints(self._reset_joint_qpos)
-        #     if self.is_robot_reset():
-        #         break
-        #     else:
-        #         print('reset failed, trying again')
+        self.reset_gripper()
+        for _ in range(5):
+            self._robot.update_joints(self._reset_joint_qpos)
+            if self.is_robot_reset():
+                break
+            else:
+                print('reset failed, trying again')
 
         # fix default angle at first joint reset
         if self._episode_count == 0:
@@ -441,15 +441,6 @@ class RobotEnv(gym.Env):
             obs_dict.pop("lowdim_ee", None)
 
         return obs_dict
-
-    def render(self, mode=None):
-        # TODO: update rendering to use height, width (for high quality evaluation rendering)
-        if mode == "video":
-            image_obs = self.get_images()
-            obs = np.concatenate([image_obs[0]["array"], image_obs[1]["array"]], axis=0)
-            return obs
-        else:
-            return self.get_observation()
 
     def is_robot_reset(self, epsilon=0.1):
         curr_joints = self._robot.get_joint_positions()

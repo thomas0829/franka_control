@@ -5,10 +5,7 @@ import os
 os.environ["MUJOCO_GL"] = "egl"
 
 import numpy as np
-from gym import utils
-from gym import spaces
 import mujoco
-import gym
 from robot.real.inverse_kinematics.robot_ik_solver import RobotIKSolver
 from scipy.spatial.transform import Rotation as R
 import mujoco_viewer
@@ -17,7 +14,7 @@ import copy
 from helpers.transformations import euler_to_quat, quat_to_euler
 
 
-class FrankaMujoco(utils.EzPickle, FrankaBase):
+class FrankaMujoco(FrankaBase):
     def __init__(
         self,
         # rendering
@@ -35,7 +32,7 @@ class FrankaMujoco(utils.EzPickle, FrankaBase):
         act_drop=0.0,
         # mujoco
         seed=0,
-        xml_path="robot/sim/mujoco/assets/kitchen_franka/kitchen_assets/franka_reaching.xml",
+        xml_path="robot/sim/mujoco/assets/base_franka.xml",
     ):
         
         # rendering
@@ -51,9 +48,6 @@ class FrankaMujoco(utils.EzPickle, FrankaBase):
         self.img_height = img_height
         self.camera_names = camera_names
 
-        # self.frame_skip = control_hz * 10
-        self.frame_skip = 200 # int(self.frame_skip / 3)
-
         self.obs_noise = obs_noise
         self.act_drop = act_drop
 
@@ -61,6 +55,9 @@ class FrankaMujoco(utils.EzPickle, FrankaBase):
         self.model = mujoco.MjModel.from_xml_path(xml_path)
         self.model_backup = copy.deepcopy(self.model)
         self.data = mujoco.MjData(self.model)
+
+        # TODO verify this
+        self.frame_skip = int((1/control_hz) / self.model.opt.timestep)
 
         self.ee_site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, "EEF")
         self.franka_joint_ids = []
@@ -76,17 +73,14 @@ class FrankaMujoco(utils.EzPickle, FrankaBase):
         # setup IK
         self.ik = RobotIKSolver(robot=self, control_hz=control_hz)
 
-        self.spec = self
-
         self.seed(seed)
-        utils.EzPickle.__init__(self)
 
     @property
     def dt(self):
         return self.model.opt.timestep * self.frame_skip
 
     def get_ee_pose(self):
-        return self.get_ee_pos(), self.get_ee_angle(quat=True)
+        return self.get_ee_pos(), self.get_ee_angle()
     
     def get_ee_pos(self):
         ee_pos = self.data.site_xpos[self.ee_site_id].copy()
@@ -135,7 +129,7 @@ class FrankaMujoco(utils.EzPickle, FrankaBase):
 
         return self.get_ee_pos(), self.get_ee_angle()
 
-    def update_joint_pos(self, qpos):
+    def update_joints(self, qpos):
         self.data.qpos[: len(qpos)] = qpos
         # forward dynamics: same as mj_step but do not integrate in time.
         mujoco.mj_forward(self.model, self.data)

@@ -206,7 +206,7 @@ class FrankaHardware(FrankaBase):
                     reset_pos = torch.Tensor(self.robot.metadata.rest_pose)
                 elif not torch.is_tensor(reset_pos):
                     reset_pos = torch.Tensor(reset_pos)
-                self.update_joint_pos_slow(reset_pos)
+                self.update_joints_slow(reset_pos)
 
             else:
                 # Use default controller
@@ -255,7 +255,7 @@ class FrankaHardware(FrankaBase):
         return self.robot.get_ee_pose()
         # return feasible_pos, feasible_angle
 
-    def update_joint_pos(self, q_desired=None, kp=None, kd=None):
+    def update_joints(self, q_desired=None, kp=None, kd=None):
         """update joint pos"""
         udpate_pkt = {}
         udpate_pkt["ctrl_mode"] = torch.Tensor([0.0])
@@ -278,7 +278,7 @@ class FrankaHardware(FrankaBase):
 
         # return feasible_pos, feasible_angle
 
-    def update_joint_pos_slow(self, q_target, time_to_go=5):
+    def update_joints_slow(self, q_target, time_to_go=5):
         # Use registered controller
         q_current = self.robot.get_joint_positions()
 
@@ -289,7 +289,7 @@ class FrankaHardware(FrankaBase):
         )
         # reset using min_jerk traj
         for i in range(len(waypoints)):
-            self.update_joint_pos(
+            self.update_joints(
                 q_desired=waypoints[i]["position"],
                 kp=self.reset_gain_scale * torch.Tensor(self.robot.metadata.default_Kq),
                 kd=self.reset_gain_scale
@@ -298,7 +298,7 @@ class FrankaHardware(FrankaBase):
             time.sleep(dt)
 
         # reset back gains to gain-policy
-        self.update_joint_pos(
+        self.update_joints(
             kp=self.gain_scale * torch.Tensor(self.robot.metadata.default_Kq),
             kd=self.gain_scale * torch.Tensor(self.robot.metadata.default_Kqd),
         )
@@ -311,13 +311,13 @@ class FrankaHardware(FrankaBase):
 
     def get_ee_pose(self):
         pos, angle = self.robot.get_ee_pose()
-        return pos.numpy(), angle.numpy()
+        return pos.numpy(), quat2euler(angle.numpy())
 
     def get_ee_pos(self):
         return self.get_ee_pose()[0]
 
     def get_ee_angle(self):
-        return quat2euler(self.get_ee_pose()[1])
+        return self.get_ee_pose()[1]
 
     def get_gripper_position(self):
         return 1 - (self.gripper.get_state().width / self._max_gripper_width)
@@ -383,18 +383,18 @@ if __name__ == "__main__":
         q_desired[5] = q_initial[5] + m * np.sin(np.pi * i / (T * hz))
         # q_desired[5] = q_initial[5] + 0.05*np.random.uniform(high=1, low=-1)
         # q_desired = q_initial + 0.01*np.random.uniform(high=1, low=-1, size=7)
-        franka.update_joint_pos(q_desired=q_desired)
+        franka.update_joints(q_desired=q_desired)
         time.sleep(1 / hz)
 
     # Udpate the gains
     kp_new = 0.1 * torch.Tensor(franka.robot.metadata.default_Kq)
     kd_new = 0.1 * torch.Tensor(franka.robot.metadata.default_Kqd)
-    franka.update_joint_pos(kp=kp_new, kd=kd_new)
+    franka.update_joints(kp=kp_new, kd=kd_new)
 
     print("Starting sine motion updates again with updated gains.")
     for i in range(int(time_to_go * hz)):
         q_desired[5] = q_initial[5] + m * np.sin(np.pi * i / (T * hz))
-        franka.update_joint_pos(q_desired=q_desired)
+        franka.update_joints(q_desired=q_desired)
         time.sleep(1 / hz)
 
     print("Closing and exiting hardware connection")

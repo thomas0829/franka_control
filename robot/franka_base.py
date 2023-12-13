@@ -6,7 +6,7 @@ class FrankaBase(abc.ABC):
 
     @abc.abstractmethod
     def get_ee_pose(self):
-        """Get endeffector pose [pos (xyz), angle (quat)]"""
+        """Get endeffector pose [pos (xyz), angle (euler)]"""
 
     @abc.abstractmethod
     def get_ee_pos(self):
@@ -33,7 +33,7 @@ class FrankaBase(abc.ABC):
         """Update robot pose [pos (xyz), angle (euler)]"""
 
     @abc.abstractmethod
-    def update_joint_pos(self):
+    def update_joints(self):
         """Update robot joint positions"""
 
     @abc.abstractmethod

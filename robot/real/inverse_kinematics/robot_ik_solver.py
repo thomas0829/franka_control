@@ -5,6 +5,7 @@ from dm_robotics.moma.effectors import (arm_effector,
 from scipy.spatial.transform import Rotation as R
 from robot.real.inverse_kinematics.arm import FrankaArm
 import torch
+from helpers.quat_math import quat2euler, euler2quat
 
 def quat_diff(target, source, return_euler=False):
     result = R.from_quat(target) * R.from_quat(source).inv()
@@ -32,8 +33,8 @@ class RobotIKSolver:
 			max_lin_vel=1.0,
 			max_rot_vel=1.0,
 			joint_velocity_limits=np.array([2.075 * scaler] * 4 + [2.51 * scaler] * 3),
-			nullspace_gain=0.025, #1e-2 #Encourages small joint changes
-			regularization_weight=1e-2, #1e-2 #Encourages staying near joint centers
+			nullspace_gain=0.025, #1e-2 # Encourages small joint changes
+			regularization_weight=1e-2, # Encourages staying near joint centers
 			enable_joint_position_limits=True,
 			minimum_distance_from_joint_position_limit=0.3, #0.01
 			joint_position_limit_velocity_scale=0.95,
@@ -48,10 +49,10 @@ class RobotIKSolver:
 
 	def compute(self, desired_ee_pos, desired_ee_quat):
 
-		qpos = self._robot.get_joint_positions()# .numpy()
-		qvel = self._robot.get_joint_velocities()# .numpy()
-		curr_pos, curr_quat = self._robot.get_ee_pose()
-		# curr_pos, curr_quat = curr_pos.numpy(), curr_quat.numpy()
+		qpos = self._robot.get_joint_positions()
+		qvel = self._robot.get_joint_velocities()
+		curr_pos, curr_euler = self._robot.get_ee_pose()
+		curr_quat = euler2quat(curr_euler)
 
 		lin_vel = desired_ee_pos - curr_pos
 		rot_vel = quat_diff(desired_ee_quat, curr_quat, return_euler=True)

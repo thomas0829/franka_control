@@ -1,5 +1,3 @@
-
-import os
 import time
 import datetime
 import imageio
@@ -27,6 +25,7 @@ imgs = [img]
 acts = []
 
 for i in range(horizon):
+    env._robot.render(mode="human")
     start = time.time()
     act = - np.array([0., 1.0, 0., 0.])
     print(act, time.time() - start)
@@ -35,6 +34,4 @@ for i in range(horizon):
     acts.append(act)
     img = obs["img_obs_0"]
 
-date_str = datetime.datetime.now().strftime("%m_%d_%Y-%H_%M_%S")
-os.makedirs("results", exist_ok=True)
-imageio.mimsave(f'results/rollout-{date_str}.gif', imgs)
+imageio.mimsave('debug.gif', imgs)

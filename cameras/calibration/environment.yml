@@ -1,0 +1,20 @@
+name: eyehandcal
+channels:
+  - pytorch
+  - fair-robotics
+  - aihabitat
+  - conda-forge
+  - defaults
+dependencies:
+  - polymetis
+  - opencv=4.5.1
+  - librealsense=2.50.0
+  - scipy=1.7.3
+  - cmake
+  - pybind11
+  - py
+  - pip
+  - pip:
+    - sophuspy
+    - dm-robotics-moma
+    - protobuf==3.20.1

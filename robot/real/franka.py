@@ -24,6 +24,7 @@ import argparse
 
 # Adapted from : https://github.com/facebookresearch/fairo/blob/main/polymetis/polymetis/python/torchcontrol/planning/min_jerk.py
 
+
 def _min_jerk_spaces(N: int, T: float):
     """
     Generates a 1-dim minimum jerk trajectory from 0 to 1 in N steps & T seconds.
@@ -80,9 +81,16 @@ def generate_joint_space_min_jerk(start, goal, time_to_go: float, dt: float):
 
     return waypoints
 
+
 class FrankaArm:
     def __init__(
-        self, name, ip_address, gain_scale=1.0, reset_gain_scale=1.0, control_hz=10, **kwargs
+        self,
+        name,
+        ip_address,
+        gain_scale=1.0,
+        reset_gain_scale=1.0,
+        control_hz=10,
+        **kwargs,
     ):
         self.name = name
         self.ip_address = ip_address
@@ -198,7 +206,7 @@ class FrankaArm:
                 elif not torch.is_tensor(reset_pos):
                     reset_pos = torch.Tensor(reset_pos)
                 self.update_joint_pos_slow(reset_pos)
-                
+
             else:
                 # Use default controller
                 print("Resetting using default controller")
@@ -244,7 +252,6 @@ class FrankaArm:
             self.reconnect()
 
         return self.robot.get_ee_pose()
-    
         # return feasible_pos, feasible_angle
 
     def update_joint_pos(self, q_desired=None, kp=None, kd=None):
@@ -270,8 +277,7 @@ class FrankaArm:
 
         # return feasible_pos, feasible_angle
 
-    def update_joint_pos_slow(self, q_target, time_to_go = 5):
-
+    def update_joint_pos_slow(self, q_target, time_to_go=5):
         # Use registered controller
         q_current = self.robot.get_joint_positions()
 
@@ -284,8 +290,7 @@ class FrankaArm:
         for i in range(len(waypoints)):
             self.update_joint_pos(
                 q_desired=waypoints[i]["position"],
-                kp=self.reset_gain_scale
-                * torch.Tensor(self.robot.metadata.default_Kq),
+                kp=self.reset_gain_scale * torch.Tensor(self.robot.metadata.default_Kq),
                 kd=self.reset_gain_scale
                 * torch.Tensor(self.robot.metadata.default_Kqd),
             )
@@ -299,10 +304,10 @@ class FrankaArm:
 
     def get_joint_positions(self):
         return self.robot.get_joint_positions()
-    
+
     def get_joint_velocities(self):
         return self.robot.get_joint_velocities()
-    
+
     def get_ee_pose(self):
         return self.robot.get_ee_pose()
 
@@ -314,10 +319,10 @@ class FrankaArm:
 
     def get_gripper_position(self):
         return 1 - (self.gripper.get_state().width / self._max_gripper_width)
-    
+
     def get_gripper_state(self):
         return self.gripper.get_state().width
-    
+
     def update_gripper(self, command, velocity=True, blocking=False):
         return
         if velocity:
@@ -325,8 +330,12 @@ class FrankaArm:
             command = gripper_delta + self.get_gripper_position()
 
         command = float(np.clip(command, 0, 1))
-        self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.1, blocking=blocking)
-
+        self._gripper.goto(
+            width=self._max_gripper_width * (1 - command),
+            speed=0.05,
+            force=0.1,
+            blocking=blocking,
+        )
 
     def __del__(self):
         self.close()
@@ -358,6 +367,8 @@ class FrankaArm:
     #     except Exception as e:
     #         print("1> Failed to udpate policy with exception", e)
     #         self.reconnect()
+
+
 # Get inputs from user
 def get_args():
     parser = argparse.ArgumentParser(description="Polymetis based Franka client")

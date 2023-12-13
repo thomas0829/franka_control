@@ -14,7 +14,7 @@ import pickle
 import json
 import sys
 from collections import namedtuple
-from calibration_utils import uncompress_image
+from cameras.calibration.calibration_utils import uncompress_image
 
 import numpy as np
 import torch
@@ -27,7 +27,7 @@ from realsense_wrapper import RealsenseAPI
 from robot.franka import FrankaArm
 from helpers.quat_math import quat2euler, euler2quat
 
-from calibration_utils import detect_corners, quat2rotvec, build_proj_matrix, mean_loss, find_parameter, rotmat, dist_in_hull, \
+from cameras.calibration.calibration_utils import detect_corners, quat2rotvec, build_proj_matrix, mean_loss, find_parameter, rotmat, dist_in_hull, \
     hand_marker_proj_world_camera, world_marker_proj_hand_camera
 
 

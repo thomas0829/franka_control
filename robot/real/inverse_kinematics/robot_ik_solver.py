@@ -3,7 +3,7 @@ from dm_control import mjcf
 from dm_robotics.moma.effectors import (arm_effector,
 										cartesian_6d_velocity_effector)
 from scipy.spatial.transform import Rotation as R
-from real_robot_ik.arm import FrankaArm
+from ik.arm import FrankaArm
 import torch
 
 def quat_diff(target, source, return_euler=False):

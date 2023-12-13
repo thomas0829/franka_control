@@ -11,6 +11,7 @@ import numpy as np
 import torch
 
 from polymetis import RobotInterface, GripperInterface
+from robot.franka_base import FrankaBase
 from robot.real.inverse_kinematics.robot_ik_solver import RobotIKSolver
 
 # from robohive.robot.hardware_base import hardwareBase
@@ -82,7 +83,7 @@ def generate_joint_space_min_jerk(start, goal, time_to_go: float, dt: float):
     return waypoints
 
 
-class FrankaArm:
+class FrankaHardware(FrankaBase):
     def __init__(
         self,
         name,
@@ -303,13 +304,14 @@ class FrankaArm:
         )
 
     def get_joint_positions(self):
-        return self.robot.get_joint_positions()
+        return self.robot.get_joint_positions().numpy()
 
     def get_joint_velocities(self):
-        return self.robot.get_joint_velocities()
+        return self.robot.get_joint_velocities().numpy()
 
     def get_ee_pose(self):
-        return self.robot.get_ee_pose()
+        pos, angle = self.robot.get_ee_pose()
+        return pos.numpy(), angle.numpy()
 
     def get_ee_pos(self):
         return self.get_ee_pose()[0]
@@ -339,35 +341,6 @@ class FrankaArm:
 
     def __del__(self):
         self.close()
-
-    # def get_sensors(self):
-    #     """Get hardware sensors"""
-    #     try:
-    #         joint_pos = self.robot.get_joint_positions()
-    #         joint_vel = self.robot.get_joint_velocities()
-    #     except:
-    #         print("Failed to get current sensors: ", end="")
-    #         self.reconnect()
-    #         return self.get_sensors()
-    #     return {'joint_pos': joint_pos, 'joint_vel':joint_vel}
-
-    # def apply_commands(self, q_desired=None, kp=None, kd=None):
-    #     """Apply hardware commands"""
-    #     udpate_pkt = {}
-    #     if q_desired is not None:
-    #         udpate_pkt['q_desired'] = q_desired if torch.is_tensor(q_desired) else torch.tensor(q_desired)
-    #     if kp is not None:
-    #         udpate_pkt['kp'] = kp if torch.is_tensor(kp) else torch.tensor(kp)
-    #     if kd is not None:
-    #         udpate_pkt['kd'] = kd if torch.is_tensor(kd) else torch.tensor(kd)
-    #     assert udpate_pkt, "Atleast one parameter needs to be specified for udpate"
-
-    #     try:
-    #         self.robot.update_current_policy(udpate_pkt)
-    #     except Exception as e:
-    #         print("1> Failed to udpate policy with exception", e)
-    #         self.reconnect()
-
 
 # Get inputs from user
 def get_args():

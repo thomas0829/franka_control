@@ -8,8 +8,8 @@ import numpy as np
 import time
 import gym
 
-from transformations import add_angles, angle_diff
-from camera_utils.multi_camera_wrapper import MultiCameraWrapper
+from helpers.transformations import add_angles, angle_diff
+from cameras.multi_camera_wrapper import MultiCameraWrapper
 from gym.spaces import Box, Dict
 
 
@@ -91,7 +91,7 @@ class RobotEnv(gym.Env):
                 np.array([0.73, 0.28, 0.35, 0.0, 0.085]),
             )
 
-        # TODO verify rotation
+        # # TODO verify rotation
         elif self.DoF == 6:
             # EE position (x, y, z) + EE rot + gripper width
             self.ee_space = Box(
@@ -143,30 +143,23 @@ class RobotEnv(gym.Env):
         self.observation_space = Dict(env_obs_spaces)
         print(f"configured observation space: {self.observation_space}")
 
-        # TODO add sim here
         # robot configuration
         if ip_address is not None:
-            from robot.real.franka import FrankaArm
-            self._robot = FrankaArm(name=robot_model, ip_address=ip_address, control_hz=self.hz)
+            from robot.real.franka import FrankaHardware
+            self._robot = FrankaHardware(name=robot_model, ip_address=ip_address, control_hz=self.hz)
 
             if camera_model == "realsense":
-                from camera_utils.realsense_camera import gather_realsense_cameras
-
-                try:
-                    cameras = gather_realsense_cameras(height=480, width=640)
-                except:
-                    cameras = gather_realsense_cameras()
-
+                from cameras.realsense_camera import gather_realsense_cameras
+                cameras = gather_realsense_cameras()
             elif camera_model == "zed":
                 from cameras.zed_camera import gather_zed_cameras
-
                 cameras = gather_zed_cameras()
-
             self._camera_reader = MultiCameraWrapper(cameras)
-                
+            self.sim = False
         else:
-            self._use_local_cameras = False
-            self._robot = sim
+            from robot.sim.mujoco.franka import FrankaMujoco
+            self._robot = FrankaMujoco()
+            self.sim = True
 
     def step(self, action):
         start_time = time.time()
@@ -184,6 +177,10 @@ class RobotEnv(gym.Env):
         if self.DoF == 4:
             desired_angle[2] = desired_angle[2].clip(
                 self.ee_space.low[3], self.ee_space.high[3]
+            )
+        elif self.DoF == 6:
+            desired_angle = desired_angle.clip(
+                self.ee_space.low[3:6], self.ee_space.high[3:6]
             )
         self._update_robot(desired_pos, desired_angle, gripper)
 
@@ -350,13 +347,11 @@ class RobotEnv(gym.Env):
         return self._robot.get_ee_angle()
 
     def get_images(self):
-        camera_feed = []
-        if self._use_local_cameras:
-            camera_feed.extend(self._camera_reader.read_cameras())
+        if self.sim:
+            return self._robot.render()
         else:
-            camera_feed.extend(self._robot.read_cameras())
-        return camera_feed
-
+            return self._camera_reader.read_cameras()
+    
     def get_state(self):
         state_dict = {}
         gripper_state = self._robot.get_gripper_state()
@@ -393,6 +388,11 @@ class RobotEnv(gym.Env):
             act_delta = np.concatenate(
                 [random_xy, random_z, random_rot, np.zeros((1,))]
             )
+        elif self.DoF == 6:
+            random_rot = np.random.uniform(-0.5, 0.0, (3,))
+            act_delta = np.concatenate(
+                [random_xy, random_z, *random_rot, np.zeros((1,))]
+            )
         else:
             act_delta = np.concatenate([random_xy, random_z, np.zeros((1,))])
         for _ in range(10):
@@ -413,6 +413,13 @@ class RobotEnv(gym.Env):
                 [
                     current_state["current_pose"][:3],
                     current_state["current_pose"][5:6],
+                    gripper_width,
+                ]
+            )
+        elif self.DoF == 6:
+            ee_pos = np.concatenate(
+                [
+                    current_state["current_pose"][:6],
                     gripper_width,
                 ]
             )

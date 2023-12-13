@@ -19,3 +19,4 @@ dependencies:
     - dm-robotics-moma
     - protobuf==3.20.1
     - gtsam
+    - gym==0.22.0

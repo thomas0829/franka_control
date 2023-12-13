@@ -1,0 +1,6 @@
+mamba create -n polymetis python=3.8
+mamba activate polymetis
+mamba install -c pytorch -c fair-robotics -c aihabitat -c conda-forge polymetis
+
+mujoco
+mujoco-python-viewer

@@ -48,10 +48,10 @@ class RobotIKSolver:
 
 	def compute(self, desired_ee_pos, desired_ee_quat):
 
-		qpos = self._robot.get_joint_positions().numpy()
-		qvel = self._robot.get_joint_velocities().numpy()
+		qpos = self._robot.get_joint_positions()# .numpy()
+		qvel = self._robot.get_joint_velocities()# .numpy()
 		curr_pos, curr_quat = self._robot.get_ee_pose()
-		curr_pos, curr_quat = curr_pos.numpy(), curr_quat.numpy()
+		# curr_pos, curr_quat = curr_pos.numpy(), curr_quat.numpy()
 
 		lin_vel = desired_ee_pos - curr_pos
 		rot_vel = quat_diff(desired_ee_quat, curr_quat, return_euler=True)

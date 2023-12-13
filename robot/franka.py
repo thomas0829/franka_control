@@ -5,15 +5,14 @@ Source  :: https://github.com/vikashplus/robohive
 License :: Under Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 ================================================= """
 
-from cgitb import reset
 from typing import Dict, Sized
 import time
 
 import numpy as np
-from numpy.core.fromnumeric import size
 import torch
 
 from polymetis import RobotInterface, GripperInterface
+from real_robot_ik.robot_ik_solver import RobotIKSolver
 import torchcontrol as toco
 
 # from robohive.robot.hardware_base import hardwareBase
@@ -26,9 +25,6 @@ from helpers.quat_math import quat2euler, euler2quat
 import argparse
 
 # Adapted from : https://github.com/facebookresearch/fairo/blob/main/polymetis/polymetis/python/torchcontrol/planning/min_jerk.py
-
-import numpy as np
-
 
 def _min_jerk_spaces(N: int, T: float):
     """
@@ -232,13 +228,14 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
 
 class FrankaArm:
     def __init__(
-        self, name, ip_address, gain_scale=1.0, reset_gain_scale=1.0, **kwargs
+        self, name, ip_address, gain_scale=1.0, reset_gain_scale=1.0, control_hz=10, **kwargs
     ):
         self.name = name
         self.ip_address = ip_address
         self.robot = None
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
+        self.control_hz = control_hz
 
         success = self.connect()
         assert success, "Failed to connect to hardware!"
@@ -254,6 +251,7 @@ class FrankaArm:
             )
             self.gripper = GripperInterface(ip_address=self.ip_address)
             self._max_gripper_width = self.gripper.metadata.max_width
+            self._ik_solver = RobotIKSolver(self.robot, control_hz=self.control_hz)
             print("Success")
         except Exception as e:
             self.robot = None  # declare dead
@@ -345,31 +343,8 @@ class FrankaArm:
                     reset_pos = torch.Tensor(self.robot.metadata.rest_pose)
                 elif not torch.is_tensor(reset_pos):
                     reset_pos = torch.Tensor(reset_pos)
-
-                # Use registered controller
-                q_current = self.robot.get_joint_positions()
-
-                # generate min jerk trajectory
-                dt = 0.1
-                waypoints = generate_joint_space_min_jerk(
-                    start=q_current, goal=reset_pos, time_to_go=time_to_go, dt=dt
-                )
-                # reset using min_jerk traj
-                for i in range(len(waypoints)):
-                    self.update_joint_pos(
-                        q_desired=waypoints[i]["position"],
-                        kp=self.reset_gain_scale
-                        * torch.Tensor(self.robot.metadata.default_Kq),
-                        kd=self.reset_gain_scale
-                        * torch.Tensor(self.robot.metadata.default_Kqd),
-                    )
-                    time.sleep(dt)
-
-                # reset back gains to gain-policy
-                self.update_joint_pos(
-                    kp=self.gain_scale * torch.Tensor(self.robot.metadata.default_Kq),
-                    kd=self.gain_scale * torch.Tensor(self.robot.metadata.default_Kqd),
-                )
+                self.update_joint_pos_slow(reset_pos)
+                
             else:
                 # Use default controller
                 print("Resetting using default controller")
@@ -381,33 +356,11 @@ class FrankaArm:
             self.reconnect()
             self.reset(reset_pos, time_to_go)
 
-    # def get_sensors(self):
-    #     """Get hardware sensors"""
-    #     try:
-    #         joint_pos = self.robot.get_joint_positions()
-    #         joint_vel = self.robot.get_joint_velocities()
-    #     except:
-    #         print("Failed to get current sensors: ", end="")
-    #         self.reconnect()
-    #         return self.get_sensors()
-    #     return {'joint_pos': joint_pos, 'joint_vel':joint_vel}
-
-    # def apply_commands(self, q_desired=None, kp=None, kd=None):
-    #     """Apply hardware commands"""
-    #     udpate_pkt = {}
-    #     if q_desired is not None:
-    #         udpate_pkt['q_desired'] = q_desired if torch.is_tensor(q_desired) else torch.tensor(q_desired)
-    #     if kp is not None:
-    #         udpate_pkt['kp'] = kp if torch.is_tensor(kp) else torch.tensor(kp)
-    #     if kd is not None:
-    #         udpate_pkt['kd'] = kd if torch.is_tensor(kd) else torch.tensor(kd)
-    #     assert udpate_pkt, "Atleast one parameter needs to be specified for udpate"
-
-    #     try:
-    #         self.robot.update_current_policy(udpate_pkt)
-    #     except Exception as e:
-    #         print("1> Failed to udpate policy with exception", e)
-    #         self.reconnect()
+    def _solve_ik(self, desired_pos, desired_euler):
+        desired_quat = euler2quat(desired_euler)
+        desired_q, success = self._ik_solver.compute(desired_pos, desired_quat)
+        assert success, "IK failed to compute"
+        return desired_q
 
     def update_pose(self, pos=None, angle=None, kp=None, kd=None):
         """update EE pose"""
@@ -463,6 +416,33 @@ class FrankaArm:
 
         # return feasible_pos, feasible_angle
 
+    def update_joint_pos_slow(self, q_target, time_to_go = 5):
+
+        # Use registered controller
+        q_current = self.robot.get_joint_positions()
+
+        # generate min jerk trajectory
+        dt = 0.1
+        waypoints = generate_joint_space_min_jerk(
+            start=q_current, goal=q_target, time_to_go=time_to_go, dt=dt
+        )
+        # reset using min_jerk traj
+        for i in range(len(waypoints)):
+            self.update_joint_pos(
+                q_desired=waypoints[i]["position"],
+                kp=self.reset_gain_scale
+                * torch.Tensor(self.robot.metadata.default_Kq),
+                kd=self.reset_gain_scale
+                * torch.Tensor(self.robot.metadata.default_Kqd),
+            )
+            time.sleep(dt)
+
+        # reset back gains to gain-policy
+        self.update_joint_pos(
+            kp=self.gain_scale * torch.Tensor(self.robot.metadata.default_Kq),
+            kd=self.gain_scale * torch.Tensor(self.robot.metadata.default_Kqd),
+        )
+
     def get_joint_positions(self):
         return self.robot.get_joint_positions()
     
@@ -497,7 +477,33 @@ class FrankaArm:
     def __del__(self):
         self.close()
 
+    # def get_sensors(self):
+    #     """Get hardware sensors"""
+    #     try:
+    #         joint_pos = self.robot.get_joint_positions()
+    #         joint_vel = self.robot.get_joint_velocities()
+    #     except:
+    #         print("Failed to get current sensors: ", end="")
+    #         self.reconnect()
+    #         return self.get_sensors()
+    #     return {'joint_pos': joint_pos, 'joint_vel':joint_vel}
 
+    # def apply_commands(self, q_desired=None, kp=None, kd=None):
+    #     """Apply hardware commands"""
+    #     udpate_pkt = {}
+    #     if q_desired is not None:
+    #         udpate_pkt['q_desired'] = q_desired if torch.is_tensor(q_desired) else torch.tensor(q_desired)
+    #     if kp is not None:
+    #         udpate_pkt['kp'] = kp if torch.is_tensor(kp) else torch.tensor(kp)
+    #     if kd is not None:
+    #         udpate_pkt['kd'] = kd if torch.is_tensor(kd) else torch.tensor(kd)
+    #     assert udpate_pkt, "Atleast one parameter needs to be specified for udpate"
+
+    #     try:
+    #         self.robot.update_current_policy(udpate_pkt)
+    #     except Exception as e:
+    #         print("1> Failed to udpate policy with exception", e)
+    #         self.reconnect()
 # Get inputs from user
 def get_args():
     parser = argparse.ArgumentParser(description="Polymetis based Franka client")

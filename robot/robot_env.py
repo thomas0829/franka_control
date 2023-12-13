@@ -164,7 +164,7 @@ class RobotEnv(gym.Env):
             # self._robot = RobotInterface(ip_address=ip_address, gripper=gripper)
             from robot.franka import FrankaArm
 
-            self._robot = FrankaArm(name=robot_model, ip_address=ip_address)
+            self._robot = FrankaArm(name=robot_model, ip_address=ip_address, control_hz=self.hz)
 
         self._use_local_cameras = local_cameras
         if self._use_local_cameras:

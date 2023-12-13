@@ -24,7 +24,8 @@ from torchcontrol.transform import Rotation as R
 # from polymetis import RobotInterface
 from realsense_wrapper import RealsenseAPI
 
-from robot import FrankaArm
+from robot.franka import FrankaArm
+from helpers.quat_math import quat2euler, euler2quat
 
 from calibration_utils import detect_corners, quat2rotvec, build_proj_matrix, mean_loss, find_parameter, rotmat, dist_in_hull, \
     hand_marker_proj_world_camera, world_marker_proj_hand_camera
@@ -69,15 +70,18 @@ def robot_poses(ip_address, robot_model, pose_generator, time_to_go=3):
     #     ip_address=ip_address,
     #     enforce_version=False
     # )
-    robot = FrankaArm(name=robot_model, ip_address=ip_address)
+    robot = FrankaArm(name=robot_model, ip_address=ip_address, control_hz=10)
 
     # Get reference state
     robot.reset()
     for i, (pos_sampled, ori_sampled) in enumerate(pose_generator):
         print( f"Moving to pose ({i}): pos={pos_sampled}, quat={ori_sampled.as_quat()}")
 
-        state_log = robot.update_pose(pos=pos_sampled, angle=ori_sampled)
-        # state_log = robot.update_pose(pos=pos_sampled, angle=ori_sampled.as_quat(),time_to_go = time_to_go)
+
+        q_desired = robot._solve_ik(pos_sampled, quat2euler(ori_sampled._q))
+        robot.update_joint_pos_slow(q_desired, time_to_go=time_to_go)
+
+        # state_log = robot.update_pose(pos=pos_sampled, angle=ori_sampled.as_quat())
         # print(f"Length of state_log: {len(state_log)}")
         # if len(state_log) != time_to_go * robot.hz:
         #     print(f"warning: log incorrect length. {len(state_log)} != {time_to_go * robot.hz}")
@@ -121,8 +125,8 @@ def main(argv):
     parser=argparse.ArgumentParser()
 
     parser.add_argument('--seed', default=0, type=int, help="random seed for initializing solution")
-    parser.add_argument('--ip', default='100.96.135.68', help="robot ip address")
-    parser.add_argument('--robot_model', default='panda', help="robot model, e.g., panda, FR3")
+    parser.add_argument('--ip', default='172.16.0.1', help="robot ip address")
+    parser.add_argument('--robot_model', default='FR3', help="robot model, e.g., panda, FR3")
     parser.add_argument('--datafile', default='caldata.pkl', help="file to either load or save camera data")
     parser.add_argument('--overwrite', default=False, action='store_true', help="overwrite existing datafile, if it exists")
     parser.add_argument('--marker-id', default=9, type=int, help="ID of the ARTag marker in the image")

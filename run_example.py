@@ -11,13 +11,16 @@ env = RobotEnv(
     hz=10,
     DoF=3,
     robot_model="panda",
-    ip_address=None, # "172.16.0.1",
+    ip_address="localhost", # "172.16.0.1",
     camera_ids=[0,1],
     camera_model="realsense",
     max_lin_vel=0.05,
     max_rot_vel=1.0,
     max_path_length=horizon,
 )
+
+from oculus import VRPolicy
+oculus = VRPolicy()
 
 obs = env.reset()
 img = obs["img_obs_0"]
@@ -26,8 +29,10 @@ acts = []
 
 for i in range(horizon):
     start = time.time()
-    act = - np.array([0., 1.0, 0., -1 if i%2 else 1])
-    print(act, time.time() - start)
+    # act = - np.array([0., 1.0, 0., -1 if i%2 else 1])
+    # print(act, time.time() - start)
+    act = oculus(obs, include_include_info=True)
+    # obs["robot_state"]
     obs, reward, done, _ = env.step(act)
     imgs.append(img)
     acts.append(act)

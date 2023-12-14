@@ -23,7 +23,7 @@ def vec_to_reorder_mat(vec):
     return X
 
 
-class VRPolicy:
+class VRController:
     def __init__(
         self,
         right_controller: bool = True,
@@ -203,7 +203,7 @@ class VRPolicy:
     
 def main():
 
-    oculus_reader = VRPolicy()
+    oculus_reader = VRController()
 
     while True:
         time.sleep(0.3)

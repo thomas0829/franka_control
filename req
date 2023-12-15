@@ -5,6 +5,8 @@ mamba install -c pytorch -c fair-robotics -c aihabitat -c conda-forge polymetis
 mujoco
 mujoco-python-viewer
 
+https://github.com/rail-berkeley/oculus_reader
+
 TODO
 - camera intr. extr, pts functionality
 - sim camera from calibration file

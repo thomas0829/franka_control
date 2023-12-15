@@ -9,12 +9,12 @@ horizon=20
 
 env = RobotEnv(
     hz=10,
-    DoF=3,
+    DoF=4,
     robot_model="panda",
     ip_address="localhost", # "172.16.0.1",
     camera_ids=[], # [0,1],
     camera_model="realsense",
-    max_lin_vel=0.5,
+    max_lin_vel=1.0,
     max_rot_vel=1.0,
     max_path_length=horizon,
 )
@@ -23,6 +23,7 @@ from robot.controllers.oculus import VRController
 oculus = VRController()
 
 obs = env.reset()
+# oculus.reset_state()
 
 while True:
     # time.sleep(0.3)
@@ -31,7 +32,7 @@ while True:
     state = {"robot_state": {"cartesian_position": np.concatenate((pos, angle)), "gripper_position": gripper}}
     print(oculus.get_info())
     deltas, info = oculus.forward(state, include_info=True)
-    act = np.concatenate((deltas[:3], deltas[-1:]))
+    act = np.concatenate((deltas[:3], deltas[5:6], deltas[-1:]))
     print(act)
     env.step(act)
 

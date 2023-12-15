@@ -95,8 +95,8 @@ class RobotEnv(gym.Env):
         elif self.DoF == 6:
             # EE position (x, y, z) + EE rot + gripper width
             self.ee_space = Box(
-                np.array([0.55, -0.06, 0.15, -1.57, -1.57, -1.57, 0.00]),
-                np.array([0.73, 0.28, 0.35, 0.0, 0.0, 0.0, 0.085]),
+                np.array([0.55, -0.06, 0.15, -3.14, -3.14, -3.14, 0.00]),
+                np.array([0.73, 0.28, 0.35, 3.14, 3.14, 3.14, 0.085]),
             )
 
         # TODO get actual workspace limits
@@ -182,6 +182,8 @@ class RobotEnv(gym.Env):
             desired_angle = desired_angle.clip(
                 self.ee_space.low[3:6], self.ee_space.high[3:6]
             )
+        print(desired_pos, self._robot.get_ee_pos())
+        print(desired_angle, self._robot.get_ee_angle())
         self._update_robot(desired_pos, desired_angle, gripper)
 
         comp_time = time.time() - start_time
@@ -329,7 +331,11 @@ class RobotEnv(gym.Env):
         """input: the commanded position (clipped before).
         feasible position (based on forward kinematics) is tracked and used for updating,
         but the real position is used in observation."""
-        feasible_pos, feasible_angle = self._robot.update_pose(pos, angle)
+        # solve IK, update joints
+        q_desired = self._robot._solve_ik(pos, angle)
+        self._robot.update_joints(q_desired)
+        feasible_pos, feasible_angle = self._robot.get_ee_pos()
+        # feasible_pos, feasible_angle = self._robot.update_pose(pos, angle)
         self._robot.update_gripper(gripper)
         self._desired_pose = {
             "position": feasible_pos,
@@ -431,8 +437,10 @@ class RobotEnv(gym.Env):
         normalized_qpos = self.normalize_qpos(qpos)
 
         obs_dict = {
-            "lowdim_ee": normalized_ee_pos,
-            "lowdim_qpos": normalized_qpos,
+            "lowdim_ee": ee_pos,
+            "lowdim_qpos": qpos,
+            # "lowdim_ee": normalized_ee_pos,
+            # "lowdim_qpos": normalized_qpos,
         }
 
         for id in self.camera_ids:

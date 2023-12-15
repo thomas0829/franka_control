@@ -24,8 +24,8 @@ from torchcontrol.transform import Rotation as R
 # from polymetis import RobotInterface
 from realsense_wrapper import RealsenseAPI
 
-from robot.real.franka import FrankaArm
-from helpers.quat_math import quat2euler, euler2quat
+from robot.real.franka import FrankaHardware
+from helpers.transformations import quat_to_euler, euler_to_quat
 
 from cameras.calibration.utils import detect_corners, quat2rotvec, build_proj_matrix, mean_loss, find_parameter, rotmat, dist_in_hull, \
     hand_marker_proj_world_camera, world_marker_proj_hand_camera
@@ -70,7 +70,7 @@ def robot_poses(ip_address, robot_model, pose_generator, time_to_go=3):
     #     ip_address=ip_address,
     #     enforce_version=False
     # )
-    robot = FrankaArm(name=robot_model, ip_address=ip_address, control_hz=10)
+    robot = FrankaHardware(name=robot_model, ip_address=ip_address, control_hz=10)
 
     # Get reference state
     robot.reset()
@@ -78,8 +78,8 @@ def robot_poses(ip_address, robot_model, pose_generator, time_to_go=3):
         print( f"Moving to pose ({i}): pos={pos_sampled}, quat={ori_sampled.as_quat()}")
 
 
-        q_desired = robot._solve_ik(pos_sampled, quat2euler(ori_sampled._q))
-        robot.update_joint_pos_slow(q_desired, time_to_go=time_to_go)
+        q_desired = robot._solve_ik(pos_sampled, quat_to_euler(ori_sampled._q))
+        robot.update_joints_slow(q_desired, time_to_go=time_to_go)
 
         # state_log = robot.update_pose(pos=pos_sampled, angle=ori_sampled.as_quat())
         # print(f"Length of state_log: {len(state_log)}")
@@ -89,7 +89,7 @@ def robot_poses(ip_address, robot_model, pose_generator, time_to_go=3):
             pos0, quat0 = robot.get_ee_pose()
             time.sleep(1)
             pos1, quat1 = robot.get_ee_pose()
-            diffpos = (pos0-pos1).norm()
+            diffpos = np.linalg.norm(pos0-pos1)
             if diffpos < 0.01:
                 break
             print(f'robot moving diffpos={diffpos}')
@@ -106,8 +106,8 @@ def extract_obs_data_std(data, camera_index):
         if d['corners'][camera_index] is not None:
             obs_data_std.append((
                 torch.tensor(d['corners'][camera_index], dtype=torch.float64),
-                d['pos'].double(),
-                quat2rotvec(d['ori'].double())
+                torch.tensor(d['pos']).double(),
+                quat2rotvec(torch.tensor(euler_to_quat(torch.tensor(d['ori']).double())))
             ))
 
     ic = list(data[0]['intrinsics'].values())[camera_index]
@@ -127,15 +127,15 @@ def main(argv):
     parser.add_argument('--seed', default=0, type=int, help="random seed for initializing solution")
     parser.add_argument('--ip', default='172.16.0.1', help="robot ip address")
     parser.add_argument('--robot_model', default='FR3', help="robot model, e.g., panda, FR3")
-    parser.add_argument('--datafile', default='caldata.pkl', help="file to either load or save camera data")
+    parser.add_argument('--datafile', default='cameras/calibration/caldata.pkl', help="file to either load or save camera data")
     parser.add_argument('--overwrite', default=False, action='store_true', help="overwrite existing datafile, if it exists")
     parser.add_argument('--marker-id', default=12, type=int, help="ID of the ARTag marker in the image")
-    parser.add_argument('--calibration-file', default='calibration.json', help="file to save final calibration data")
-    parser.add_argument('--points-file', default='calibration_points.json', help="file to load convex hull to sample points from")
-    parser.add_argument('--num-points', default=20, type=int, help="number of points to sample from convex hull")
+    parser.add_argument('--calibration-file', default='cameras/calibration/calibration.json', help="file to save final calibration data")
+    parser.add_argument('--points-file', default='cameras/calibration/calibration_points.json', help="file to load convex hull to sample points from")
+    parser.add_argument('--num-points', default=2, type=int, help="number of points to sample from convex hull")
     parser.add_argument('--time-to-go', default=3, type=float, help="time_to_go in seconds for each movement")
     parser.add_argument('--imagedir', default=None, help="folder to save debug images")
-    parser.add_argument('--pixel-tolerance', default=0.05, type=float, help="mean pixel error tolerance (stage 2)")
+    parser.add_argument('--pixel-tolerance', default=1., type=float, help="mean pixel error tolerance (stage 2)")
     proj_funcs = {'hand_marker_proj_world_camera' :hand_marker_proj_world_camera, 
                   'world_marker_proj_hand_camera' :world_marker_proj_hand_camera,
                   'wrist_camera': world_marker_proj_hand_camera,

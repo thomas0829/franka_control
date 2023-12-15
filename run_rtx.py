@@ -39,19 +39,23 @@ tfa_policy = py_tf_eager_policy.SavedModelPyTFEagerPolicy(
     model_path=saved_model_path, load_specs_from_pbtxt=True, use_tf_function=True
 )
 
-msg = "go towards the blue block and pick up the blue block"
-embed = hub.load(
-    'https://tfhub.dev/google/universal-sentence-encoder-large/5')
-
-embedding = embed_task_str(msg, embed)
-del embed
-
-# TODO: add embedding to observation
-
 # Obtain a dummy observation, where the features are all 0
 observation = tf_agents.specs.zero_spec_nest(
     tf_agents.specs.from_spec(tfa_policy.time_step_spec.observation)
 )
+
+# msg = "go towards the red block and pick up the red block"
+color = "blue"
+msg = f"go towards the {color} block and pick up the {color} block"
+embed = hub.load(
+    'https://tfhub.dev/google/universal-sentence-encoder-large/5')
+
+embedding = embed_task_str(msg, embed)
+
+#Add language embedding to observation
+observation["natural_language_embedding"] = embedding
+
+del embed
 
 # # Construct a tf_agents time_step from the dummy observation
 # tfa_time_step = ts.transition(observation, reward=np.zeros((), dtype=np.float32))
@@ -59,7 +63,6 @@ observation = tf_agents.specs.zero_spec_nest(
 # policy_state = tfa_policy.get_initial_state(batch_size=1)
 # # Run inference using the policy
 # action = tfa_policy.action(tfa_time_step, policy_state)
-
 
 def resize(image):
     image = tf.image.resize_with_pad(image, target_width=320, target_height=256)
@@ -72,28 +75,29 @@ policy_state = tfa_policy.get_initial_state(batch_size=1)
 predicted_actions = []
 images = []
 
-horizon = 20
+horizon = 500
 
 from robot.robot_env import RobotEnv
 
 env = RobotEnv(
-    hz=10,  # 1 for RT
+    hz=10,
     DoF=3,
-    robot_model="FR3",  # "panda", "FR3",
-    randomize_ee_on_reset=False,
-    hand_centric_view=False,
-    third_person_view=True,
-    ip_address="172.16.0.1",  # "localhost", "172.16.0.1",
-    local_cameras=True,
-    camera_model="realsense",
-    max_lin_vel=0.05,
+    robot_model="panda",
+    ip_address="172.16.0.1", # "172.16.0.1",
+    camera_ids=[0],
+    camera_model="zed",
+    max_lin_vel=0.2,
     max_rot_vel=1.0,
+    max_path_length=horizon,
 )
 
 obs = env.reset()
+img = obs["img_obs_0"]
+imgs = [img]
+acts = []
 
 for step in range(horizon):
-    image = resize(obs["third_person_img_obs"])
+    image = resize(obs["img_obs_0"])
 
     images.append(image)
     observation["image"] = image

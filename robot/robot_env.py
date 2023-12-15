@@ -33,7 +33,7 @@ class RobotEnv(gym.Env):
         # observation space configuration
         qpos=True,
         ee_pos=True,
-        # pass IP if not running on NUC
+        # pass IP if not running on NUC, "localhost" if running on NUC, None if running sim
         ip_address=None,
         # specify path length if resetting after a fixed length
         max_path_length=None,

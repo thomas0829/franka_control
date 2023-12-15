@@ -164,7 +164,7 @@ class FrankaHardware(FrankaBase):
             self.reset(reset_pos, time_to_go)
 
     def _solve_ik(self, desired_pos, desired_euler):
-        desired_quat = euler2quat(desired_euler)
+        desired_quat = euler_to_quat(desired_euler)
         desired_q, success = self._ik_solver.compute(desired_pos, desired_quat)
         assert success, "IK failed to compute"
         return desired_q

@@ -7,7 +7,7 @@ channels:
   - defaults
 dependencies:
   - polymetis
-  - opencv=4.4.0.42 # 4.5.1
+  - opencv=4.5.1.48
   - librealsense=2.50.0
   - scipy=1.7.3
   - cmake

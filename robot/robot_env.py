@@ -101,8 +101,13 @@ class RobotEnv(gym.Env):
 
         # TODO get actual workspace limits
         # increase workspace height
-        self.ee_space.high[2] = 0.8
+        self.ee_space.high[2] = 0.6
 
+        self.ee_space = Box(
+                np.array([0.3, -0.3, 0.15, 0.00]),
+                np.array([0.75, 0.3, 0.6, 0.085]),
+            )
+        
         # joint limits + gripper
         # https://frankaemika.github.io/docs/control_parameters.html
         if robot_model == "panda":
@@ -165,6 +170,7 @@ class RobotEnv(gym.Env):
         start_time = time.time()
 
         assert len(action) == (self.DoF + 1)
+        action = np.clip(action, -1., 1.)
         assert (action.max() <= 1) and (action.min() >= -1)
 
         pos_action, angle_action, gripper = self._format_action(action)
@@ -188,6 +194,7 @@ class RobotEnv(gym.Env):
         sleep_left = max(0, (1 / self.hz) - comp_time)
         time.sleep(sleep_left)
         obs = self.get_observation()
+        print("act", action, "ee", obs["lowdim_ee"], "time", time.time() - start_time)
 
         self._curr_path_length += 1
         done = False
@@ -235,7 +242,7 @@ class RobotEnv(gym.Env):
             if self.sim:
                 self._robot.update_joints(self._reset_joint_qpos)
             else:
-                self._robot.update_joints_slow(torch.tensor(self._reset_joint_qpos))
+                self._robot.update_joints_slow(torch.tensor(self._reset_joint_qpos), time_to_go=2)
             if self.is_robot_reset():
                 break
             else:
@@ -431,8 +438,10 @@ class RobotEnv(gym.Env):
         normalized_qpos = self.normalize_qpos(qpos)
 
         obs_dict = {
-            "lowdim_ee": normalized_ee_pos,
-            "lowdim_qpos": normalized_qpos,
+            # "lowdim_ee": normalized_ee_pos,
+            # "lowdim_qpos": normalized_qpos,
+            "lowdim_ee": ee_pos,
+            "lowdim_qpos": qpos,
         }
 
         for id in self.camera_ids:

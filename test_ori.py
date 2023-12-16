@@ -1,7 +1,7 @@
 import time
 
-from robot.real.franka_r2d2 import FrankaRobot
-from helpers.transformations_r2d2 import *
+from robot.real.franka import FrankaRobot
+from helpers.transformations import *
 
 robot = FrankaRobot(ip_address="localhost")
 

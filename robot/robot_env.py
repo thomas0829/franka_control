@@ -22,10 +22,11 @@ class RobotEnv(gym.Env):
     def __init__(
         self,
         # control frequency
-        hz=10,
+        control_hz=10,
         DoF=3,
         gripper=True,
-        robot_model="panda",
+        # Franka model: 'panda', 'fr3'
+        robot_type="panda",
         # randomize arm position on reset
         randomize_ee_on_reset=False,
         # allows user to pause to reset reset of the environment
@@ -52,7 +53,7 @@ class RobotEnv(gym.Env):
         self.max_rot_vel = max_rot_vel
         self.DoF = DoF
         self.gripper = gripper
-        self.hz = hz
+        self.control_hz = control_hz
 
         self._episode_count = 0
         self._max_path_length = max_path_length
@@ -94,7 +95,7 @@ class RobotEnv(gym.Env):
 
         # joint limits + gripper
         # https://frankaemika.github.io/docs/control_parameters.html
-        if robot_model == "panda":
+        if robot_type == "panda":
             self._jointmin = np.array(
                 [-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973, 0.0045],
                 dtype=np.float32,
@@ -103,7 +104,7 @@ class RobotEnv(gym.Env):
                 [2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973, 0.085],
                 dtype=np.float32,
             )
-        elif robot_model == "FR3":
+        elif robot_type == "fr3":
             self._jointmin = np.array(
                 [-2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159, 0.0045],
                 dtype=np.float32,
@@ -134,10 +135,8 @@ class RobotEnv(gym.Env):
 
         # robot configuration
         if ip_address is not None:
-            # from robot.real.franka import FrankaHardware
-            # self._robot = FrankaHardware(name=robot_model, ip_address=ip_address, control_hz=self.hz)
-            from robot.real.franka_r2d2 import FrankaRobot
-            self._robot = FrankaRobot(ip_address=ip_address, control_hz=self.hz)
+            from robot.real.franka import FrankaHardware
+            self._robot = FrankaHardware(robot_type=robot_type, ip_address=ip_address, control_hz=self.control_hz)
 
             if camera_model == "realsense":
                 from cameras.realsense_camera import gather_realsense_cameras
@@ -179,7 +178,7 @@ class RobotEnv(gym.Env):
         self._update_robot(np.concatenate((desired_pos, desired_angle, [gripper])), action_space="cartesian_position")
 
         comp_time = time.time() - start_time
-        sleep_left = max(0, (1 / self.hz) - comp_time)
+        sleep_left = max(0, (1 / self.control_hz) - comp_time)
         time.sleep(sleep_left)
         obs = self.get_observation()
       
@@ -284,8 +283,8 @@ class RobotEnv(gym.Env):
         if rot_vel_norm > 1:
             rot_vel = rot_vel / rot_vel_norm
         lin_vel, rot_vel = (
-            lin_vel * self.max_lin_vel / self.hz,
-            rot_vel * self.max_rot_vel / self.hz,
+            lin_vel * self.max_lin_vel / self.control_hz,
+            rot_vel * self.max_rot_vel / self.control_hz,
         )
         return lin_vel, rot_vel
 

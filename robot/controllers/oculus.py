@@ -3,7 +3,6 @@ import time
 import numpy as np
 from oculus_reader.reader import OculusReader
 
-# from r2d2.misc.subprocess_utils import run_threaded_command
 import threading
 def run_threaded_command(command, args=(), daemon=True):
     thread = threading.Thread(target=command, args=args, daemon=daemon)
@@ -11,7 +10,6 @@ def run_threaded_command(command, args=(), daemon=True):
 
     return thread
 
-# from r2d2.misc.transformations import add_angles, euler_to_quat, quat_diff, quat_to_euler, rmat_to_quat
 from helpers.transformations import add_angles, euler_to_quat, quat_diff, quat_to_euler, rmat_to_quat
 
 

@@ -9,9 +9,9 @@ horizon=20
 DoF = 6
 
 env = RobotEnv(
-    hz=10,
+    control_hz=10,
     DoF=DoF,
-    robot_model="panda",
+    robot_type="panda",
     ip_address="localhost", # "172.16.0.1",
     camera_ids=[], # [0,1],
     camera_model="realsense",

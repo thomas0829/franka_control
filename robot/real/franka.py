@@ -58,7 +58,7 @@ class FrankaHardware(FrankaBase):
             )
             self.gripper = GripperInterface(ip_address=self.ip_address)
             self._max_gripper_width = self.gripper.metadata.max_width
-            self._ik_solver = RobotIKSolver(self.robot, control_hz=self.control_hz)
+            self._ik_solver = RobotIKSolver(self, control_hz=self.control_hz)
             print("Success")
         except Exception as e:
             self.robot = None  # declare dead
@@ -164,8 +164,7 @@ class FrankaHardware(FrankaBase):
             self.reset(reset_pos, time_to_go)
 
     def _solve_ik(self, desired_pos, desired_euler):
-        desired_quat = euler_to_quat(desired_euler)
-        desired_q, success = self._ik_solver.compute(desired_pos, desired_quat)
+        desired_q, success = self._ik_solver.compute(desired_pos, desired_euler)
         assert success, "IK failed to compute"
         return desired_q
 

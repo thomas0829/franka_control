@@ -112,7 +112,7 @@ class FrankaMujoco(FrankaBase):
 
     def update_pose(self, pos, angle, gripper=None):
         pos, angle = self.apply_action_drop(pos, angle)
-        desired_qpos, success = self.ik.compute(pos, euler_to_quat(angle))
+        desired_qpos, success = self.ik.compute(pos, angle)
 
         self.data.ctrl[: len(desired_qpos)] = desired_qpos
 

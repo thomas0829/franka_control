@@ -192,13 +192,14 @@ class VRController:
             "controller_on": self._state["controller_on"],
         }
 
-    def forward(self, obs_dict, include_info=False):
+    def forward(self, obs_dict, DoF=6, include_info=False):
         if self._state["poses"] == {}:
-            action = np.zeros(7)
+            action = np.zeros(DoF+1)
             if include_info:
                 return action, {}
             else:
                 return action
+        
         return self._calculate_action(obs_dict["robot_state"], include_info=include_info)
     
 def main():

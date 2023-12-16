@@ -48,7 +48,6 @@ class RobotEnv(gym.Env):
         super().__init__()
 
         # physics
-        self.use_desired_pose = False
         self.max_lin_vel = max_lin_vel
         self.max_rot_vel = max_rot_vel
         self.DoF = DoF
@@ -77,37 +76,22 @@ class RobotEnv(gym.Env):
             np.array([-1] * (self.DoF + 1)),  # dx_low, dy_low, dz_low, dgripper_low
             np.array([1] * (self.DoF + 1)),  # dx_high, dy_high, dz_high, dgripper_high
         )
+        
+        # EE position (x, y, z) + EE rot (roll, pitch, yaw) + gripper width
+        ee_space_low = np.array([0.25, -0.4, 0.13, -3.14, -3.14, -3.14, 0.00])
+        ee_space_high = np.array([0.64, 0.4, 0.6, 3.14, 3.14, 3.14, 0.085])
+
         # EE position (x, y, z) + gripper width
         if self.DoF == 3:
-            self.ee_space = Box(
-                np.array([0.38, -0.25, 0.15, 0.00]),
-                np.array([0.70, 0.28, 0.35, 0.085]),
-            )
-
+            ee_space_low = np.concatenate((ee_space_low[:3], ee_space_low[-1:]))
+            ee_space_high = np.concatenate((ee_space_high[:3], ee_space_high[-1:]))
+        # EE position (x, y, z) + EE rot (single axis) + gripper width
         elif self.DoF == 4:
-            # EE position (x, y, z) + EE rot (single axis) + gripper width
-            self.ee_space = Box(
-                np.array([0.55, -0.06, 0.15, -1.57, 0.00]),
-                np.array([0.73, 0.28, 0.35, 0.0, 0.085]),
-            )
-
-        # # TODO verify rotation
-        elif self.DoF == 6:
-            # EE position (x, y, z) + EE rot + gripper width
-            self.ee_space = Box(
-                np.array([0.55, -0.06, 0.15, -3.14, -3.14, -3.14, 0.00]),
-                np.array([0.73, 0.28, 0.35, 3.14, 3.14, 3.14, 0.085]),
-            )
-
-        # TODO get actual workspace limits
-        # increase workspace height
-        self.ee_space.high[2] = 0.6
-
-        self.ee_space = Box(
-                np.array([0.3, -0.3, 0.15, 0.00]),
-                np.array([0.75, 0.3, 0.6, 0.085]),
-            )
+            ee_space_low = np.concatenate((ee_space_low[:3], ee_space_low[5:6], ee_space_low[-1:]))
+            ee_space_high = np.concatenate((ee_space_high[:3], ee_space_high[5:6], ee_space_high[-1:]))
         
+        self.ee_space = Box(low=ee_space_low, high=ee_space_high)
+
         # joint limits + gripper
         # https://frankaemika.github.io/docs/control_parameters.html
         if robot_model == "panda":
@@ -150,8 +134,10 @@ class RobotEnv(gym.Env):
 
         # robot configuration
         if ip_address is not None:
-            from robot.real.franka import FrankaHardware
-            self._robot = FrankaHardware(name=robot_model, ip_address=ip_address, control_hz=self.hz)
+            # from robot.real.franka import FrankaHardware
+            # self._robot = FrankaHardware(name=robot_model, ip_address=ip_address, control_hz=self.hz)
+            from robot.real.franka_r2d2 import FrankaRobot
+            self._robot = FrankaRobot(ip_address=ip_address, control_hz=self.hz)
 
             if camera_model == "realsense":
                 from cameras.realsense_camera import gather_realsense_cameras
@@ -167,6 +153,7 @@ class RobotEnv(gym.Env):
             self.sim = True
 
     def step(self, action):
+
         start_time = time.time()
 
         assert len(action) == (self.DoF + 1)
@@ -180,24 +167,22 @@ class RobotEnv(gym.Env):
             self._curr_pos + lin_vel, gripper
         )
         desired_angle = add_angles(rot_vel, self._curr_angle)
-        if self.DoF == 4:
-            desired_angle[2] = desired_angle[2].clip(
-                self.ee_space.low[3], self.ee_space.high[3]
-            )
-        elif self.DoF == 6:
-            desired_angle = desired_angle.clip(
-                self.ee_space.low[3:6], self.ee_space.high[3:6]
-            )
-        print(desired_pos, self._robot.get_ee_pos())
-        print(desired_angle, self._robot.get_ee_angle())
-        self._update_robot(desired_pos, desired_angle, gripper)
+        # if self.DoF == 4:
+        #     desired_angle[2] = desired_angle[2].clip(
+        #         self.ee_space.low[3], self.ee_space.high[3]
+        #     )
+        # elif self.DoF == 6:
+        #     desired_angle = desired_angle.clip(
+        #         self.ee_space.low[3:6], self.ee_space.high[3:6]
+        #     )
+        
+        self._update_robot(np.concatenate((desired_pos, desired_angle, [gripper])), action_space="cartesian_position")
 
         comp_time = time.time() - start_time
         sleep_left = max(0, (1 / self.hz) - comp_time)
         time.sleep(sleep_left)
         obs = self.get_observation()
-        print("act", action, "ee", obs["lowdim_ee"], "time", time.time() - start_time)
-
+      
         self._curr_path_length += 1
         done = False
         if (
@@ -239,12 +224,13 @@ class RobotEnv(gym.Env):
 
     def reset(self):
 
-        self.reset_gripper()
+        self.reset_gripper() # <- even needed?
         for _ in range(5):
             if self.sim:
                 self._robot.update_joints(self._reset_joint_qpos)
             else:
-                self._robot.update_joints_slow(torch.tensor(self._reset_joint_qpos), time_to_go=2)
+                # self._robot.update_joints_slow(torch.tensor(self._reset_joint_qpos), time_to_go=2)
+                self._update_robot(np.concatenate((self._reset_joint_qpos, np.zeros(1))), action_space="joint_position", blocking=True)
             if self.is_robot_reset():
                 break
             else:
@@ -255,11 +241,6 @@ class RobotEnv(gym.Env):
             self._default_angle = self._robot.get_ee_angle()
 
         if self._randomize_ee_on_reset:
-            self._desired_pose = {
-                "position": self._robot.get_ee_pos(),
-                "angle": self._robot.get_ee_angle(),
-                "gripper": 1,
-            }
             self._randomize_reset_pos()
             time.sleep(1)
 
@@ -269,13 +250,6 @@ class RobotEnv(gym.Env):
             )
             if user_input in ["s", "S"]:
                 time.sleep(5)
-
-        # initialize desired pose correctly for env.step
-        self._desired_pose = {
-            "position": self._robot.get_ee_pos(),
-            "angle": self._robot.get_ee_angle(),
-            "gripper": 1,
-        }
 
         self._curr_path_length = 0
         self._episode_count += 1
@@ -334,32 +308,17 @@ class RobotEnv(gym.Env):
 
         return pos, gripper
 
-    def _update_robot(self, pos, angle, gripper):
-        """input: the commanded position (clipped before).
-        feasible position (based on forward kinematics) is tracked and used for updating,
-        but the real position is used in observation."""
-        # solve IK, update joints
-        q_desired = self._robot._solve_ik(pos, angle)
-        self._robot.update_joints(q_desired)
-        feasible_pos, feasible_angle = self._robot.get_ee_pos()
-        # feasible_pos, feasible_angle = self._robot.update_pose(pos, angle)
-        self._robot.update_gripper(gripper)
-        self._desired_pose = {
-            "position": feasible_pos,
-            "angle": feasible_angle,
-            "gripper": gripper,
-        }
+    def _update_robot(self, action, action_space="cartesian_velocity", blocking=False):
+        assert action_space in ["cartesian_position", "joint_position", "cartesian_velocity", "joint_velocity"]
+        action_info = self._robot.update_command(action, action_space=action_space, blocking=blocking)
+        # return action_info
 
     @property
     def _curr_pos(self):
-        if self.use_desired_pose:
-            return self._desired_pose["position"].copy()
         return self._robot.get_ee_pos()
 
     @property
     def _curr_angle(self):
-        if self.use_desired_pose:
-            return self._desired_pose["angle"].copy()
         return self._robot.get_ee_angle()
 
     def get_images(self):
@@ -372,17 +331,7 @@ class RobotEnv(gym.Env):
         state_dict = {}
         gripper_state = self._robot.get_gripper_state()
 
-        state_dict["control_key"] = (
-            "desired_pose" if self.use_desired_pose else "current_pose"
-        )
-
-        state_dict["desired_pose"] = np.concatenate(
-            [
-                self._desired_pose["position"],
-                self._desired_pose["angle"],
-                [self._desired_pose["gripper"]],
-            ]
-        )
+        state_dict["control_key"] = "current_pose"
 
         state_dict["current_pose"] = np.concatenate(
             [self._robot.get_ee_pos(), self._robot.get_ee_angle(), [gripper_state]]

@@ -53,8 +53,8 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
         self.ee_vel_desired = torch.nn.Parameter(torch.zeros(3))
         self.ee_rvel_desired = torch.nn.Parameter(torch.zeros(3))
         self.ctrl_mode = torch.nn.Parameter(
-            torch.zeros(1)
-        )  # Mode 0 joint PDm Mode 1 cartesian
+            torch.ones(1)
+        )  # Mode 0 joint PD Mode 1 cartesian
 
     def forward(self, state_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """

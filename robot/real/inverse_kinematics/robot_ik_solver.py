@@ -47,13 +47,15 @@ class RobotIKSolver:
 
 		self._cart_effector_6d.after_compile(self._arm.mjcf_model, self._physics)
 
-	def compute(self, desired_ee_pos, desired_ee_quat):
+	def compute(self, desired_ee_pos, desired_ee_euler):
 
 		qpos = self._robot.get_joint_positions()
 		qvel = self._robot.get_joint_velocities()
 		curr_pos, curr_euler = self._robot.get_ee_pose()
 		curr_quat = euler_to_quat(curr_euler)
 
+		desired_ee_quat = euler_to_quat(desired_ee_euler)
+		
 		lin_vel = desired_ee_pos - curr_pos
 		rot_vel = quat_diff(desired_ee_quat, curr_quat, return_euler=True)
 

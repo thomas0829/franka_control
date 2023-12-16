@@ -20,39 +20,31 @@ env = RobotEnv(
     max_path_length=horizon,
 )
 
-from robot.controllers.oculus import VRController
-oculus = VRController()
-
 obs = env.reset()
-# oculus.reset_state()
 
-while True:
-    pose = env._robot.get_ee_pose()
-    gripper = env._robot.get_gripper_position()
-    state = {"robot_state": {"cartesian_position": pose, "gripper_position": gripper}}
-    action, info = oculus.forward(state, include_info=True)
+# RANDOM MOTION
+env.step(np.ones(7)*0.1)
+env.step(np.ones(7)*0.1)
+env.step(np.ones(7)*0.1)
+
+env.step(-np.ones(7)*0.1)
+env.step(-np.ones(7)*0.1)
+env.step(-np.ones(7)*0.1)
+
+## OCULUS
+
+# from robot.controllers.oculus import VRController
+# oculus = VRController()
+
+# while True:
+#     pose = env._robot.get_ee_pose()
+#     gripper = env._robot.get_gripper_position()
+#     state = {"robot_state": {"cartesian_position": pose, "gripper_position": gripper}}
+#     action, info = oculus.forward(state, include_info=True)
     
-    if DoF == 3:
-        action = np.concatenate((action[:3], action[-1:]))
-    elif DoF == 4:
-        action = np.concatenate((action[:3], action[5:6], action[-1:]))
+#     if DoF == 3:
+#         action = np.concatenate((action[:3], action[-1:]))
+#     elif DoF == 4:
+#         action = np.concatenate((action[:3], action[5:6], action[-1:]))
 
-    env.step(action)
-
-
-# img = obs["img_obs_0"]
-# imgs = [img]
-acts = []
-
-for i in range(horizon):
-    start = time.time()
-    # act = - np.array([0., 1.0, 0., -1 if i%2 else 1])
-    act = np.zeros(4)
-    act[1] = 1.0
-    # print(act, time.time() - start)
-    obs, reward, done, _ = env.step(act)
-    # imgs.append(img)
-    acts.append(act)
-    # img = obs["img_obs_0"]
-
-# imageio.mimsave('debug.gif', imgs)
+#     env.step(action)

@@ -1,0 +1,24 @@
+name: polymetis
+channels:
+  - pytorch
+  - fair-robotics
+  - aihabitat
+  - conda-forge
+  - defaults
+dependencies:
+  - polymetis
+  - librealsense=2.50.0
+  - scipy=1.7.3
+  - cmake
+  - pybind11
+  - py
+  - pip
+  - pip:
+    - opencv-python==4.5.1.48
+    - sophuspy
+    - dm-robotics-moma
+    - protobuf==3.20.1
+    - gtsam
+    - gym==0.22.0
+    - mujoco==3.0.0
+    - mujoco-python-viewer

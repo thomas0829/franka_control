@@ -1,11 +1,17 @@
-install
-mamba create -n polymetis python=3.8
-mamba activate polymetis
-mamba install -c pytorch -c fair-robotics -c aihabitat -c conda-forge polymetis
-mujoco
-mujoco-python-viewer
+install mamba from miniforge
 
+mamba env create -f environment.yaml
+
+# oculus reader
 https://github.com/rail-berkeley/oculus_reader
+
+# realsense cameras
+pip install pyrealsense2
+
+# zed cameras
+SDK from https://www.stereolabs.com/developers/release
+
+# NUC -> R2D2 setup
 
 TODO
 - camera intr. extr, pts functionality
@@ -14,11 +20,6 @@ TODO
 def _value_to_range(self, value, r_max, r_min, t_max, t_min):
         """scales value in range [r_max, r_min] to range [t_max, t_min]"""
         return (value - r_min) / (r_max - r_min) * (t_max - t_min) + t_min
-
-
-
-X shared interface with robot -> make sure function exist
-
 
 
     def get_camera_intrinsic(self, camera_name):

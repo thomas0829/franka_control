@@ -138,12 +138,15 @@ class RobotEnv(gym.Env):
             from robot.real.franka import FrankaHardware
             self._robot = FrankaHardware(robot_type=robot_type, ip_address=ip_address, control_hz=self.control_hz)
 
-            if camera_model == "realsense":
+            if len(self.camera_ids) > 1:
+                cameras = None
+            elif camera_model == "realsense":
                 from cameras.realsense_camera import gather_realsense_cameras
                 cameras = gather_realsense_cameras()
             elif camera_model == "zed":
                 from cameras.zed_camera import gather_zed_cameras
                 cameras = gather_zed_cameras()
+                
             self._camera_reader = MultiCameraWrapper(cameras)
             self.sim = False
         else:

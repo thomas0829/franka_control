@@ -37,8 +37,8 @@ class ZedCamera:
 		left_img = cv2.cvtColor(left_img, cv2.COLOR_BGR2RGB)
 		right_img = cv2.cvtColor(right_img, cv2.COLOR_BGR2RGB)
 
-		left_img = cv2.resize(left_img, dsize=(128, 96), interpolation=cv2.INTER_AREA)
-		right_img = cv2.resize(right_img, dsize=(128, 96), interpolation=cv2.INTER_AREA)
+		# left_img = cv2.resize(left_img, dsize=(128, 96), interpolation=cv2.INTER_AREA)
+		# right_img = cv2.resize(right_img, dsize=(128, 96), interpolation=cv2.INTER_AREA)
 
 		dict_1 = {'array': left_img, 'shape': left_img.shape, 'type': 'rgb',
 			'read_time': read_time, 'serial_number': self._serial_number + '/left'}

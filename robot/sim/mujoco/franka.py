@@ -16,6 +16,9 @@ from helpers.transformations import euler_to_quat, quat_to_euler, rmat_to_quat, 
 class FrankaMujoco(FrankaBase):
     def __init__(
         self,
+        # robot
+        robot_type='panda',
+        control_hz=10,
         # rendering
         has_renderer=False,
         has_offscreen_renderer=True,
@@ -24,8 +27,6 @@ class FrankaMujoco(FrankaBase):
         use_depth=True,
         img_height=480,
         img_width=640,
-        # 
-        control_hz=10,
         # noise
         obs_noise=0.0,
         act_drop=0.0,
@@ -33,6 +34,12 @@ class FrankaMujoco(FrankaBase):
         seed=0,
         xml_path="robot/sim/mujoco/assets/base_franka.xml",
     ):
+        
+        # robot
+        # TODO load corresponding mujoco xml
+        self.robot_type = robot_type
+        self.control_hz = control_hz
+        self.ik = RobotIKSolver(robot_type=self.robot_type, control_hz=self.control_hz)
         
         # rendering
         assert (
@@ -56,7 +63,7 @@ class FrankaMujoco(FrankaBase):
         self.data = mujoco.MjData(self.model)
 
         # TODO verify this
-        self.frame_skip = int((1/control_hz) / self.model.opt.timestep)
+        self.frame_skip = int((1/self.control_hz) / self.model.opt.timestep)
 
         self.ee_site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, "EEF")
         self.franka_joint_ids = []
@@ -68,9 +75,6 @@ class FrankaMujoco(FrankaBase):
             ]
 
         self.franka_body_names = ["link0", "link1", "link2", "link3", "link4", "link5", "link6", "link7", "hand"]
-        
-        # setup IK
-        self.ik = RobotIKSolver(robot=self, control_hz=control_hz)
 
         self.seed(seed)
 

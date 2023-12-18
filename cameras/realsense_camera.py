@@ -51,8 +51,8 @@ class RealSenseCamera:
 		# if depth_colormap_dim != color_colormap_dim and enforce_same_dim:
 		# 	color_image = cv2.resize(color_image, dsize=(depth_colormap_dim[1], depth_colormap_dim[0]), interpolation=cv2.INTER_AREA)
 
-		color_image = cv2.resize(color_image, dsize=(128, 96), interpolation=cv2.INTER_AREA)
-		depth_colormap = cv2.resize(depth_colormap, dsize=(128, 96), interpolation=cv2.INTER_AREA)
+		# color_image = cv2.resize(color_image, dsize=(128, 96), interpolation=cv2.INTER_AREA)
+		# depth_colormap = cv2.resize(depth_colormap, dsize=(128, 96), interpolation=cv2.INTER_AREA)
 
 		color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
 		depth_colormap = cv2.cvtColor(depth_colormap, cv2.COLOR_BGR2RGB)

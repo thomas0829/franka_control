@@ -34,13 +34,15 @@ class RobotEnv(gym.Env):
         # observation space configuration
         qpos=True,
         ee_pos=True,
+        normalize=False,
         # pass IP if not running on NUC, "localhost" if running on NUC, None if running sim
         ip_address=None,
         # specify path length if resetting after a fixed length
         max_path_length=None,
         # camera type to use: 'realsense', 'zed'
-        camera_ids=[], # [0, 1, 2, ...]
+        camera_ids=[],  # [0, 1, 2, ...]
         camera_model="realsense",
+        camera_resolution=(128, 128),  # HxW
         # max vel
         max_lin_vel=0.2,
         max_rot_vel=2.0,
@@ -59,25 +61,25 @@ class RobotEnv(gym.Env):
         self._max_path_length = max_path_length
         self._curr_path_length = 0
 
-        self.camera_ids = camera_ids
-
         # resetting configuration
         self._randomize_ee_on_reset = randomize_ee_on_reset
         self._pause_after_reset = pause_after_reset
         self._reset_joint_qpos = np.array(
-            [-0.1394, -0.0205, -0.0520, -2.0691,  0.0506,  2.0029, -0.9168]
+            [-0.1394, -0.0205, -0.0520, -2.0691, 0.0506, 2.0029, -0.9168]
         )
 
         # observation space config
         self._qpos = qpos
         self._ee_pos = ee_pos
+        self.normalize = normalize
 
         # action space
         self.action_space = Box(
             np.array([-1] * (self.DoF + 1)),  # dx_low, dy_low, dz_low, dgripper_low
             np.array([1] * (self.DoF + 1)),  # dx_high, dy_high, dz_high, dgripper_high
         )
-        
+        self.action_shape = self.action_space.shape
+
         # EE position (x, y, z) + EE rot (roll, pitch, yaw) + gripper width
         ee_space_low = np.array([0.25, -0.4, 0.13, -3.14, -3.14, -3.14, 0.00])
         ee_space_high = np.array([0.64, 0.4, 0.6, 3.14, 3.14, 3.14, 0.085])
@@ -88,9 +90,13 @@ class RobotEnv(gym.Env):
             ee_space_high = np.concatenate((ee_space_high[:3], ee_space_high[-1:]))
         # EE position (x, y, z) + EE rot (single axis) + gripper width
         elif self.DoF == 4:
-            ee_space_low = np.concatenate((ee_space_low[:3], ee_space_low[5:6], ee_space_low[-1:]))
-            ee_space_high = np.concatenate((ee_space_high[:3], ee_space_high[5:6], ee_space_high[-1:]))
-        
+            ee_space_low = np.concatenate(
+                (ee_space_low[:3], ee_space_low[5:6], ee_space_low[-1:])
+            )
+            ee_space_high = np.concatenate(
+                (ee_space_high[:3], ee_space_high[5:6], ee_space_high[-1:])
+            )
+
         self.ee_space = Box(low=ee_space_low, high=ee_space_high)
 
         # joint limits + gripper
@@ -114,6 +120,40 @@ class RobotEnv(gym.Env):
                 dtype=np.float32,
             )
 
+        # robot configuration
+        self.camera_ids = camera_ids
+        self.camera_resolution = camera_resolution
+        if ip_address is not None:
+            from robot.real.franka import FrankaHardware
+
+            self._robot = FrankaHardware(
+                robot_type=robot_type, ip_address=ip_address, control_hz=self.control_hz
+            )
+
+            if len(self.camera_ids) > 1:
+                cameras = None
+            elif camera_model == "realsense":
+                from cameras.realsense_camera import gather_realsense_cameras
+
+                cameras = gather_realsense_cameras()
+            elif camera_model == "zed":
+                from cameras.zed_camera import gather_zed_cameras
+
+                cameras = gather_zed_cameras()
+
+            self._camera_reader = MultiCameraWrapper(cameras)
+            self.sim = False
+        else:
+            from robot.sim.mujoco.franka import FrankaMujoco
+
+            self._robot = FrankaMujoco(
+                robot_type=robot_type,
+                control_hz=self.control_hz,
+                img_height=self.camera_resolution[0],
+                img_width=self.camera_resolution[1],
+            )
+            self.sim = True
+
         # joint space + gripper
         self.qpos_space = Box(self._jointmin, self._jointmax)
 
@@ -122,44 +162,35 @@ class RobotEnv(gym.Env):
             "lowdim_ee": self.ee_space,
             "lowdim_qpos": self.qpos_space,
         }
-        
+
+        imgs = self.get_images()
+        # TODO deal w/ depth
         for id in self.camera_ids:
-            env_obs_spaces[f"img_obs_{id}"] = Box(0, 255, (100, 100, 3), np.uint8)
+            env_obs_spaces[f"img_obs_{id}"] = Box(
+                0, 255, imgs[id]["array"].shape, np.uint8
+            )
+            # if imgs[id]["type"] == "rgb":
+            #     env_obs_spaces[f"img_obs_{id}"] = Box(0, 255, imgs[id]["array"].shape, np.uint8)
+            # elif imgs[id]["type"] == "depth":
+            #     env_obs_spaces[f"img_obs_{id}"] = Box(0, 255, imgs[id]["array"].shape, np.float32)
 
         if not self._qpos:
             env_obs_spaces.pop("lowdim_qpos", None)
         if not self._ee_pos:
             env_obs_spaces.pop("lowdim_ee", None)
         self.observation_space = Dict(env_obs_spaces)
-        print(f"configured observation space: {self.observation_space}")
 
-        # robot configuration
-        if ip_address is not None:
-            from robot.real.franka import FrankaHardware
-            self._robot = FrankaHardware(robot_type=robot_type, ip_address=ip_address, control_hz=self.control_hz)
-
-            if len(self.camera_ids) > 1:
-                cameras = None
-            elif camera_model == "realsense":
-                from cameras.realsense_camera import gather_realsense_cameras
-                cameras = gather_realsense_cameras()
-            elif camera_model == "zed":
-                from cameras.zed_camera import gather_zed_cameras
-                cameras = gather_zed_cameras()
-                
-            self._camera_reader = MultiCameraWrapper(cameras)
-            self.sim = False
-        else:
-            from robot.sim.mujoco.franka import FrankaMujoco
-            self._robot = FrankaMujoco()
-            self.sim = True
+        self.observation_shape = {}
+        self.observation_type = {}
+        for k in env_obs_spaces.keys():
+            self.observation_shape[k] = env_obs_spaces[k].shape
+            self.observation_type[k] = env_obs_spaces[k].dtype
 
     def step(self, action):
-
         start_time = time.time()
 
         assert len(action) == (self.DoF + 1)
-        action = np.clip(action, -1., 1.)
+        action = np.clip(action, -1.0, 1.0)
         assert (action.max() <= 1) and (action.min() >= -1)
 
         pos_action, angle_action, gripper = self._format_action(action)
@@ -177,14 +208,17 @@ class RobotEnv(gym.Env):
         #     desired_angle = desired_angle.clip(
         #         self.ee_space.low[3:6], self.ee_space.high[3:6]
         #     )
-        
-        self._update_robot(np.concatenate((desired_pos, desired_angle, [gripper])), action_space="cartesian_position")
+
+        self._update_robot(
+            np.concatenate((desired_pos, desired_angle, [gripper])),
+            action_space="cartesian_position",
+        )
 
         comp_time = time.time() - start_time
         sleep_left = max(0, (1 / self.control_hz) - comp_time)
         time.sleep(sleep_left)
         obs = self.get_observation()
-      
+
         self._curr_path_length += 1
         done = False
         if (
@@ -225,18 +259,21 @@ class RobotEnv(gym.Env):
         self._robot.update_gripper(0)
 
     def reset(self):
-
-        self.reset_gripper() # <- even needed?
+        self.reset_gripper()  # <- even needed?
         for _ in range(5):
             if self.sim:
                 self._robot.update_joints(self._reset_joint_qpos)
             else:
                 # self._robot.update_joints_slow(torch.tensor(self._reset_joint_qpos), time_to_go=2)
-                self._update_robot(np.concatenate((self._reset_joint_qpos, np.zeros(1))), action_space="joint_position", blocking=True)
+                self._update_robot(
+                    np.concatenate((self._reset_joint_qpos, np.zeros(1))),
+                    action_space="joint_position",
+                    blocking=True,
+                )
             if self.is_robot_reset():
                 break
             else:
-                print('reset failed, trying again')
+                print("reset failed, trying again")
 
         # fix default angle at first joint reset
         if self._episode_count == 0:
@@ -311,8 +348,15 @@ class RobotEnv(gym.Env):
         return pos, gripper
 
     def _update_robot(self, action, action_space="cartesian_velocity", blocking=False):
-        assert action_space in ["cartesian_position", "joint_position", "cartesian_velocity", "joint_velocity"]
-        action_info = self._robot.update_command(action, action_space=action_space, blocking=blocking)
+        assert action_space in [
+            "cartesian_position",
+            "joint_position",
+            "cartesian_velocity",
+            "joint_velocity",
+        ]
+        action_info = self._robot.update_command(
+            action, action_space=action_space, blocking=blocking
+        )
         # return action_info
 
     @property
@@ -327,8 +371,8 @@ class RobotEnv(gym.Env):
         if self.sim:
             return self._robot.render()
         else:
-            return self._camera_reader.read_cameras()
-    
+            return self._camera_reader.read_cameras(img_height=self.camera_resolution[0], img_width=self.camera_resolution[1])
+
     def get_state(self):
         state_dict = {}
         gripper_state = self._robot.get_gripper_state()
@@ -391,14 +435,10 @@ class RobotEnv(gym.Env):
                 ]
             )
         qpos = np.concatenate([current_state["joint_positions"], gripper_width])
-        normalized_ee_pos = self.normalize_ee_obs(ee_pos)
-        normalized_qpos = self.normalize_qpos(qpos)
 
         obs_dict = {
-            # "lowdim_ee": normalized_ee_pos,
-            # "lowdim_qpos": normalized_qpos,
-            "lowdim_ee": ee_pos,
-            "lowdim_qpos": qpos,
+            "lowdim_ee": self.normalize_ee_obs(ee_pos) if self.normalize else ee_pos,
+            "lowdim_qpos": self.normalize_ee_obs(qpos) if self.normalize else qpos,
         }
 
         for id in self.camera_ids:

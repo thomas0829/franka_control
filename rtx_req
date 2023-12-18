@@ -1,7 +1,0 @@
-
-pip install rlds tf_agents dm-reverb[tensorflow] apache_beam tfp-nightly
-pip install protobuf==3.20.1
-pip install --upgrade tensorflow-hub  
-pip install opencv-python==4.5.1.48
-pip install dm-robotics-moma
-pip install pyrealsense2

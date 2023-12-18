@@ -1,6 +1,15 @@
 # setup
-conda create -n polymetis python=3.8
-conda install -c pytorch -c fair-robotics -c aihabitat -c conda-forge polymetis
-pip install gym==0.22.0
+install mamba from miniforge
+
+mamba env create -f environment.yaml
+
+# oculus reader
+https://github.com/rail-berkeley/oculus_reader
+
+# realsense cameras
 pip install pyrealsense2
-pip install opencv-python
+
+# zed cameras
+SDK from https://www.stereolabs.com/developers/release
+
+# NUC -> R2D2 setup

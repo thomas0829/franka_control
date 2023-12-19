@@ -2,67 +2,62 @@ TODO
 - camera intr. extr, pts functionality
 - sim camera from calibration file
 
-def _value_to_range(self, value, r_max, r_min, t_max, t_min):
-        """scales value in range [r_max, r_min] to range [t_max, t_min]"""
-        return (value - r_min) / (r_max - r_min) * (t_max - t_min) + t_min
+def get_camera_intrinsic(self, camera_name):
+    """
+    Obtains camera intrinsic matrix.
 
+    Args:
+        camera_name (str): name of camera
+    Return:
+        K (np.array): 3x3 camera matrix
+    """
+    cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
+    fovy = self.model.cam_fovy[cam_id]
 
-    def get_camera_intrinsic(self, camera_name):
-        """
-        Obtains camera intrinsic matrix.
+    # Compute intrinsic parameters
+    fy = self.img_height / (2 * np.tan(np.radians(fovy / 2)))
+    fx = fy
+    cx = self.img_width / 2
+    cy = self.img_height / 2
 
-        Args:
-            camera_name (str): name of camera
-        Return:
-            K (np.array): 3x3 camera matrix
-        """
-        cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
-        fovy = self.model.cam_fovy[cam_id]
+    # Camera intrinsic matrix
+    K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+    return K
 
-        # Compute intrinsic parameters
-        fy = self.img_height / (2 * np.tan(np.radians(fovy / 2)))
-        fx = fy
-        cx = self.img_width / 2
-        cy = self.img_height / 2
+def get_camera_extrinsic(self, camera_name):
+    """
+    Returns a 4x4 homogenous matrix corresponding to the camera pose in the
+    world frame. MuJoCo has a weird convention for how it sets up the
+    camera body axis, so we also apply a correction so that the x and y
+    axis are along the camera view and the z axis points along the
+    viewpoint.
+    Normal camera convention: https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
 
-        # Camera intrinsic matrix
-        K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
-        return K
+    https://github.com/ARISE-Initiative/robosuite/blob/de64fa5935f9f30ce01b36a3ef1a3242060b9cdb/robosuite/utils/camera_utils.py#L39
 
-    def get_camera_extrinsic(self, camera_name):
-        """
-        Returns a 4x4 homogenous matrix corresponding to the camera pose in the
-        world frame. MuJoCo has a weird convention for how it sets up the
-        camera body axis, so we also apply a correction so that the x and y
-        axis are along the camera view and the z axis points along the
-        viewpoint.
-        Normal camera convention: https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+    Args:
+        sim (MjSim): simulator instance
+        camera_name (str): name of camera
+    Return:
+        R (np.array): 4x4 camera extrinsic matrix
+    """
+    cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
 
-        https://github.com/ARISE-Initiative/robosuite/blob/de64fa5935f9f30ce01b36a3ef1a3242060b9cdb/robosuite/utils/camera_utils.py#L39
+    camera_pos = self.data.cam_xpos[cam_id]
+    camera_rot = self.data.cam_xmat[cam_id].reshape(3, 3)
 
-        Args:
-            sim (MjSim): simulator instance
-            camera_name (str): name of camera
-        Return:
-            R (np.array): 4x4 camera extrinsic matrix
-        """
-        cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
+    R = np.eye(4)
+    R[:3, :3] = camera_rot
+    R[:3, 3] = camera_pos
 
-        camera_pos = self.data.cam_xpos[cam_id]
-        camera_rot = self.data.cam_xmat[cam_id].reshape(3, 3)
+    camera_axis_correction = np.array(
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, -1.0, 0.0, 0.0],
+            [0.0, 0.0, -1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    R = R @ camera_axis_correction
 
-        R = np.eye(4)
-        R[:3, :3] = camera_rot
-        R[:3, 3] = camera_pos
-
-        camera_axis_correction = np.array(
-            [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, -1.0, 0.0, 0.0],
-                [0.0, 0.0, -1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0],
-            ]
-        )
-        R = R @ camera_axis_correction
-
-        return R
+    return R

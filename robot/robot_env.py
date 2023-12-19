@@ -256,7 +256,7 @@ class RobotEnv(gym.Env):
         return norm_qpos
 
     def reset_gripper(self):
-        self._robot.update_gripper(0)
+        self._robot.update_gripper(0, velocity=False, blocking=True)
 
     def reset(self):
         self.reset_gripper()  # <- even needed?

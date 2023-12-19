@@ -17,7 +17,7 @@ from robot.controllers.utils import generate_joint_space_min_jerk
 
 class FrankaHardware:
 
-    def __init__(self, ip_address, robot_type, control_hz=10, custom_controller=False, gain_scale=1.0, reset_gain_scale=1.0):
+    def __init__(self, ip_address, robot_type, control_hz=15, custom_controller=True, gain_scale=1.5, reset_gain_scale=1.0):
         self.control_hz = control_hz
         self.robot_type = robot_type
         

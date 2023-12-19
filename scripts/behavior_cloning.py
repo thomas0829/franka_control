@@ -23,13 +23,17 @@ def train_policy(policy, buffer, epochs=10, batch_size=16, lr=3e-4, device=None)
         
         obs, act, rew, next_obs, done = buffer.sample(batch_size=batch_size)
 
-        if args.modality == "state":
-            obs = np.concatenate((obs["lowdim_ee"], obs["lowdim_qpos"]), axis=1)
-        elif args.modality == "images":
-            obs = obs["img_obs_0"].transpose(0,3,1,2)
-        obs = torch.tensor(obs, dtype=torch.float32, device=device)
+        obs_dict = {}
+        if args.modality == "state" or args.modality == "all":
+            obs_dict["state"] = np.concatenate((obs["lowdim_ee"], obs["lowdim_qpos"]), axis=1)
+        if args.modality == "images" or args.modality == "all":
+            obs_dict["img"] = obs["img_obs_0"].transpose(0,3,1,2)
+        
+        for k in obs_dict.keys():
+            obs_dict[k] = torch.tensor(obs_dict[k], dtype=torch.float32, device=device)
+
         act = torch.tensor(act, dtype=torch.float32, device=device)
-        policy_loss = policy.compute_loss(obs, act)
+        policy_loss = policy.compute_loss(obs_dict, act)
         
         losses.append(np.clip(policy_loss.item(),-10,10))
         policy_optimizer.zero_grad()
@@ -57,8 +61,8 @@ if __name__ == '__main__':
     parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
     # trajectories
     parser.add_argument("--mode", type=str, default="train", choices=["train", "test"])
-    parser.add_argument("--modality", type=str, default="state", choices=["state", "images"])
-    parser.add_argument("--hidden_dim", type=int, default=16)
+    parser.add_argument("--modality", type=str, default="state", choices=["state", "images", "all"])
+    parser.add_argument("--hidden_dims", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--lr", type=float, default=3e-4)
@@ -68,14 +72,16 @@ if __name__ == '__main__':
 
     buffer = joblib.load(os.path.join(args.save_dir, args.exp, "buffer.gz"))
     
-    if args.modality == "state":
-        obs_shape = (buffer.observations["lowdim_ee"].shape[1] + buffer.observations["lowdim_qpos"].shape[1], )
-    elif args.modality == "images":
+    state_obs_shape = None
+    img_obs_shape = None
+    if args.modality == "state" or args.modality == "all":
+        state_obs_shape = (buffer.observations["lowdim_ee"].shape[1] + buffer.observations["lowdim_qpos"].shape[1], )    
+    if args.modality == "images" or args.modality == "all":
         img_shape = buffer.observations["img_obs_0"].shape
-        obs_shape = (img_shape[3], img_shape[1], img_shape[2])
-    
+        img_obs_shape = (img_shape[3], img_shape[1], img_shape[2])
+   
     act_shape = (buffer.actions.shape[1], )
-    policy = GaussianPolicy(obs_shape, act_shape, hidden_dim=args.hidden_dim)
+    policy = GaussianPolicy(act_shape, state_obs_shape=state_obs_shape, state_embed_dim=32, img_obs_shape=img_obs_shape, img_embed_dim=64, hidden_dims=[args.hidden_dims])
 
     device = torch.device(("cuda:" + str(args.gpu_id)) if args.gpu_id else "cpu")
     
@@ -102,22 +108,22 @@ if __name__ == '__main__':
         )
 
         obs = env.reset()
-        if args.modality == "state":
-            obs = np.concatenate((obs["lowdim_ee"][None], obs["lowdim_qpos"][None]), axis=1)
-        elif args.modality == "images":
-            obs = obs["img_obs_0"][None].transpose(0,3,1,2)
-        obs = torch.tensor(obs, dtype=torch.float32, device=device)
-
+        
         for i in range(args.max_episode_length):
             
+            obs_dict = {}
+            if args.modality == "state" or args.modality == "all":
+                obs_dict["state"] = np.concatenate((obs["lowdim_ee"], obs["lowdim_qpos"]), axis=1)
+            if args.modality == "images" or args.modality == "all":
+                obs_dict["img"] = obs["img_obs_0"].transpose(0,3,1,2)
+
+            for k in obs_dict.keys():
+                obs_dict[k] = torch.tensor(obs_dict[k], dtype=torch.float32, device=device)
+
             act = policy(obs, deterministic=False)[0].cpu().detach().numpy()
             
             next_obs, rew, done, _ = env.step(act)
             obs = next_obs
-            if args.modality == "state":
-                obs = np.concatenate((obs["lowdim_ee"][None], obs["lowdim_qpos"][None]), axis=1)
-            elif args.modality == "images":
-                obs = obs["img_obs_0"][None].transpose(0,3,1,2)
-            obs = torch.tensor(obs, dtype=torch.float32, device=device)
+            
 
         # TODO save gif w/ imageio

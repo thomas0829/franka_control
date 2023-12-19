@@ -29,10 +29,17 @@ class RealSenseCamera:
 		else: config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
 		self._pipeline.start(config)
+		self._align = rs.align(rs.stream.color)
+
+		color_sensor = device.query_sensors()[1]
+		color_sensor.set_option(rs.option.enable_auto_exposure, False)
+		color_sensor.set_option(rs.option.exposure, 520)
 
 	def read_camera(self, enforce_same_dim=False):
 		# Wait for a coherent pair of frames: depth and color
 		frames = self._pipeline.wait_for_frames()
+		frames = self._align.process(frames)
+
 		depth_frame = frames.get_depth_frame()
 		color_frame = frames.get_color_frame()
 		if not depth_frame or not color_frame: return None

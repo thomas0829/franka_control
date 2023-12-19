@@ -27,82 +27,88 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-env = RobotEnv(
-    control_hz=10,
-    DoF=args.dof,
-    robot_type=args.robot_type,
-    ip_address=args.ip_address,
-    camera_ids=args.camera_ids,
-    camera_model=args.camera_model,
-    max_lin_vel=1.0,
-    max_rot_vel=4.0,
-    max_path_length=args.max_episode_length,
-)
+    assert args.exp is not None, "Specify --exp"
 
-buffer_size = args.episodes * args.max_episode_length
-buffer = DictReplayBuffer(
-    buffer_size,
-    env.observation_shape,
-    env.action_shape,
-    obs_dict_type=env.observation_type,
-    act_type=np.float32,
-)
+    env = RobotEnv(
+        control_hz=10,
+        DoF=args.dof,
+        robot_type=args.robot_type,
+        ip_address=args.ip_address,
+        camera_ids=args.camera_ids,
+        camera_model=args.camera_model,
+        max_lin_vel=1.0,
+        max_rot_vel=4.0,
+        max_path_length=args.max_episode_length,
+    )
 
-oculus = VRController()
-assert oculus.get_info()["controller_on"], "WARNING: oculus controller off"
-print("Oculus Connected")
+    buffer_size = args.episodes * args.max_episode_length
+    buffer = DictReplayBuffer(
+        buffer_size,
+        env.observation_shape,
+        env.action_shape,
+        obs_dict_type=env.observation_type,
+        act_type=np.float32,
+    )
 
-traj_idcs = []
-for i in range(args.episodes):
+    oculus = VRController()
+    assert oculus.get_info()["controller_on"], "WARNING: oculus controller off"
+    print("Oculus Connected")
 
-    obs = env.reset()
+    traj_idcs = []
+    success_idcs = []
 
-    print(f"Start Collecting Trajectory {i}")
-    
-    time_step = 0
-    start_pos = buffer.pos
+    for i in range(args.episodes):
 
-    while True and args.max_episode_length > time_step:
+        obs = env.reset()
+
+        print(f"Start Collecting Trajectory {i}")
         
-        # prepare obs for oculus
-        pose = env._robot.get_ee_pose()
-        gripper = env._robot.get_gripper_position()
-        state = {"robot_state": {"cartesian_position": pose, "gripper_position": gripper}}
-        action = oculus.forward(state)
-        info = oculus.get_info()
+        time_step = 0
+        start_pos = buffer.pos
 
-        # press A or B to end a trajectory
-        if info["success"] or info["failure"]:
-            break
-
-        # check if tirgger button is pressed
-        if info["movement_enabled"]:
+        while True and args.max_episode_length > time_step:
             
-            # prepare act
-            if args.dof == 3:
-                action = np.concatenate((action[:3], action[-1:]))
-            elif args.dof == 4:
-                action = np.concatenate((action[:3], action[5:6], action[-1:]))
+            # prepare obs for oculus
+            pose = env._robot.get_ee_pose()
+            gripper = env._robot.get_gripper_position()
+            state = {"robot_state": {"cartesian_position": pose, "gripper_position": gripper}}
+            action = oculus.forward(state)
+            info = oculus.get_info()
 
-            # step and record
-            next_obs, rew, done, _ = env.step(action)
-            buffer.push(obs, action, rew, next_obs, done)
-            obs = next_obs
-            print(f"Recorded Timestep {time_step} of Trajectory {i}")
-            time_step += 1
-    
-    print(f"Recorded Trajectory {i}")
-    traj_idcs.append(buffer.pos)
-    
-env.reset()
+            # press A or B to end a trajectory
+            if info["success"] or info["failure"]:
+                success = True if info["success"] else False
+                success_idcs.append(success)
+                break
 
-print("Finished Data Collection: save & exiting")
+            # check if tirgger button is pressed
+            if info["movement_enabled"]:
+                # prepare act
+                if args.dof == 3:
+                    action = np.concatenate((action[:3], action[-1:]))
+                elif args.dof == 4:
+                    action = np.concatenate((action[:3], action[5:6], action[-1:]))
 
-save_dir = os.path.join(args.save_dir, args.exp)
-os.makedirs(save_dir, exist_ok=True)
-# save buffer
-joblib.dump(buffer, os.path.join(save_dir, "buffer.gz"), compress=3)
-# save traj indices
-joblib.dump(traj_idcs, os.path.join(save_dir, "idcs.gz"))
+                # step and record
+                next_obs, rew, done, _ = env.step(action)
+                buffer.push(obs, action, rew, next_obs, done)
+                obs = next_obs
+                print(f"Recorded Timestep {time_step} of Trajectory {i}")
+                time_step += 1
+        
+        print(f"Recorded Trajectory {i}")
+        traj_idcs.append(buffer.pos)
+        
+    env.reset()
 
-print(f"Saved at {save_dir}")
+    print("Finished Data Collection: save & exiting")
+
+    save_dir = os.path.join(args.save_dir, args.exp)
+    os.makedirs(save_dir, exist_ok=True)
+    # save buffer
+    joblib.dump(buffer, os.path.join(save_dir, "buffer.gz"), compress=3)
+    # save traj indices
+    joblib.dump(traj_idcs, os.path.join(save_dir, "idcs.gz"))
+    joblib.dump(success_idcs, os.path.join(save_dir, "success.gz"))
+
+    print(f"Saved at {save_dir}")

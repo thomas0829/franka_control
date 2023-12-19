@@ -35,7 +35,7 @@ env = RobotEnv(
     camera_ids=args.camera_ids,
     camera_model=args.camera_model,
     max_lin_vel=1.0,
-    max_rot_vel=1.0,
+    max_rot_vel=4.0,
     max_path_length=args.max_episode_length,
 )
 

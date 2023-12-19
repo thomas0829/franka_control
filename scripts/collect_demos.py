@@ -19,7 +19,7 @@ if __name__ == '__main__':
     parser.add_argument("--dof", type=int, default=6, choices=[3, 4, 6])
     parser.add_argument("--robot_type", type=str, default="panda", choices=["panda", "fr3"])
     parser.add_argument("--ip_address", type=str, default="localhost", choices=[None, "localhost", "172.16.0.1"])
-    parser.add_argument("--camera_ids", type=list, default=[])
+    parser.add_argument("--camera_ids", type=list, default=[0])
     parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
     # trajectories
     parser.add_argument("--episodes", type=int, default=10)
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     assert args.exp is not None, "Specify --exp"
 
     env = RobotEnv(
-        control_hz=10,
+        control_hz=15,
         DoF=args.dof,
         robot_type=args.robot_type,
         ip_address=args.ip_address,
@@ -91,6 +91,7 @@ if __name__ == '__main__':
 
                 # step and record
                 next_obs, rew, done, _ = env.step(action)
+                assert "img_obs_0" in obs.keys(), "ERROR: camera not connected!"
                 buffer.push(obs, action, rew, next_obs, done)
                 obs = next_obs
                 print(f"Recorded Timestep {time_step} of Trajectory {i}")

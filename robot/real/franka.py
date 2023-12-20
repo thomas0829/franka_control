@@ -21,11 +21,14 @@ class FrankaHardware:
         self.control_hz = control_hz
         self.robot_type = robot_type
         
-        self.custom_controller = custom_controller
+        self.custom_controller = robot_type=="fr3" # custom_controller
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
 
         self.launch_robot(ip_address=ip_address)
+
+    def reset(self):
+        self.update_joints(self._robot.home_pose, blocking=True)
 
     # def launch_controller(self):
     #     try:
@@ -228,7 +231,7 @@ class FrankaHardware:
     def get_ee_pose(self):
         pos, quat = self._robot.get_ee_pose()
         angle = quat_to_euler(quat.numpy())
-        return np.concatenate([pos, angle]).tolist()
+        return np.concatenate([pos, angle])#.tolist()
 
     def get_ee_pos(self):
         return self.get_ee_pose()[:3]

@@ -70,25 +70,25 @@ def robot_poses(ip_address, robot_model, pose_generator, time_to_go=3):
     #     ip_address=ip_address,
     #     enforce_version=False
     # )
-    robot = FrankaHardware(name=robot_model, ip_address=ip_address, control_hz=10)
+    robot = FrankaHardware(robot_type=robot_model, ip_address=ip_address, control_hz=10)
 
     # Get reference state
     robot.reset()
     for i, (pos_sampled, ori_sampled) in enumerate(pose_generator):
         print( f"Moving to pose ({i}): pos={pos_sampled}, quat={ori_sampled.as_quat()}")
 
-
-        q_desired = robot._solve_ik(pos_sampled, quat_to_euler(ori_sampled._q))
-        robot.update_joints_slow(q_desired, time_to_go=time_to_go)
+        robot.update_command(np.concatenate((pos_sampled, quat_to_euler(ori_sampled._q), np.zeros(1))), action_space="cartesian_position", blocking=True)
 
         # state_log = robot.update_pose(pos=pos_sampled, angle=ori_sampled.as_quat())
         # print(f"Length of state_log: {len(state_log)}")
         # if len(state_log) != time_to_go * robot.hz:
         #     print(f"warning: log incorrect length. {len(state_log)} != {time_to_go * robot.hz}")
         while True:
-            pos0, quat0 = robot.get_ee_pose()
+            pose0 = robot.get_ee_pose()
+            pos0, quat0 = pose0[:3], euler_to_quat(pose0[3:6])
             time.sleep(1)
-            pos1, quat1 = robot.get_ee_pose()
+            pose1 = robot.get_ee_pose()
+            pos1, quat1 = pose1[:3], euler_to_quat(pose1[3:6])
             diffpos = np.linalg.norm(pos0-pos1)
             if diffpos < 0.01:
                 break
@@ -107,7 +107,7 @@ def extract_obs_data_std(data, camera_index):
             obs_data_std.append((
                 torch.tensor(d['corners'][camera_index], dtype=torch.float64),
                 torch.tensor(d['pos']).double(),
-                quat2rotvec(torch.tensor(euler_to_quat(torch.tensor(d['ori']).double())))
+                quat2rotvec(torch.tensor(torch.tensor(d['ori']).double()))
             ))
 
     ic = list(data[0]['intrinsics'].values())[camera_index]
@@ -126,7 +126,7 @@ def main(argv):
 
     parser.add_argument('--seed', default=0, type=int, help="random seed for initializing solution")
     parser.add_argument('--ip', default='172.16.0.1', help="robot ip address")
-    parser.add_argument('--robot_model', default='FR3', help="robot model, e.g., panda, FR3")
+    parser.add_argument('--robot_model', default='fr3', help="robot model, e.g., panda, fr3")
     parser.add_argument('--datafile', default='cameras/calibration/caldata.pkl', help="file to either load or save camera data")
     parser.add_argument('--overwrite', default=False, action='store_true', help="overwrite existing datafile, if it exists")
     parser.add_argument('--marker-id', default=12, type=int, help="ID of the ARTag marker in the image")

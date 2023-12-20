@@ -60,7 +60,8 @@ if __name__ == '__main__':
     for i in range(args.episodes):
 
         obs = env.reset()
-
+        assert "img_obs_0" in obs.keys(), "ERROR: camera not connected!"
+        
         print(f"Start Collecting Trajectory {i}")
         
         time_step = 0
@@ -91,7 +92,7 @@ if __name__ == '__main__':
 
                 # step and record
                 next_obs, rew, done, _ = env.step(action)
-                assert "img_obs_0" in obs.keys(), "ERROR: camera not connected!"
+                
                 buffer.push(obs, action, rew, next_obs, done)
                 obs = next_obs
                 print(f"Recorded Timestep {time_step} of Trajectory {i}")

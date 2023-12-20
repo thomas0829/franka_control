@@ -93,7 +93,7 @@ if __name__ == "__main__":
         default="localhost",
         choices=[None, "localhost", "172.16.0.1"],
     )
-    parser.add_argument("--camera_ids", type=list, default=[])
+    parser.add_argument("--camera_ids", type=list, default=[0])
     parser.add_argument(
         "--camera_model", type=str, default="realsense", choices=["realsense", "zed"]
     )
@@ -118,13 +118,6 @@ if __name__ == "__main__":
     for k in buffer.observations.keys():
         buffer.observations[k] = buffer.observations[k][: len(buffer)]
     buffer.actions = buffer.actions[: len(buffer)]
-
-    dataset = DictDataset(buffer.observations, buffer.actions, device=device)
-    dataloader = DataLoader(
-        dataset,
-        batch_size=args.batch_size,
-        shuffle=True
-    )
 
     # idcs = joblib.load(os.path.join(args.save_dir, args.exp, "idcs.gz"))
     
@@ -154,6 +147,14 @@ if __name__ == "__main__":
     ).to(device)
 
     if args.mode == "train":
+
+        dataset = DictDataset(buffer.observations, buffer.actions, device=device)
+        dataloader = DataLoader(
+            dataset,
+            batch_size=args.batch_size,
+            shuffle=True
+        )
+
         policy = train_policy(
             policy,
             dataloader,
@@ -186,6 +187,8 @@ if __name__ == "__main__":
         )
 
         obs = env.reset()
+        assert "img_obs_0" in obs.keys(), "ERROR: camera not connected!"
+
         imgs = []
 
         for i in range(args.max_episode_length):
@@ -194,19 +197,20 @@ if __name__ == "__main__":
             obs_dict = {}
             if args.modality == "state" or args.modality == "all":
                 obs_dict["state"] = np.concatenate(
-                    (obs["lowdim_ee"], obs["lowdim_qpos"]), axis=1
+                    (obs["lowdim_ee"][None], obs["lowdim_qpos"][None]), axis=1
                 )
             if args.modality == "images" or args.modality == "all":
-                obs_dict["img"] = obs["img_obs_0"].transpose(0, 3, 1, 2)
+                obs_dict["img"] = obs["img_obs_0"][None].transpose(0, 3, 1, 2)
 
             for k in obs_dict.keys():
                 obs_dict[k] = torch.tensor(
                     obs_dict[k], dtype=torch.float32, device=device
                 )
 
-            act = policy(obs, deterministic=False)[0].cpu().detach().numpy()
+            act = policy(obs_dict, deterministic=False)[0].detach().cpu().numpy()
 
             next_obs, rew, done, _ = env.step(act)
             obs = next_obs
 
-        imageio.mimsave("real_rollout.gif", np.stack(imgs), duration=0.5)
+        # imageio.mimsave("real_rollout.mp4", np.stack(imgs), fps=30)
+        imageio.mimsave("real_rollout.gif", np.stack(imgs), duration=3)

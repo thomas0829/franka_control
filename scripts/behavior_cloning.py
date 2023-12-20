@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     assert args.exp is not None, "Specify --exp"
 
-    device = torch.device(("cuda:" + str(args.gpu_id)) if args.gpu_id >= 0. else "cpu")
+    device = torch.device(("cuda:" + str(args.gpu_id)) if args.gpu_id >= 0. and torch.cuda.is_available() else "cpu")
 
     buffer = joblib.load(os.path.join(args.save_dir, args.exp, "buffer.gz"))
     for k in buffer.observations.keys():

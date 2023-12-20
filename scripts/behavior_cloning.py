@@ -70,6 +70,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    assert args.exp is not None, "Specify --exp"
+
     buffer = joblib.load(os.path.join(args.save_dir, args.exp, "buffer.gz"))
     
     state_obs_shape = None
@@ -90,7 +92,7 @@ if __name__ == '__main__':
         torch.save(policy.state_dict(), os.path.join(args.save_dir, args.exp, "policy.pt"))
 
     elif args.mode == "test":
-        policy.load_state_dict(torch.load(os.path.join(args.save_dir, args.exp, "policy.pt")))
+        policy.load_state_dict(torch.load(os.path.join(args.save_dir, args.exp, "policy.pt"), map_location=device))
         policy = policy.to(device)
 
         from robot.robot_env import RobotEnv

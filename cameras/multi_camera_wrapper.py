@@ -22,13 +22,13 @@ class MultiCameraWrapper:
 				self._all_cameras[i] = CameraThread(self._all_cameras[i])
 			time.sleep(1)
 	
-	def read_cameras(self, img_height=256, img_width=256):
+	def read_cameras(self):
 		all_frames = []
 		for camera in self._all_cameras:
 			curr_feed = camera.read_camera()
 			if curr_feed is not None:
 				for i in range(len(curr_feed)):
-					curr_feed[i]["array"] = cv2.resize(curr_feed[i]["array"], dsize=(img_height, img_width), interpolation=cv2.INTER_AREA)
+					curr_feed[i]["array"] = curr_feed[i]["array"]
 					curr_feed[0]["shape"] = curr_feed[i]["array"].shape
 				all_frames.extend(curr_feed)
 		return all_frames

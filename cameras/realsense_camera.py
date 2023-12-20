@@ -35,7 +35,7 @@ class RealSenseCamera:
 		color_sensor.set_option(rs.option.enable_auto_exposure, False)
 		color_sensor.set_option(rs.option.exposure, 520)
 
-	def read_camera(self, enforce_same_dim=False):
+	def read_camera(self):
 		# Wait for a coherent pair of frames: depth and color
 		frames = self._pipeline.wait_for_frames()
 		frames = self._align.process(frames)
@@ -50,7 +50,7 @@ class RealSenseCamera:
 		color_image = np.asanyarray(color_frame.get_data())
 
 		# Apply colormap on depth image (image must be converted to 8-bit per pixel first)
-		depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+		# depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
 
 		# depth_colormap_dim = depth_colormap.shape
 		# color_colormap_dim = color_image.shape
@@ -62,11 +62,11 @@ class RealSenseCamera:
 		# depth_colormap = cv2.resize(depth_colormap, dsize=(128, 96), interpolation=cv2.INTER_AREA)
 
 		color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
-		depth_colormap = cv2.cvtColor(depth_colormap, cv2.COLOR_BGR2RGB)
+		# depth_colormap = cv2.cvtColor(depth_colormap, cv2.COLOR_BGR2RGB)
 
 		dict_1 = {'array': color_image, 'shape': color_image.shape, 'type': 'rgb',
 			'read_time': read_time, 'serial_number': self._serial_number + '/rgb'}
-		dict_2 = {'array': depth_colormap, 'shape': color_image.shape, 'type': 'depth',
+		dict_2 = {'array': depth_image, 'shape': depth_image.shape, 'type': 'depth',
 			'read_time': read_time, 'serial_number': self._serial_number + '/depth'}
 		
 		return [dict_1, dict_2]

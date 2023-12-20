@@ -8,9 +8,9 @@ import torch
 import numpy as np
 import time
 import gym
+import cv2
 
 from helpers.transformations import add_angles, angle_diff
-from cameras.multi_camera_wrapper import MultiCameraWrapper
 from gym.spaces import Box, Dict
 
 
@@ -42,7 +42,7 @@ class RobotEnv(gym.Env):
         # camera type to use: 'realsense', 'zed'
         camera_ids=[],  # [0, 1, 2, ...]
         camera_model="realsense",
-        camera_resolution=(128, 128),  # HxW
+        camera_resolution=None,  # (128, 128) -> HxW
         # max vel
         max_lin_vel=0.2,
         max_rot_vel=2.0,
@@ -140,6 +140,8 @@ class RobotEnv(gym.Env):
                 from cameras.zed_camera import gather_zed_cameras
 
                 cameras = gather_zed_cameras()
+
+            from cameras.multi_camera_wrapper import MultiCameraWrapper
 
             self._camera_reader = MultiCameraWrapper(cameras)
             self.sim = False
@@ -357,7 +359,7 @@ class RobotEnv(gym.Env):
         action_info = self._robot.update_command(
             action, action_space=action_space, blocking=blocking
         )
-        # return action_info
+        return action_info
 
     @property
     def _curr_pos(self):
@@ -371,7 +373,11 @@ class RobotEnv(gym.Env):
         if self.sim:
             return self._robot.render()
         else:
-            return self._camera_reader.read_cameras(img_height=self.camera_resolution[0], img_width=self.camera_resolution[1])
+            imgs = self._camera_reader.read_cameras()
+            if self.camera_resolution is not None:
+                for img in imgs:
+                    img["array"] = cv2.resize(img["array"], dsize=(self.camera_resolution[0], self.camera_resolution[1]), interpolation=cv2.INTER_AREA)
+            return imgs
 
     def get_state(self):
         state_dict = {}

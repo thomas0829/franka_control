@@ -33,7 +33,7 @@ class GaussianPolicy(nn.Module):
 
         embeds = []
         if self.img_obs_shape:
-            embeds.append(self.img_encoder(obs["img"]))
+            embeds.append(self.img_encoder(obs["img"] / 255.))
         if self.state_obs_shape:
             embeds.append(self.state_encoder(obs["state"]))
 

@@ -77,7 +77,7 @@ def robot_poses(ip_address, robot_model, pose_generator, time_to_go=3):
     for i, (pos_sampled, ori_sampled) in enumerate(pose_generator):
         print( f"Moving to pose ({i}): pos={pos_sampled}, quat={ori_sampled.as_quat()}")
 
-        robot.update_command(np.concatenate((pos_sampled, quat_to_euler(ori_sampled._q), np.zeros(1))), action_space="cartesian_position", blocking=True)
+        robot.update_pose(np.concatenate((pos_sampled, quat_to_euler(ori_sampled._q), np.zeros(1))), blocking=True)
 
         # state_log = robot.update_pose(pos=pos_sampled, angle=ori_sampled.as_quat())
         # print(f"Length of state_log: {len(state_log)}")
@@ -132,7 +132,7 @@ def main(argv):
     parser.add_argument('--marker-id', default=12, type=int, help="ID of the ARTag marker in the image")
     parser.add_argument('--calibration-file', default='cameras/calibration/calibration.json', help="file to save final calibration data")
     parser.add_argument('--points-file', default='cameras/calibration/calibration_points.json', help="file to load convex hull to sample points from")
-    parser.add_argument('--num-points', default=2, type=int, help="number of points to sample from convex hull")
+    parser.add_argument('--num-points', default=20, type=int, help="number of points to sample from convex hull")
     parser.add_argument('--time-to-go', default=3, type=float, help="time_to_go in seconds for each movement")
     parser.add_argument('--imagedir', default=None, help="folder to save debug images")
     parser.add_argument('--pixel-tolerance', default=1., type=float, help="mean pixel error tolerance (stage 2)")

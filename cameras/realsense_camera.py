@@ -9,6 +9,7 @@ def gather_realsense_cameras():
 	all_rs_cameras = []
 
 	for device in all_devices:
+		# device.hardware_reset() # fixes calibration issues but can result in "Segmentation fault (core dumped)""
 		rs_camera = RealSenseCamera(device)
 		all_rs_cameras.append(rs_camera)
 

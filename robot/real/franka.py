@@ -90,8 +90,11 @@ class FrankaHardware:
             pos = torch.Tensor(command[:3])
             quat = torch.Tensor(euler_to_quat(command[3:6]))
             curr_joints = self._robot.get_joint_positions()
-            desired_joints = self._robot.solve_inverse_kinematics(pos, quat, curr_joints)
-            self.update_joints(desired_joints, velocity=False, blocking=True)
+            desired_joints, success = self._robot.solve_inverse_kinematics(pos, quat, curr_joints)
+            if success:
+                self.update_joints(desired_joints, velocity=False, blocking=True)
+            else:
+                print("IK failed, not updating pose")
         else:
             if not velocity:
                 curr_pose = self.get_ee_pose()

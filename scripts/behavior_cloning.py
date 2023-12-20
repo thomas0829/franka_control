@@ -53,7 +53,6 @@ if __name__ == '__main__':
     parser.add_argument("--dof", type=int, default=6, choices=[3, 4, 6])
     parser.add_argument("--robot_type", type=str, default="panda", choices=["panda", "fr3"])
     parser.add_argument("--ip_address", type=str, default="localhost", choices=[None, "localhost", "172.16.0.1"])
-    parser.add_argument("--camera_ids", type=list, default=[])
     parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
     # trajectories
     parser.add_argument("--mode", type=str, default="train", choices=["train", "test"])
@@ -94,7 +93,6 @@ if __name__ == '__main__':
             DoF=args.dof,
             robot_type=args.robot_type,
             ip_address=args.ip_address,
-            camera_ids=args.camera_ids,
             camera_model=args.camera_model,
             max_lin_vel=1.0,
             max_rot_vel=1.0,

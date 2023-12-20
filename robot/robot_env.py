@@ -13,6 +13,8 @@ import cv2
 from helpers.transformations import add_angles, angle_diff
 from gym.spaces import Box, Dict
 
+from cameras.calibration.utils import read_calibration_file
+from helpers.pointclouds import depth_to_points, compute_camera_intrinsic, compute_camera_extrinsic, points_to_pcd, crop_points, visualize_pcds
 
 class RobotEnv(gym.Env):
     """
@@ -40,9 +42,9 @@ class RobotEnv(gym.Env):
         # specify path length if resetting after a fixed length
         max_path_length=None,
         # camera type to use: 'realsense', 'zed'
-        camera_ids=[],  # [0, 1, 2, ...]
         camera_model="realsense",
         camera_resolution=None,  # (128, 128) -> HxW
+        calibration_file="cameras/calibration/calibration.json",
         # max vel
         max_lin_vel=0.2,
         max_rot_vel=2.0,
@@ -121,8 +123,8 @@ class RobotEnv(gym.Env):
             )
 
         # robot configuration
-        self.camera_ids = camera_ids
         self.camera_resolution = camera_resolution
+
         if ip_address is not None:
             from robot.real.franka import FrankaHardware
 
@@ -130,12 +132,10 @@ class RobotEnv(gym.Env):
                 robot_type=robot_type, ip_address=ip_address, control_hz=self.control_hz
             )
 
-            if len(self.camera_ids) > 1:
-                cameras = None
-            elif camera_model == "realsense":
+            if camera_model == "realsense":
                 from cameras.realsense_camera import gather_realsense_cameras
 
-                cameras = gather_realsense_cameras()
+                cameras = gather_realsense_cameras(hardware_reset=True)
             elif camera_model == "zed":
                 from cameras.zed_camera import gather_zed_cameras
 
@@ -144,7 +144,11 @@ class RobotEnv(gym.Env):
             from cameras.multi_camera_wrapper import MultiCameraWrapper
 
             self._camera_reader = MultiCameraWrapper(cameras)
+            
+            self.calib_dict = read_calibration_file(calibration_file) if calibration_file is not None else None
+
             self.sim = False
+
         else:
             from robot.sim.mujoco.franka import FrankaMujoco
 
@@ -154,6 +158,10 @@ class RobotEnv(gym.Env):
                 img_height=self.camera_resolution[0],
                 img_width=self.camera_resolution[1],
             )
+
+            # TODO create calibration from sim or use calibration in file to create sim
+            self.calib_dict = None
+
             self.sim = True
 
         # joint space + gripper
@@ -166,15 +174,18 @@ class RobotEnv(gym.Env):
         }
 
         imgs = self.get_images()
-        # TODO deal w/ depth
-        for id in self.camera_ids:
-            env_obs_spaces[f"img_obs_{id}"] = Box(
-                0, 255, imgs[id]["array"].shape, np.uint8
-            )
-            # if imgs[id]["type"] == "rgb":
-            #     env_obs_spaces[f"img_obs_{id}"] = Box(0, 255, imgs[id]["array"].shape, np.uint8)
-            # elif imgs[id]["type"] == "depth":
-            #     env_obs_spaces[f"img_obs_{id}"] = Box(0, 255, imgs[id]["array"].shape, np.float32)
+        for sn, img in imgs.items():
+            for m, modality in img.items():
+                if m == "rgb":
+                    env_obs_spaces[f"{sn}_{m}"] = Box(
+                        0, 255 , modality.shape, np.uint8
+                    )
+                elif m == "depth":
+                    env_obs_spaces[f"{sn}_{m}"] = Box(
+                        0, 65535 , modality.shape, np.uint16
+                    )
+                elif m == "points":
+                    pass
 
         if not self._qpos:
             env_obs_spaces.pop("lowdim_qpos", None)
@@ -374,10 +385,20 @@ class RobotEnv(gym.Env):
             return self._robot.render()
         else:
             imgs = self._camera_reader.read_cameras()
-            if self.camera_resolution is not None:
-                for img in imgs:
-                    img["array"] = cv2.resize(img["array"], dsize=(self.camera_resolution[0], self.camera_resolution[1]), interpolation=cv2.INTER_AREA)
-            return imgs
+
+            img_dict = {}
+            for img in imgs:
+                sn = img["serial_number"].split("/")[0]
+
+                if img_dict.get(sn) is None:
+                    img_dict[sn] = {}
+
+                if img["type"] == "depth":
+                    img_dict[sn]["depth"] = img["array"]
+                elif img["type"] == "rgb":
+                    img_dict[sn]["rgb"] = img["array"]
+
+            return img_dict
 
     def get_state(self):
         state_dict = {}
@@ -396,6 +417,28 @@ class RobotEnv(gym.Env):
 
         return state_dict
 
+    def get_images_and_points(self):
+        
+        assert self.calib_dict is not None, "Calibration file not provided!"
+
+        img_dict = self.get_images()
+        
+        for sn, img in img_dict.items():
+
+            intrinsic = compute_camera_intrinsic(
+                self.calib_dict[sn]["intrinsic"]["fx"],
+                self.calib_dict[sn]["intrinsic"]["fy"],
+                self.calib_dict[sn]["intrinsic"]["ppx"],
+                self.calib_dict[sn]["intrinsic"]["ppy"],
+            )
+            extrinsic = compute_camera_extrinsic(
+                pos=self.calib_dict[sn]["extrinsic"]["pos"], ori=self.calib_dict[sn]["extrinsic"]["ori"]
+            )
+
+            img_dict[sn]["points"] = depth_to_points(img["depth"], intrinsic, extrinsic)
+        
+        return img_dict
+            
     def _randomize_reset_pos(self):
         """takes random action along x-y plane, no change to z-axis / gripper"""
         random_xy = np.random.uniform(-0.5, 0.5, (2,))
@@ -447,8 +490,9 @@ class RobotEnv(gym.Env):
             "lowdim_qpos": self.normalize_ee_obs(qpos) if self.normalize else qpos,
         }
 
-        for id in self.camera_ids:
-            obs_dict[f"img_obs_{id}"] = current_images[id]["array"]
+        for sn, img in current_images.items():
+            for m, modality in img.items():
+                obs_dict[f"{sn}_{m}"] = modality
 
         if not self._qpos:
             obs_dict.pop("lowdim_qpos", None)
@@ -462,6 +506,3 @@ class RobotEnv(gym.Env):
         joint_dist = np.linalg.norm(curr_joints - self._reset_joint_qpos)
         return joint_dist < epsilon
 
-    @property
-    def num_cameras(self):
-        return len(self.get_images())

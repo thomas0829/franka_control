@@ -3,13 +3,15 @@ import numpy as np
 import time
 import cv2
 
-def gather_realsense_cameras():
+def gather_realsense_cameras(hardware_reset=False):
 	context = rs.context()
 	all_devices = list(context.devices)
 	all_rs_cameras = []
 
 	for device in all_devices:
-		# device.hardware_reset() # fixes calibration issues but can result in "Segmentation fault (core dumped)""
+		if hardware_reset:
+			device.hardware_reset()
+			time.sleep(1)
 		rs_camera = RealSenseCamera(device)
 		all_rs_cameras.append(rs_camera)
 
@@ -43,7 +45,7 @@ class RealSenseCamera:
 
 		depth_frame = frames.get_depth_frame()
 		color_frame = frames.get_color_frame()
-		if not depth_frame or not color_frame: return None
+
 		read_time = time.time()
 
 		# Convert images to numpy arrays

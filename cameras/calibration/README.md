@@ -1,0 +1,1 @@
+launch_robot.py robot_client=franka_hardware robot_client.executable_cfg.readonly=true

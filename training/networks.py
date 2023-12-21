@@ -58,9 +58,9 @@ class CNN(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(input_dim[0], 32, 3, stride=2),
             act_fn(),
-            nn.Conv2d(32, 32, 3, stride=1),
+            nn.Conv2d(32, 32, 3, stride=2),
             act_fn(),
-            nn.Conv2d(32, 32, 3, stride=1),
+            nn.Conv2d(32, 32, 3, stride=2),
             act_fn(),
             nn.Conv2d(32, 32, 3, stride=1),
             act_fn(),

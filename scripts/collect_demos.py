@@ -51,10 +51,13 @@ if __name__ == '__main__':
     print("Oculus Connected")
 
     traj_idcs = []
+    success_idcs = []
+
     for i in range(args.episodes):
 
         obs = env.reset()
-
+        assert "img_obs_0" in obs.keys(), "ERROR: camera not connected!"
+        
         print(f"Start Collecting Trajectory {i}")
         
         time_step = 0
@@ -71,11 +74,12 @@ if __name__ == '__main__':
 
             # press A or B to end a trajectory
             if info["success"] or info["failure"]:
+                success = True if info["success"] else False
+                success_idcs.append(success)
                 break
 
             # check if tirgger button is pressed
             if info["movement_enabled"]:
-                
                 # prepare act
                 if args.dof == 3:
                     action = np.concatenate((action[:3], action[-1:]))
@@ -84,6 +88,7 @@ if __name__ == '__main__':
 
                 # step and record
                 next_obs, rew, done, _ = env.step(action)
+                
                 buffer.push(obs, action, rew, next_obs, done)
                 obs = next_obs
                 print(f"Recorded Timestep {time_step} of Trajectory {i}")
@@ -102,5 +107,6 @@ if __name__ == '__main__':
     joblib.dump(buffer, os.path.join(save_dir, "buffer.gz"), compress=3)
     # save traj indices
     joblib.dump(traj_idcs, os.path.join(save_dir, "idcs.gz"))
+    joblib.dump(success_idcs, os.path.join(save_dir, "success.gz"))
 
     print(f"Saved at {save_dir}")

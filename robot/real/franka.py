@@ -17,7 +17,7 @@ from robot.controllers.utils import generate_joint_space_min_jerk
 
 class FrankaHardware:
 
-    def __init__(self, ip_address, robot_type, control_hz=10, custom_controller=False, gain_scale=1.0, reset_gain_scale=1.0):
+    def __init__(self, ip_address, robot_type, control_hz=15, custom_controller=True, gain_scale=1.5, reset_gain_scale=1.0):
         self.control_hz = control_hz
         self.robot_type = robot_type
         
@@ -126,9 +126,10 @@ class FrankaHardware:
             if self._robot.is_running_policy():
                 self._robot.terminate_current_policy()
             try:
-                time_to_go = self.adaptive_time_to_go(command, t_min=1, t_max=4)
+                # min time_to_go = 2 and time.sleep seem to solve some controller issues
+                time_to_go = self.adaptive_time_to_go(command, t_min=2, t_max=4)
                 self._robot.move_to_joint_positions(command, time_to_go=time_to_go)
-
+                time.sleep(int(time_to_go))
             except grpc.RpcError:
                 pass
 
@@ -201,7 +202,13 @@ class FrankaHardware:
             command = gripper_delta + self.get_gripper_position()
 
         command = float(np.clip(command, 0, 1))
-        self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.1, blocking=blocking)
+        # https://github.com/facebookresearch/fairo/issues/1398
+        # for robotiq consider using
+        # self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.1, blocking=blocking)
+        if command > 0.:
+            self._gripper.grasp(grasp_width=0.0, speed=0.5, force=10., blocking=blocking)
+        else:
+            self._gripper.grasp(grasp_width=self._max_gripper_width, speed=0.1, force=10., blocking=blocking)
 
     def add_noise_to_joints(self, original_joints, cartesian_noise):
         original_joints = torch.Tensor(original_joints)

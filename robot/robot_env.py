@@ -83,8 +83,10 @@ class RobotEnv(gym.Env):
         self.action_shape = self.action_space.shape
 
         # EE position (x, y, z) + EE rot (roll, pitch, yaw) + gripper width
-        ee_space_low = np.array([0.25, -0.4, 0.13, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.64, 0.4, 0.6, 3.14, 3.14, 3.14, 0.085])
+        # ee_space_low = np.array([0.2, -0.4, 0.15, -3.14, -3.14, -3.14, 0.00])
+        # ee_space_high = np.array([0.65, 0.4, 0.8, 3.14, 3.14, 3.14, 0.085])
+        ee_space_low = np.array([0.2, -0.4, 0.13, -3.14, -3.14, -3.14, 0.00])
+        ee_space_high = np.array([0.65, 0.4, 0.8, 3.14, 3.14, 3.14, 0.085])
 
         # EE position (x, y, z) + gripper width
         if self.DoF == 3:
@@ -269,24 +271,25 @@ class RobotEnv(gym.Env):
         return norm_qpos
 
     def reset_gripper(self):
-        self._robot.update_gripper(0)
+        self._robot.update_gripper(-1, velocity=False, blocking=True)
 
     def reset(self):
-        self.reset_gripper()  # <- even needed?
-        for _ in range(5):
+        # ensure robot drops whatever it has grasped
+        self.reset_gripper()
+        # reset to home pose
+        for _ in range(3):
             if self.sim:
                 self._robot.update_joints(self._reset_joint_qpos)
             else:
-                # self._robot.update_joints_slow(torch.tensor(self._reset_joint_qpos), time_to_go=2)
                 self._update_robot(
-                    np.concatenate((self._reset_joint_qpos, np.zeros(1))),
+                    np.concatenate((self._reset_joint_qpos, -np.ones(1))), # also resets gripper
                     action_space="joint_position",
                     blocking=True,
                 )
             if self.is_robot_reset():
                 break
             else:
-                print("reset failed, trying again")
+                print("WARNING: reset failed, trying again")
 
         # fix default angle at first joint reset
         if self._episode_count == 0:

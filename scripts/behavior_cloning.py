@@ -84,9 +84,25 @@ if __name__ == "__main__":
     parser.add_argument("--save_dir", type=str, default="data")
     # hardware
     parser.add_argument("--dof", type=int, default=6, choices=[3, 4, 6])
+<<<<<<< HEAD
     parser.add_argument("--robot_type", type=str, default="panda", choices=["panda", "fr3"])
     parser.add_argument("--ip_address", type=str, default="localhost", choices=[None, "localhost", "172.16.0.1"])
     parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
+=======
+    parser.add_argument(
+        "--robot_type", type=str, default="panda", choices=["panda", "fr3"]
+    )
+    parser.add_argument(
+        "--ip_address",
+        type=str,
+        default="localhost",
+        choices=[None, "localhost", "172.16.0.1"],
+    )
+    parser.add_argument("--camera_ids", type=list, default=[])
+    parser.add_argument(
+        "--camera_model", type=str, default="realsense", choices=["realsense", "zed"]
+    )
+>>>>>>> e8b764b87a1a33b3459e555d29be9acfd137157f
     # trajectories
     parser.add_argument("--mode", type=str, default="train", choices=["train", "test"])
     parser.add_argument(
@@ -100,15 +116,30 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+<<<<<<< HEAD
     assert args.exp is not None, "Specify --exp"
 
     device = torch.device(("cuda:" + str(args.gpu_id)) if args.gpu_id >= 0. and torch.cuda.is_available() else "cpu")
+=======
+    args.exp = "pick_red"
+    device = torch.device(("cuda:" + str(args.gpu_id)) if args.gpu_id >= 0. else "cpu")
+>>>>>>> e8b764b87a1a33b3459e555d29be9acfd137157f
 
     buffer = joblib.load(os.path.join(args.save_dir, args.exp, "buffer.gz"))
     for k in buffer.observations.keys():
         buffer.observations[k] = buffer.observations[k][: len(buffer)]
     buffer.actions = buffer.actions[: len(buffer)]
 
+<<<<<<< HEAD
+=======
+    dataset = DictDataset(buffer.observations, buffer.actions, device=device)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        shuffle=True
+    )
+
+>>>>>>> e8b764b87a1a33b3459e555d29be9acfd137157f
     # idcs = joblib.load(os.path.join(args.save_dir, args.exp, "idcs.gz"))
     
     # imgs = buffer.observations["img_obs_0"]
@@ -137,6 +168,7 @@ if __name__ == "__main__":
     ).to(device)
 
     if args.mode == "train":
+<<<<<<< HEAD
 
         dataset = DictDataset(buffer.observations, buffer.actions, device=device)
         dataloader = DataLoader(
@@ -145,6 +177,8 @@ if __name__ == "__main__":
             shuffle=True
         )
 
+=======
+>>>>>>> e8b764b87a1a33b3459e555d29be9acfd137157f
         policy = train_policy(
             policy,
             dataloader,
@@ -159,7 +193,13 @@ if __name__ == "__main__":
         )
 
     elif args.mode == "test":
+<<<<<<< HEAD
         policy.load_state_dict(torch.load(os.path.join(args.save_dir, args.exp, "policy.pt"), map_location=device))
+=======
+        policy.load_state_dict(
+            torch.load(os.path.join(args.save_dir, args.exp, "policy.pt"))
+        )
+>>>>>>> e8b764b87a1a33b3459e555d29be9acfd137157f
         policy = policy.to(device)
 
         from robot.robot_env import RobotEnv
@@ -176,8 +216,11 @@ if __name__ == "__main__":
         )
 
         obs = env.reset()
+<<<<<<< HEAD
         assert "img_obs_0" in obs.keys(), "ERROR: camera not connected!"
 
+=======
+>>>>>>> e8b764b87a1a33b3459e555d29be9acfd137157f
         imgs = []
 
         for i in range(args.max_episode_length):
@@ -186,20 +229,35 @@ if __name__ == "__main__":
             obs_dict = {}
             if args.modality == "state" or args.modality == "all":
                 obs_dict["state"] = np.concatenate(
+<<<<<<< HEAD
                     (obs["lowdim_ee"][None], obs["lowdim_qpos"][None]), axis=1
                 )
             if args.modality == "images" or args.modality == "all":
                 obs_dict["img"] = obs["img_obs_0"][None].transpose(0, 3, 1, 2)
+=======
+                    (obs["lowdim_ee"], obs["lowdim_qpos"]), axis=1
+                )
+            if args.modality == "images" or args.modality == "all":
+                obs_dict["img"] = obs["img_obs_0"].transpose(0, 3, 1, 2)
+>>>>>>> e8b764b87a1a33b3459e555d29be9acfd137157f
 
             for k in obs_dict.keys():
                 obs_dict[k] = torch.tensor(
                     obs_dict[k], dtype=torch.float32, device=device
                 )
 
+<<<<<<< HEAD
             act = policy(obs_dict, deterministic=False)[0].detach().cpu().numpy()
+=======
+            act = policy(obs, deterministic=False)[0].cpu().detach().numpy()
+>>>>>>> e8b764b87a1a33b3459e555d29be9acfd137157f
 
             next_obs, rew, done, _ = env.step(act)
             obs = next_obs
 
+<<<<<<< HEAD
         # imageio.mimsave("real_rollout.mp4", np.stack(imgs), fps=30)
         imageio.mimsave("real_rollout.gif", np.stack(imgs), duration=3)
+=======
+        imageio.mimsave("real_rollout.gif", np.stack(imgs), duration=0.5)
+>>>>>>> e8b764b87a1a33b3459e555d29be9acfd137157f

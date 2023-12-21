@@ -21,7 +21,7 @@ class FrankaHardware:
         self.control_hz = control_hz
         self.robot_type = robot_type
         
-        self.custom_controller = robot_type=="fr3" # custom_controller
+        self.custom_controller = custom_controller
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
 

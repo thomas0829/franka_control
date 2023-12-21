@@ -74,6 +74,7 @@ class RobotEnv(gym.Env):
         # resetting configuration
         self._randomize_ee_on_reset = randomize_ee_on_reset
         self._pause_after_reset = pause_after_reset
+        # polymetis _robot.home_pose
         self._reset_joint_qpos = np.array(
             [-0.1394, -0.0205, -0.0520, -2.0691, 0.0506, 2.0029, -0.9168]
         )
@@ -102,9 +103,11 @@ class RobotEnv(gym.Env):
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:
-            height = 0.3
-            ee_space_low = np.concatenate((ee_space_low[:2], [height]))
-            ee_space_high = np.concatenate((ee_space_high[:2], [height]))
+            # height = 0.15
+            # ee_space_low = np.concatenate((ee_space_low[:2], [height]))
+            # ee_space_high = np.concatenate((ee_space_high[:2], [height]))
+            ee_space_low = ee_space_low[:3]
+            ee_space_high = ee_space_high[:3]
         # EE position (x, y, z)
         if self.DoF == 3:
             ee_space_low = ee_space_low[:3]
@@ -327,6 +330,11 @@ class RobotEnv(gym.Env):
         if self._episode_count == 0:
             self._default_pos = self._robot.get_ee_pos()
             self._default_angle = self._robot.get_ee_angle()
+            
+            # overwrite fixed z for 2DoF EE control with reset z
+            if self.DoF == 2:
+                self.ee_space.low[2] = self._default_pos[2]
+                self.ee_space.high[2] = self._default_pos[2]
 
         if self._randomize_ee_on_reset:
             self._randomize_reset_pos()

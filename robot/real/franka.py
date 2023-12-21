@@ -72,8 +72,8 @@ class FrankaHardware:
         from robot.controllers.mixed_cartesian_impedance import MixedCartesianImpedanceControl
         policy = MixedCartesianImpedanceControl(
                     joint_pos_current=self._robot.get_joint_positions(),
-                    Kp=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kx),
-                    Kd=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kxd),
+                    Kp=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kx), # the higher, the faster it returns to pos
+                    Kd=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kxd), # the higher, the stiffer around pos
                     kp_pos=self.gain_scale
                     * torch.Tensor(self._robot.metadata.default_Kq),
                     kd_pos=self.gain_scale

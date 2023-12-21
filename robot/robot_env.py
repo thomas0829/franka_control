@@ -135,7 +135,7 @@ class RobotEnv(gym.Env):
             if camera_model == "realsense":
                 from cameras.realsense_camera import gather_realsense_cameras
 
-                cameras = gather_realsense_cameras(hardware_reset=True)
+                cameras = gather_realsense_cameras(hardware_reset=False)
             elif camera_model == "zed":
                 from cameras.zed_camera import gather_zed_cameras
 

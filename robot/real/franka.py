@@ -17,7 +17,7 @@ from robot.controllers.utils import generate_joint_space_min_jerk
 
 class FrankaHardware:
 
-    def __init__(self, ip_address, robot_type, control_hz=15, custom_controller=True, gain_scale=1.5, reset_gain_scale=1.0):
+    def __init__(self, ip_address, robot_type, gripper=True, control_hz=15, custom_controller=True, gain_scale=1.5, reset_gain_scale=1.0):
         self.control_hz = control_hz
         self.robot_type = robot_type
         
@@ -25,7 +25,7 @@ class FrankaHardware:
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
 
-        self.launch_robot(ip_address=ip_address)
+        self.launch_robot(ip_address=ip_address, gripper=gripper)
 
     def reset(self):
         self.update_joints(self._robot.home_pose, blocking=True)
@@ -46,10 +46,12 @@ class FrankaHardware:
     #     self._server_launched = True
     #     time.sleep(5)
     
-    def launch_robot(self, ip_address):
+    def launch_robot(self, ip_address, gripper=True):
         self._robot = RobotInterface(ip_address=ip_address)
-        self._gripper = GripperInterface(ip_address=ip_address)
-        self._max_gripper_width = self._gripper.metadata.max_width
+        self._gripper = None
+        if gripper:
+            self._gripper = GripperInterface(ip_address=ip_address)
+            self._max_gripper_width = self._gripper.metadata.max_width
         self._ik_solver = RobotIKSolver(robot_type=self.robot_type, control_hz=self.control_hz)
 
     # def kill_controller(self):
@@ -60,7 +62,9 @@ class FrankaHardware:
         action_dict = self.create_action_dict(command, action_space=action_space)
 
         self.update_joints(action_dict["joint_position"], velocity=False, blocking=blocking)
-        self.update_gripper(action_dict["gripper_position"], velocity=False, blocking=blocking)
+        
+        if self._gripper:
+            self.update_gripper(action_dict["gripper_position"], velocity=False, blocking=blocking)
 
         return action_dict
 
@@ -236,8 +240,11 @@ class FrankaHardware:
         return self._robot.get_joint_velocities().tolist()
 
     def get_gripper_position(self):
-        return 1 - (self._gripper.get_state().width / self._max_gripper_width)
-
+        if self._gripper:
+            return 1 - (self._gripper.get_state().width / self._max_gripper_width)
+        else:
+            return 0.0
+        
     def get_ee_pose(self):
         pos, quat = self._robot.get_ee_pose()
         angle = quat_to_euler(quat.numpy())
@@ -250,7 +257,10 @@ class FrankaHardware:
         return self.get_ee_pose()[3:]
 
     def get_gripper_state(self):
-        return self._gripper.get_state().width
+        if self._gripper:
+            return self._gripper.get_state().width
+        else:
+            return 0.0
 
     def get_robot_state(self):
         robot_state = self._robot.get_robot_state()

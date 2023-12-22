@@ -13,6 +13,12 @@ from training.policies import GaussianPolicy
 from torch.utils.data import DataLoader
 from training.dataset import DictDataset
 
+# def process_obs(obs):
+#     sn = env._camera_reader._all_cameras[0]._camera._serial_number
+#     # crop to 480x480
+#     obs[f"{sn}_rgb"] = obs.pop(f"{sn}_rgb")[:,50:530]
+#     obs[f"{sn}_depth"] = obs.pop(f"{sn}_depth")[:,50:530]
+#     return obs
 
 def train_policy(
     policy,

@@ -17,18 +17,21 @@ from robot.controllers.utils import generate_joint_space_min_jerk
 
 class FrankaHardware:
 
-    def __init__(self, ip_address, robot_type, gripper=True, control_hz=15, custom_controller=True, gain_scale=1.5, reset_gain_scale=1.0):
+    def __init__(self, ip_address, robot_type, gripper=True, control_hz=15, custom_controller=False, gain_scale=1.5, reset_gain_scale=1.0):
+        
         self.control_hz = control_hz
         self.robot_type = robot_type
         
-        self.custom_controller = True if robot_type == "panda" else custom_controller
+        # TODO verify on FR3 but works on panda
+        self.custom_controller = False # False if robot_type == "panda" else custom_controller
+
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
 
         self.launch_robot(ip_address=ip_address, gripper=gripper)
 
     def reset(self):
-        self.update_joints(self._robot.home_pose, blocking=True)
+        self.update_joints(self._robot.home_pose, velocity=False, blocking=True)
 
     # def launch_controller(self):
     #     try:
@@ -130,10 +133,8 @@ class FrankaHardware:
             if self._robot.is_running_policy():
                 self._robot.terminate_current_policy()
             try:
-                # min time_to_go = 2 and time.sleep seem to solve some controller issues
-                time_to_go = self.adaptive_time_to_go(command, t_min=2, t_max=4)
+                time_to_go = self.adaptive_time_to_go(command)
                 self._robot.move_to_joint_positions(command, time_to_go=time_to_go)
-                time.sleep(int(time_to_go))
             except grpc.RpcError:
                 pass
 
@@ -154,7 +155,6 @@ class FrankaHardware:
                         self._robot.update_desired_joint_positions(command)
                 except grpc.RpcError:
                     pass
-
             run_threaded_command(helper_non_blocking)
 
     def update_desired_joint_positions(self, q_desired=None, kp=None, kd=None):
@@ -201,6 +201,15 @@ class FrankaHardware:
         )
 
     def update_gripper(self, command, velocity=True, blocking=False):
+
+        # if velocity:
+        #     gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)
+        #     command = gripper_delta + self.get_gripper_position()
+
+        # command = float(np.clip(command, 0, 1))
+        # self._gripper.grasp(grasp_width=self._max_gripper_width * (1 - command), speed=0.05, force=0.1, blocking=blocking)
+
+        # return 
         if velocity:
             gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)
             command = gripper_delta + self.get_gripper_position()
@@ -210,7 +219,7 @@ class FrankaHardware:
         # for robotiq consider using
         # self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.1, blocking=blocking)
         if command > 0.:
-            self._gripper.grasp(grasp_width=0.0, speed=0.5, force=10., blocking=blocking)
+            self._gripper.grasp(grasp_width=0.0, speed=0.5, force=5., blocking=blocking)
         else:
             self._gripper.grasp(grasp_width=self._max_gripper_width, speed=0.1, force=10., blocking=blocking)
 
@@ -248,7 +257,7 @@ class FrankaHardware:
     def get_ee_pose(self):
         pos, quat = self._robot.get_ee_pose()
         angle = quat_to_euler(quat.numpy())
-        return np.concatenate([pos, angle])#.tolist()
+        return np.concatenate([pos, angle])
 
     def get_ee_pos(self):
         return self.get_ee_pose()[:3]

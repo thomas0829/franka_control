@@ -53,16 +53,11 @@ class RobotEnv(gym.Env):
         camera_model="realsense",
         camera_resolution=None,  # (128, 128) -> HxW
         calibration_file="cameras/calibration/calibration.json",
-        # max vel
-        max_lin_vel=0.2,
-        max_rot_vel=2.0,
     ):
         # initialize gym environment
         super().__init__()
 
         # physics
-        self.max_lin_vel = max_lin_vel
-        self.max_rot_vel = max_rot_vel
         self.DoF = DoF
         self.gripper = gripper
         self.control_hz = control_hz
@@ -86,8 +81,12 @@ class RobotEnv(gym.Env):
 
         # action space
         self.action_space = Box(
-            np.array([-1.] * (self.DoF + 1), dtype=np.float32),  # dx_low, dy_low, dz_low, dgripper_low
-            np.array([1.] * (self.DoF + 1), dtype=np.float32),  # dx_high, dy_high, dz_high, dgripper_high
+            np.array(
+                [-1.0] * (self.DoF + 1), dtype=np.float32
+            ),  # dx_low, dy_low, dz_low, dgripper_low
+            np.array(
+                [1.0] * (self.DoF + 1), dtype=np.float32
+            ),  # dx_high, dy_high, dz_high, dgripper_high
         )
         self.action_shape = self.action_space.shape
 
@@ -122,7 +121,9 @@ class RobotEnv(gym.Env):
             ee_space_low = np.concatenate((ee_space_low, ee_space_low[-1:]))
             ee_space_high = np.concatenate((ee_space_high, ee_space_high[-1:]))
 
-        self.ee_space = Box(low=np.float32(ee_space_low), high=np.float32(ee_space_high))
+        self.ee_space = Box(
+            low=np.float32(ee_space_low), high=np.float32(ee_space_high)
+        )
 
         # joint limits + gripper
         # https://frankaemika.github.io/docs/control_parameters.html
@@ -239,10 +240,10 @@ class RobotEnv(gym.Env):
         assert (action.max() <= 1) and (action.min() >= -1)
 
         pos_action, angle_action, gripper = self._format_action(action)
-        lin_vel, rot_vel = self._limit_velocity(pos_action, angle_action)
+
         # clipping + any safety corrections for position
-        desired_pos = self._get_valid_pos_and_gripper(self._curr_pos + lin_vel)
-        desired_angle = add_angles(rot_vel, self._curr_angle)
+        desired_pos = self._get_valid_pos_and_gripper(self._curr_pos + pos_action)
+        desired_angle = add_angles(angle_action, self._curr_angle)
         # if self.DoF == 4:
         #     desired_angle[2] = desired_angle[2].clip(
         #         self.ee_space.low[3], self.ee_space.high[3]
@@ -252,6 +253,7 @@ class RobotEnv(gym.Env):
         #         self.ee_space.low[3:6], self.ee_space.high[3:6]
         #     )
 
+        # cartesian position (delta) control
         self._update_robot(
             np.concatenate((desired_pos, desired_angle, [gripper])),
             action_space="cartesian_position",
@@ -299,7 +301,7 @@ class RobotEnv(gym.Env):
         return norm_qpos
 
     def reset_gripper(self):
-        self._robot.update_gripper(-1., velocity=False, blocking=True)
+        self._robot.update_gripper(-1.0, velocity=False, blocking=True)
 
     def reset(self):
         # ensure robot drops whatever it has grasped
@@ -310,25 +312,26 @@ class RobotEnv(gym.Env):
             if self.sim:
                 self._robot.update_joints(self._reset_joint_qpos)
             else:
-                self._update_robot(
-                    np.concatenate(
-                        (self._reset_joint_qpos, -np.ones(1))
-                    ),  # also resets gripper
-                    action_space="joint_position",
-                    blocking=True,
+                self._robot.update_joints(
+                    self._reset_joint_qpos, velocity=False, blocking=True
                 )
-            is_reset, joint_dist = self.is_robot_reset(epsilon=0.1)
+
+            epsilon = 0.1
+            is_reset, joint_dist = self.is_robot_reset(epsilon=epsilon)
+
             if is_reset:
                 break
             else:
-                print(f"WARNING: reset failed w/ joint_dist={joint_dist}, trying again")
-                time.sleep(1.)
+                print(
+                    f"WARNING: reset failed w/ joint_dist={np.round(joint_dist,4)} > {epsilon}, trying again"
+                )
+                time.sleep(1.0)
 
         # fix default pos and angle at first joint reset
         if self._episode_count == 0:
             self._default_pos = self._robot.get_ee_pos()
             self._default_angle = self._robot.get_ee_angle()
-            
+
             # overwrite fixed z for 2DoF EE control with reset z
             if self.DoF == 2:
                 self.ee_space.low[2] = self._default_pos[2]
@@ -380,20 +383,6 @@ class RobotEnv(gym.Env):
             gripper = 0.0
         return np.array(delta_pos), np.array(delta_angle), gripper
 
-    def _limit_velocity(self, lin_vel, rot_vel):
-        """Scales down the linear and angular magnitudes of the action"""
-        lin_vel_norm = np.linalg.norm(lin_vel)
-        rot_vel_norm = np.linalg.norm(rot_vel)
-        if lin_vel_norm > 1:
-            lin_vel = lin_vel / lin_vel_norm
-        if rot_vel_norm > 1:
-            rot_vel = rot_vel / rot_vel_norm
-        lin_vel, rot_vel = (
-            lin_vel * self.max_lin_vel / self.control_hz,
-            rot_vel * self.max_rot_vel / self.control_hz,
-        )
-        return lin_vel, rot_vel
-
     def _get_valid_pos_and_gripper(self, pos):
         """To avoid situations where robot can break the object / burn out joints,
         allowing us to specify (x, y, z, gripper) where the robot cannot enter. Gripper is included
@@ -436,7 +425,7 @@ class RobotEnv(gym.Env):
     @property
     def _num_cameras(self):
         return len(self._camera_reader._all_cameras)
-    
+
     def render(self):
         if self.sim:
             return self._robot.render()
@@ -598,4 +587,3 @@ class RobotEnv(gym.Env):
         curr_joints = self._robot.get_joint_positions()
         joint_dist = np.linalg.norm(curr_joints - self._reset_joint_qpos)
         return joint_dist < epsilon, joint_dist
-

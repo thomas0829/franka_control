@@ -28,16 +28,17 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    args.exp = "test"
+    # args.exp = "test"
     assert args.exp is not None, "Specify --exp"
+    save_dir = os.path.join(args.save_dir, args.exp)
+    os.makedirs(save_dir, exist_ok=True)
+    
     env = RobotEnv(
-        control_hz=10,
+        control_hz=15,
         DoF=args.dof,
         robot_type=args.robot_type,
         ip_address=args.ip_address,
         camera_model=args.camera_model,
-        max_lin_vel=1.0,
-        max_rot_vel=1.0,
         max_path_length=args.max_episode_length,
     )
 
@@ -53,8 +54,6 @@ if __name__ == '__main__':
     oculus = VRController()
     assert oculus.get_info()["controller_on"], "ERROR: oculus controller off"
     print("Oculus Connected")
-
-    traj_idcs = []
 
     for i in range(args.episodes):
 
@@ -75,6 +74,9 @@ if __name__ == '__main__':
 
         start_pos = buffer.pos
 
+        obss = []
+        acts = []
+
         for j in tqdm(range(args.max_episode_length), desc=f"Collecting Trajectory {i}"):
 
             # wait for controller input
@@ -93,36 +95,51 @@ if __name__ == '__main__':
                 pose = env._robot.get_ee_pose()
                 gripper = env._robot.get_gripper_position()
                 state = {"robot_state": {"cartesian_position": pose, "gripper_position": gripper}}
-                action = oculus.forward(state)
+                vel_act = oculus.forward(state)
 
+                # convert vel to delta actions
+                delta_act = env._robot._ik_solver.cartesian_velocity_to_delta(vel_act)
+                
                 # prepare act
                 if args.dof == 3:
-                    action = np.concatenate((action[:3], action[-1:]))
+                    act = np.concatenate((delta_act[:3], delta_act[-1:]))
                 elif args.dof == 4:
-                    action = np.concatenate((action[:3], action[5:6], action[-1:]))
-
-                # step and record
-                next_obs, rew, done, _ = env.step(action)
+                    act = np.concatenate((delta_act[:3], delta_act[5:6], vel_act[-1:]))
+                elif args.dof == 6:
+                    act = np.concatenate((delta_act, vel_act[-1:]))
                 
-                buffer.push(obs, action, rew, next_obs, done)
+                next_obs, rew, done, _ = env.step(act)
+
+                obss.append(obs)
+                acts.append(act)
+
+                # buffer.push(obs, act, rew, next_obs, done)
                 
                 # env._robot.update_command(action, action_space="cartesian_velocity", blocking=False)
                 # next_obs = env.get_observation()
+                # time.sleep(0.15)
                 
                 obs = next_obs
         
         print(f"Recorded Trajectory {i}")
-        traj_idcs.append(buffer.pos)
         
+        obs_dict = {}
+        for k in obs.keys():
+            tmp = []
+            for o in obss:
+                tmp.append(o[k])
+            obs_dict[k] = np.stack(tmp)
+        acts = np.stack(acts)
+
+        save_path = os.path.join(save_dir, f"traj_{datetime.datetime.now().strftime('%m_%d_%Y-%H_%M_%S')}.gz")
+        joblib.dump([obs_dict, acts], save_path, compress=3)
+        print(f"Saved at {save_dir}")
+
     env.reset()
 
-    print(f"Finished Collecting {i} Trajectories: save & exiting")
+    print(f"Finished Collecting {i} Trajectories")
 
-    save_dir = os.path.join(args.save_dir, args.exp)
-    os.makedirs(save_dir, exist_ok=True)
-    # save buffer
-    joblib.dump(buffer, os.path.join(save_dir, "buffer.gz"), compress=3)
-    # save traj indices
-    joblib.dump(traj_idcs, os.path.join(save_dir, "idcs.gz"))
+    
 
-    print(f"Saved at {save_dir}")
+
+    exit()

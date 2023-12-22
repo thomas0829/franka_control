@@ -14,7 +14,15 @@ from helpers.transformations import add_angles, angle_diff
 from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file
-from helpers.pointclouds import depth_to_points, compute_camera_intrinsic, compute_camera_extrinsic, points_to_pcd, crop_points, visualize_pcds
+from helpers.pointclouds import (
+    depth_to_points,
+    compute_camera_intrinsic,
+    compute_camera_extrinsic,
+    points_to_pcd,
+    crop_points,
+    visualize_pcds,
+)
+
 
 class RobotEnv(gym.Env):
     """
@@ -66,6 +74,7 @@ class RobotEnv(gym.Env):
         # resetting configuration
         self._randomize_ee_on_reset = randomize_ee_on_reset
         self._pause_after_reset = pause_after_reset
+        # polymetis _robot.home_pose
         self._reset_joint_qpos = np.array(
             [-0.1394, -0.0205, -0.0520, -2.0691, 0.0506, 2.0029, -0.9168]
         )
@@ -88,18 +97,30 @@ class RobotEnv(gym.Env):
         ee_space_low = np.array([0.2, -0.4, 0.13, -3.14, -3.14, -3.14, 0.00])
         ee_space_high = np.array([0.65, 0.4, 0.8, 3.14, 3.14, 3.14, 0.085])
 
-        # EE position (x, y, z) + gripper width
+        # EE position (x, y, fixed z)
+        if self.DoF == 2:
+            # height = 0.15
+            # ee_space_low = np.concatenate((ee_space_low[:2], [height]))
+            # ee_space_high = np.concatenate((ee_space_high[:2], [height]))
+            ee_space_low = ee_space_low[:3]
+            ee_space_high = ee_space_high[:3]
+        # EE position (x, y, z)
         if self.DoF == 3:
-            ee_space_low = np.concatenate((ee_space_low[:3], ee_space_low[-1:]))
-            ee_space_high = np.concatenate((ee_space_high[:3], ee_space_high[-1:]))
-        # EE position (x, y, z) + EE rot (single axis) + gripper width
+            ee_space_low = ee_space_low[:3]
+            ee_space_high = ee_space_high[:3]
+        # EE position (x, y, z) + EE rot (single axis)
         elif self.DoF == 4:
-            ee_space_low = np.concatenate(
-                (ee_space_low[:3], ee_space_low[5:6], ee_space_low[-1:])
-            )
-            ee_space_high = np.concatenate(
-                (ee_space_high[:3], ee_space_high[5:6], ee_space_high[-1:])
-            )
+            ee_space_low = np.concatenate((ee_space_low[:3], ee_space_low[5:6]))
+            ee_space_high = np.concatenate((ee_space_high[:3], ee_space_high[5:6]))
+        # EE position (x, y, z) + EE rot
+        elif self.DoF == 6:
+            ee_space_low = ee_space_low[:6]
+            ee_space_high = ee_space_high[:6]
+
+        # gripper width
+        if self.gripper:
+            ee_space_low = np.concatenate((ee_space_low, ee_space_low[-1:]))
+            ee_space_high = np.concatenate((ee_space_high, ee_space_high[-1:]))
 
         self.ee_space = Box(low=np.float32(ee_space_low), high=np.float32(ee_space_high))
 
@@ -131,7 +152,10 @@ class RobotEnv(gym.Env):
             from robot.real.franka import FrankaHardware
 
             self._robot = FrankaHardware(
-                robot_type=robot_type, ip_address=ip_address, control_hz=self.control_hz
+                robot_type=robot_type,
+                gripper=self.gripper,
+                ip_address=ip_address,
+                control_hz=self.control_hz,
             )
 
             if camera_model == "realsense":
@@ -146,8 +170,12 @@ class RobotEnv(gym.Env):
             from cameras.multi_camera_wrapper import MultiCameraWrapper
 
             self._camera_reader = MultiCameraWrapper(cameras)
-            
-            self.calib_dict = read_calibration_file(calibration_file) if calibration_file is not None else None
+
+            self.calib_dict = (
+                read_calibration_file(calibration_file)
+                if calibration_file is not None
+                else None
+            )
 
             self.sim = False
 
@@ -179,12 +207,10 @@ class RobotEnv(gym.Env):
         for sn, img in imgs.items():
             for m, modality in img.items():
                 if m == "rgb":
-                    env_obs_spaces[f"{sn}_{m}"] = Box(
-                        0, 255 , modality.shape, np.uint8
-                    )
+                    env_obs_spaces[f"{sn}_{m}"] = Box(0, 255, modality.shape, np.uint8)
                 elif m == "depth":
                     env_obs_spaces[f"{sn}_{m}"] = Box(
-                        0, 65535 , modality.shape, np.uint16
+                        0, 65535, modality.shape, np.uint16
                     )
                 elif m == "points":
                     pass
@@ -204,16 +230,18 @@ class RobotEnv(gym.Env):
     def step(self, action):
         start_time = time.time()
 
-        assert len(action) == (self.DoF + 1)
+        if not self.gripper:
+            assert len(action) == (self.DoF)
+        else:
+            assert len(action) == (self.DoF + 1)
+
         action = np.clip(action, -1.0, 1.0)
         assert (action.max() <= 1) and (action.min() >= -1)
 
         pos_action, angle_action, gripper = self._format_action(action)
         lin_vel, rot_vel = self._limit_velocity(pos_action, angle_action)
         # clipping + any safety corrections for position
-        desired_pos, gripper = self._get_valid_pos_and_gripper(
-            self._curr_pos + lin_vel, gripper
-        )
+        desired_pos = self._get_valid_pos_and_gripper(self._curr_pos + lin_vel)
         desired_angle = add_angles(rot_vel, self._curr_angle)
         # if self.DoF == 4:
         #     desired_angle[2] = desired_angle[2].clip(
@@ -275,14 +303,17 @@ class RobotEnv(gym.Env):
 
     def reset(self):
         # ensure robot drops whatever it has grasped
-        self.reset_gripper()
+        if self.gripper:
+            self.reset_gripper()
         # reset to home pose
         for _ in range(3):
             if self.sim:
                 self._robot.update_joints(self._reset_joint_qpos)
             else:
                 self._update_robot(
-                    np.concatenate((self._reset_joint_qpos, -np.ones(1))), # also resets gripper
+                    np.concatenate(
+                        (self._reset_joint_qpos, -np.ones(1))
+                    ),  # also resets gripper
                     action_space="joint_position",
                     blocking=True,
                 )
@@ -293,9 +324,15 @@ class RobotEnv(gym.Env):
                 print(f"WARNING: reset failed w/ joint_dist={joint_dist}, trying again")
                 time.sleep(1.)
 
-        # fix default angle at first joint reset
+        # fix default pos and angle at first joint reset
         if self._episode_count == 0:
+            self._default_pos = self._robot.get_ee_pos()
             self._default_angle = self._robot.get_ee_angle()
+            
+            # overwrite fixed z for 2DoF EE control with reset z
+            if self.DoF == 2:
+                self.ee_space.low[2] = self._default_pos[2]
+                self.ee_space.high[2] = self._default_pos[2]
 
         if self._randomize_ee_on_reset:
             self._randomize_reset_pos()
@@ -316,20 +353,31 @@ class RobotEnv(gym.Env):
     def _format_action(self, action):
         """Returns [x,y,z], [yaw, pitch, roll], close_gripper"""
         default_delta_angle = angle_diff(self._default_angle, self._curr_angle)
+
+        if self.DoF == 2:
+            delta_pos, delta_angle = (
+                np.concatenate(
+                    (action[:2], self._default_pos[2:]),
+                ),
+                default_delta_angle,
+            )
         if self.DoF == 3:
-            delta_pos, delta_angle, gripper = (
+            delta_pos, delta_angle = (
                 action[:-1],
                 default_delta_angle,
-                action[-1],
             )
         elif self.DoF == 4:
-            delta_pos, delta_angle, gripper = (
+            delta_pos, delta_angle = (
                 action[:3],
                 [default_delta_angle[0], default_delta_angle[1], action[3]],
-                action[-1],
             )
         elif self.DoF == 6:
-            delta_pos, delta_angle, gripper = action[:3], action[3:6], action[-1]
+            delta_pos, delta_angle = action[:3], action[3:6]
+
+        if self.gripper:
+            gripper = action[-1]
+        else:
+            gripper = 0.0
         return np.array(delta_pos), np.array(delta_angle), gripper
 
     def _limit_velocity(self, lin_vel, rot_vel):
@@ -346,7 +394,7 @@ class RobotEnv(gym.Env):
         )
         return lin_vel, rot_vel
 
-    def _get_valid_pos_and_gripper(self, pos, gripper):
+    def _get_valid_pos_and_gripper(self, pos):
         """To avoid situations where robot can break the object / burn out joints,
         allowing us to specify (x, y, z, gripper) where the robot cannot enter. Gripper is included
         because (x, y, z) is different when gripper is open/closed.
@@ -363,7 +411,7 @@ class RobotEnv(gym.Env):
         pos[1] = pos[1].clip(y_low, y_high)  # new y
         pos[2] = pos[2].clip(z_low, z_high)  # new z
 
-        return pos, gripper
+        return pos
 
     def _update_robot(self, action, action_space, blocking=False):
         assert action_space in [
@@ -389,6 +437,14 @@ class RobotEnv(gym.Env):
     def _num_cameras(self):
         return len(self._camera_reader._all_cameras)
     
+    def render(self):
+        if self.sim:
+            return self._robot.render()
+        else:
+            imgs = self.get_images()
+            sn = next(iter(imgs))
+            return imgs[sn]["rgb"]
+
     def get_images(self):
         if self.sim:
             return self._robot.render()
@@ -411,12 +467,17 @@ class RobotEnv(gym.Env):
 
     def get_state(self):
         state_dict = {}
-        gripper_state = self._robot.get_gripper_state()
+        if self.gripper:
+            gripper_state = self._robot.get_gripper_state()
 
         state_dict["control_key"] = "current_pose"
 
-        state_dict["current_pose"] = np.concatenate(
-            [self._robot.get_ee_pos(), self._robot.get_ee_angle(), [gripper_state]]
+        state_dict["current_pose"] = (
+            np.concatenate(
+                [self._robot.get_ee_pos(), self._robot.get_ee_angle(), [gripper_state]]
+            )
+            if self.gripper
+            else np.concatenate([self._robot.get_ee_pos(), self._robot.get_ee_angle()])
         )
 
         state_dict["joint_positions"] = self._robot.get_joint_positions()
@@ -427,13 +488,11 @@ class RobotEnv(gym.Env):
         return state_dict
 
     def get_images_and_points(self):
-        
         assert self.calib_dict is not None, "Calibration file not provided!"
 
         img_dict = self.get_images()
-        
-        for sn, img in img_dict.items():
 
+        for sn, img in img_dict.items():
             intrinsic = compute_camera_intrinsic(
                 self.calib_dict[sn]["intrinsic"]["fx"],
                 self.calib_dict[sn]["intrinsic"]["fy"],
@@ -441,13 +500,14 @@ class RobotEnv(gym.Env):
                 self.calib_dict[sn]["intrinsic"]["ppy"],
             )
             extrinsic = compute_camera_extrinsic(
-                pos=self.calib_dict[sn]["extrinsic"]["pos"], ori=self.calib_dict[sn]["extrinsic"]["ori"]
+                pos=self.calib_dict[sn]["extrinsic"]["pos"],
+                ori=self.calib_dict[sn]["extrinsic"]["ori"],
             )
 
             img_dict[sn]["points"] = depth_to_points(img["depth"], intrinsic, extrinsic)
-        
+
         return img_dict
-            
+
     def _randomize_reset_pos(self):
         """takes random action along x-y plane, no change to z-axis / gripper"""
         random_xy = np.random.uniform(-0.5, 0.5, (2,))
@@ -475,23 +535,47 @@ class RobotEnv(gym.Env):
         # set gripper width
         gripper_width = current_state["current_pose"][-1:]
         # compute and normalize ee/qpos state
+        if self.DoF == 2:
+            ee_pos = (
+                np.concatenate([current_state["current_pose"][:2], gripper_width])
+                if self.gripper
+                else current_state["current_pose"][:2]
+            )
         if self.DoF == 3:
-            ee_pos = np.concatenate([current_state["current_pose"][:3], gripper_width])
+            ee_pos = (
+                np.concatenate([current_state["current_pose"][:3], gripper_width])
+                if self.gripper
+                else current_state["current_pose"][:3]
+            )
         elif self.DoF == 4:
-            ee_pos = np.concatenate(
-                [
-                    current_state["current_pose"][:3],
-                    current_state["current_pose"][5:6],
-                    gripper_width,
-                ]
+            ee_pos = (
+                np.concatenate(
+                    [
+                        current_state["current_pose"][:3],
+                        current_state["current_pose"][5:6],
+                        gripper_width,
+                    ]
+                )
+                if self.gripper
+                else np.concatenate(
+                    [
+                        current_state["current_pose"][:3],
+                        current_state["current_pose"][5:6],
+                    ]
+                )
             )
         elif self.DoF == 6:
-            ee_pos = np.concatenate(
-                [
-                    current_state["current_pose"][:6],
-                    gripper_width,
-                ]
+            ee_pos = (
+                np.concatenate(
+                    [
+                        current_state["current_pose"][:6],
+                        gripper_width,
+                    ]
+                )
+                if self.gripper
+                else current_state["current_pose"][:6]
             )
+
         qpos = np.concatenate([current_state["joint_positions"], gripper_width])
 
         obs_dict = {

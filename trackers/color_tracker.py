@@ -3,6 +3,7 @@ import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
 
+from helpers.pointclouds import crop_points
 
 class ColorTracker:
     def __init__(self, outlier_removal=True):
@@ -72,28 +73,56 @@ class ColorTracker:
     ):
         from helpers.transformations import euler_to_quat
         from helpers.pointclouds import points_to_pcd, visualize_pcds
-        import pyransac3d as pyrsc
 
-        # Fit cuboid
-        plano1 = pyrsc.Cuboid()
-        best_eq, best_inliers = plano1.fit(points, thresh=0.001, maxIteration=500)
-        rod_pcd = points_to_pcd(points)
-        plane = rod_pcd.select_by_index(best_inliers).paint_uniform_color([1, 0, 0])
+        # crop to height
+        points_crop = crop_points(points, crop_min=[-1.,-1.,0.01], crop_max=[1.,1.,0.05])
+        
+        # fit cuboid
+        # plano1 = pyrsc.Cuboid()
+        # best_eq, best_inliers = plano1.fit(points_crop, thresh=0.05, maxIteration=500)
+
+        rod_pcd = points_to_pcd(points_crop)
+        # plane = rod_pcd.select_by_index(best_inliers).paint_uniform_color([1, 0, 0])
 
         # Fit the best oriented bounding box to the cuboid points.
-        obb = plane.get_oriented_bounding_box()
+        # obb = plane.get_oriented_bounding_box()
+
+        # if show:
+        #     obb.color = np.array([255.0, 0.0, 0])
+
+        #     mesh_box = o3d.geometry.TriangleMesh.create_box(width=1.5, height=1.5, depth=1e-3)
+        #     mesh_box = mesh_box.translate(np.array([-0.75, -0.75, 5e-4]))
+
+        #     visualize_pcds([obb, rod_pcd, mesh_box])
+
+        # center = obb.center.copy()
+
+        # get most outer points
+        points_max = points_crop.argmax(axis=0)
+        points_min = points_crop.argmin(axis=0)
+        boxpoints = np.concatenate((points_crop[points_max], points_crop[points_min]), axis=0)
+        # collapse to (almost) 2D plane
+        boxpoints[:, 2] /= 100
+        box = points_to_pcd(boxpoints)
+
+        # fit the best oriented bounding box to the "plane".
+        obb = box.get_oriented_bounding_box()
+        obb.color = np.array([255.0, 0.0, 0])
 
         if show:
-            obb.color = np.array([255.0, 0.0, 0])
-            visualize_pcds([obb, rod_pcd])
+            mesh_box = o3d.geometry.TriangleMesh.create_box(width=1.5, height=1.5, depth=1e-3)
+            mesh_box = mesh_box.translate(np.array([-0.75, -0.75, 5e-4]))
+
+            visualize_pcds([obb, box, rod_pcd, mesh_box])
 
         center = obb.center.copy()
 
-        boxpoints = np.asarray(obb.get_box_points())
+        # compute orientation
         left_idxs = np.asarray(boxpoints[:, 1] > obb.center[1])
         right_idxs = np.asarray(boxpoints[:, 1] <= obb.center[1])
         left_val = boxpoints[left_idxs].mean(axis=0)
         right_val = boxpoints[right_idxs].mean(axis=0)
+
         deg_z = np.arctan2(right_val[0] - left_val[0], left_val[1] - right_val[1])
         degs = np.asarray([0, 0, deg_z])
         quats = euler_to_quat(degs)

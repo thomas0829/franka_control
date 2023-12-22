@@ -23,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument("--save_dir", type=str, default="data")
     
     # hardware
-    parser.add_argument("--dof", type=int, default=2, choices=[2, 3, 4, 6])
+    parser.add_argument("--dof", type=int, default=4, choices=[2, 3, 4, 6])
     parser.add_argument("--robot_type", type=str, default="panda", choices=["panda", "fr3"])
     parser.add_argument("--ip_address", type=str, default="172.16.0.1", choices=[None, "localhost", "172.16.0.1"])
     parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
@@ -43,51 +43,27 @@ if __name__ == '__main__':
         control_hz=control_hz,
         DoF=args.dof,
         robot_type=args.robot_type,
-        gripper=False,
+        gripper=True,
         ip_address=args.ip_address,
         camera_model=args.camera_model,
-        max_lin_vel=1.0,
-        max_rot_vel=1.0,
+        max_lin_vel=2.0,
+        max_rot_vel=5.0,
         max_path_length=args.max_episode_length,
     )
 
     tracker = ColorTracker(outlier_removal=True)
     tracker.reset()
     # define workspace
-    crop_min = [0.0, -0.4, -0.1]
-    crop_max = [0.5, 0.4, 0.5]
-    
-    # custom reset pose
-    env._reset_joint_qpos = np.array(
-            [
-                0.02013862,
-                0.50847548,
-                -0.09224909,
-                -2.36841345,
-                0.1598147,
-                2.88097692,
-                0.63428867
-            ]
-        )
+    crop_min = [0.0, -0.6, -0.1]
+    crop_max = [0.7, 0.6, 0.5]
+ 
     obs = env.reset()
-
-    # fixed z value (overwrites reset)
-    env.ee_space.low[2] = 0.13
-    env.ee_space.high[2] = 0.14
     
-    # env._robot.update_command(_reset_joint_qpos, action_space="joint_position", blocking=True)
-    # obs = env.get_observation()
-
-    from gym.spaces import Box
-    env.observation_space = Box(-np.ones(16), np.ones(16))
-
-    model = sb3.PPO("MlpPolicy", env, device=device, n_steps=10, batch_size=48)
-    model = model.load("policy.zip")
-
     imgs = []
-    for i in range(args.max_episode_length):
-        
-        # TRACKING
+    actions = np.ones(env.action_shape)
+
+    # run for 25 steps to get filtered estimate
+    for i in range(25):
         obs_dict = env.get_images_and_points()
         rgbs, points = [], []
         for key in obs_dict.keys():
@@ -95,17 +71,51 @@ if __name__ == '__main__':
             points.append(obs_dict[key]['points'])
         tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
         cropped_points = crop_points(tracked_points, crop_min=crop_min, crop_max=crop_max)
+        
+        # WARNING: only use filter when position is fixed!
         rod_pose = tracker.get_rod_pose(cropped_points, lowpass_filter=True, cutoff_freq=1, control_hz=control_hz, show=False)
+        time.sleep(0.1)
 
-        # PREDICT
-        obs_tmp = np.concatenate((obs["lowdim_ee"][:2], rod_pose, obs["lowdim_qpos"][:-1]))
-        actions, _state = model.predict(obs_tmp, deterministic=False)
+    rod_angle = quat_to_euler(rod_pose[3:]).copy()
+    print(env._robot.get_ee_angle(), rod_angle)
 
-        # ACT
-        actions = np.random.uniform(-1, 1, size=env.action_shape)
-        next_obs, rew, done, _ = env.step(actions)
-        imgs.append(env.render())
-        obs = next_obs
+    # MOVE ABOVE ROD
+    target_pose = rod_pose.copy()
+    # set fixed height
+    target_pose[2] = 0.4
+    # set rod z angle + offset
+    target_pose[3:6] = rod_angle + np.pi/4
+    # overwrite x,y angle w/ gripper default
+    target_pose[3:5] = env._default_angle[:2]
+    # set dummy gripper
+    target_pose[-1] = 0
+
+    # update pose
+    env._robot.update_pose(target_pose, blocking=True)
+
+    # MOVE DOWN
+    target_pose[2] = 0.11
+    env._robot.update_pose(target_pose, blocking=True)
+    
+    # PICK
+    env._robot.update_gripper(1., velocity=False, blocking=True)
+
+    # MOVE UP
+    target_pose[2] = 0.2
+    env._robot.update_pose(target_pose, blocking=True)
+
+    # MOVE DOWN
+    target_pose[2] = 0.10
+    env._robot.update_pose(target_pose, blocking=True)
+    
+    # DROP
+    env._robot.update_gripper(0., velocity=False, blocking=True)
+
+    # MOVE UP
+    target_pose[2] = 0.2
+    env._robot.update_pose(target_pose, blocking=True)
+    
+    imgs.append(env.render())
 
     env.reset()
 

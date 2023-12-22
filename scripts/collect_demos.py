@@ -6,6 +6,8 @@ import argparse
 import numpy as np
 import joblib
 
+from tqdm import tqdm
+
 from robot.robot_env import RobotEnv
 from robot.controllers.oculus import VRController
 from training.buffer import DictReplayBuffer
@@ -26,6 +28,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    args.exp = "test"
+    assert args.exp is not None, "Specify --exp"
     env = RobotEnv(
         control_hz=10,
         DoF=args.dof,
@@ -47,39 +51,50 @@ if __name__ == '__main__':
     )
 
     oculus = VRController()
-    assert oculus.get_info()["controller_on"], "WARNING: oculus controller off"
+    assert oculus.get_info()["controller_on"], "ERROR: oculus controller off"
     print("Oculus Connected")
 
     traj_idcs = []
-    success_idcs = []
 
     for i in range(args.episodes):
 
-        obs = env.reset()
-        assert "img_obs_0" in obs.keys(), "ERROR: camera not connected!"
+        env.reset()
+        assert env._num_cameras > 0, "ERROR: camera(s) not connected!"
+        print(f"Camera(s) Connected ({env._num_cameras})")
         
-        print(f"Start Collecting Trajectory {i}")
+        print(f"Press 'A' to Start Collecting")
+        # time to reset the scene
+        while True:
+            info = oculus.get_info()
+            if info["success"]:
+                # get obs after resetting scene
+                obs = env.get_observation()
+                break
         
-        time_step = 0
+        print(f"Press 'B' to Stop Collecting")
+
         start_pos = buffer.pos
 
-        while True and args.max_episode_length > time_step:
-            
-            # prepare obs for oculus
-            pose = env._robot.get_ee_pose()
-            gripper = env._robot.get_gripper_position()
-            state = {"robot_state": {"cartesian_position": pose, "gripper_position": gripper}}
-            action = oculus.forward(state)
+        for j in tqdm(range(args.max_episode_length), desc=f"Collecting Trajectory {i}"):
+
+            # wait for controller input
             info = oculus.get_info()
+            while not (info["failure"] or info["movement_enabled"]):
+                info = oculus.get_info()
 
-            # press A or B to end a trajectory
-            if info["success"] or info["failure"]:
-                success = True if info["success"] else False
-                success_idcs.append(success)
-                break
+            # press 'B' to end a trajectory
+            if info["failure"]:
+                continue
 
-            # check if tirgger button is pressed
+            # check if 'trigger' button is pressed
             if info["movement_enabled"]:
+
+                # prepare obs for oculus
+                pose = env._robot.get_ee_pose()
+                gripper = env._robot.get_gripper_position()
+                state = {"robot_state": {"cartesian_position": pose, "gripper_position": gripper}}
+                action = oculus.forward(state)
+
                 # prepare act
                 if args.dof == 3:
                     action = np.concatenate((action[:3], action[-1:]))
@@ -90,16 +105,18 @@ if __name__ == '__main__':
                 next_obs, rew, done, _ = env.step(action)
                 
                 buffer.push(obs, action, rew, next_obs, done)
+                
+                # env._robot.update_command(action, action_space="cartesian_velocity", blocking=False)
+                # next_obs = env.get_observation()
+                
                 obs = next_obs
-                print(f"Recorded Timestep {time_step} of Trajectory {i}")
-                time_step += 1
         
         print(f"Recorded Trajectory {i}")
         traj_idcs.append(buffer.pos)
         
     env.reset()
 
-    print("Finished Data Collection: save & exiting")
+    print(f"Finished Collecting {i} Trajectories: save & exiting")
 
     save_dir = os.path.join(args.save_dir, args.exp)
     os.makedirs(save_dir, exist_ok=True)
@@ -107,6 +124,5 @@ if __name__ == '__main__':
     joblib.dump(buffer, os.path.join(save_dir, "buffer.gz"), compress=3)
     # save traj indices
     joblib.dump(traj_idcs, os.path.join(save_dir, "idcs.gz"))
-    joblib.dump(success_idcs, os.path.join(save_dir, "success.gz"))
 
     print(f"Saved at {save_dir}")

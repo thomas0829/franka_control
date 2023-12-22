@@ -201,27 +201,14 @@ class FrankaHardware:
         )
 
     def update_gripper(self, command, velocity=True, blocking=False):
-
-        # if velocity:
-        #     gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)
-        #     command = gripper_delta + self.get_gripper_position()
-
-        # command = float(np.clip(command, 0, 1))
-        # self._gripper.grasp(grasp_width=self._max_gripper_width * (1 - command), speed=0.05, force=0.1, blocking=blocking)
-
-        # return 
         if velocity:
             gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)
             command = gripper_delta + self.get_gripper_position()
 
         command = float(np.clip(command, 0, 1))
         # https://github.com/facebookresearch/fairo/issues/1398
-        # for robotiq consider using
-        # self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.1, blocking=blocking)
-        if command > 0.:
-            self._gripper.grasp(grasp_width=0.0, speed=0.5, force=5., blocking=blocking)
-        else:
-            self._gripper.grasp(grasp_width=self._max_gripper_width, speed=0.1, force=10., blocking=blocking)
+        self._gripper.grasp(grasp_width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
+        
 
     def add_noise_to_joints(self, original_joints, cartesian_noise):
         original_joints = torch.Tensor(original_joints)

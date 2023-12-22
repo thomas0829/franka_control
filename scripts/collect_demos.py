@@ -34,7 +34,7 @@ if __name__ == '__main__':
     os.makedirs(save_dir, exist_ok=True)
     
     env = RobotEnv(
-        control_hz=15,
+        control_hz=10,
         DoF=args.dof,
         robot_type=args.robot_type,
         ip_address=args.ip_address,
@@ -99,14 +99,14 @@ if __name__ == '__main__':
 
                 # convert vel to delta actions
                 delta_act = env._robot._ik_solver.cartesian_velocity_to_delta(vel_act)
-                
+                delta_gripper = env._robot._ik_solver.gripper_velocity_to_delta(vel_act[-1:])
                 # prepare act
                 if args.dof == 3:
                     act = np.concatenate((delta_act[:3], delta_act[-1:]))
                 elif args.dof == 4:
-                    act = np.concatenate((delta_act[:3], delta_act[5:6], vel_act[-1:]))
+                    act = np.concatenate((delta_act[:3], delta_act[5:6], delta_gripper))
                 elif args.dof == 6:
-                    act = np.concatenate((delta_act, vel_act[-1:]))
+                    act = np.concatenate((delta_act, delta_gripper))
                 
                 next_obs, rew, done, _ = env.step(act)
 

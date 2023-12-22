@@ -301,10 +301,10 @@ class RobotEnv(gym.Env):
         return norm_qpos
 
     def reset_gripper(self):
-        self._robot.update_gripper(-1.0, velocity=False, blocking=True)
+        self._robot.update_gripper(-1., velocity=False, blocking=True)
 
     def reset(self):
-        # ensure robot drops whatever it has grasped
+        # ensure robot releases grasp before reset
         if self.gripper:
             self.reset_gripper()
         # reset to home pose

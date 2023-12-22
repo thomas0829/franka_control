@@ -77,8 +77,8 @@ class RobotEnv(gym.Env):
 
         # action space
         self.action_space = Box(
-            np.array([-1] * (self.DoF + 1)),  # dx_low, dy_low, dz_low, dgripper_low
-            np.array([1] * (self.DoF + 1)),  # dx_high, dy_high, dz_high, dgripper_high
+            np.array([-1.] * (self.DoF + 1), dtype=np.float32),  # dx_low, dy_low, dz_low, dgripper_low
+            np.array([1.] * (self.DoF + 1), dtype=np.float32),  # dx_high, dy_high, dz_high, dgripper_high
         )
         self.action_shape = self.action_space.shape
 
@@ -101,7 +101,7 @@ class RobotEnv(gym.Env):
                 (ee_space_high[:3], ee_space_high[5:6], ee_space_high[-1:])
             )
 
-        self.ee_space = Box(low=ee_space_low, high=ee_space_high)
+        self.ee_space = Box(low=np.float32(ee_space_low), high=np.float32(ee_space_high))
 
         # joint limits + gripper
         # https://frankaemika.github.io/docs/control_parameters.html
@@ -271,7 +271,7 @@ class RobotEnv(gym.Env):
         return norm_qpos
 
     def reset_gripper(self):
-        self._robot.update_gripper(-1, velocity=False, blocking=True)
+        self._robot.update_gripper(-1., velocity=False, blocking=True)
 
     def reset(self):
         # ensure robot drops whatever it has grasped
@@ -286,10 +286,12 @@ class RobotEnv(gym.Env):
                     action_space="joint_position",
                     blocking=True,
                 )
-            if self.is_robot_reset():
+            is_reset, joint_dist = self.is_robot_reset(epsilon=0.1)
+            if is_reset:
                 break
             else:
-                print("WARNING: reset failed, trying again")
+                print(f"WARNING: reset failed w/ joint_dist={joint_dist}, trying again")
+                time.sleep(1.)
 
         # fix default angle at first joint reset
         if self._episode_count == 0:
@@ -363,7 +365,7 @@ class RobotEnv(gym.Env):
 
         return pos, gripper
 
-    def _update_robot(self, action, action_space="cartesian_velocity", blocking=False):
+    def _update_robot(self, action, action_space, blocking=False):
         assert action_space in [
             "cartesian_position",
             "joint_position",
@@ -383,6 +385,10 @@ class RobotEnv(gym.Env):
     def _curr_angle(self):
         return self._robot.get_ee_angle()
 
+    @property
+    def _num_cameras(self):
+        return len(self._camera_reader._all_cameras)
+    
     def get_images(self):
         if self.sim:
             return self._robot.render()
@@ -507,5 +513,5 @@ class RobotEnv(gym.Env):
     def is_robot_reset(self, epsilon=0.1):
         curr_joints = self._robot.get_joint_positions()
         joint_dist = np.linalg.norm(curr_joints - self._reset_joint_qpos)
-        return joint_dist < epsilon
+        return joint_dist < epsilon, joint_dist
 

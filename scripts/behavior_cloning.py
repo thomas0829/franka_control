@@ -110,29 +110,35 @@ if __name__ == "__main__":
 
     device = torch.device(("cuda:" + str(args.gpu_id)) if args.gpu_id >= 0. and torch.cuda.is_available() else "cpu")
 
-    buffer = joblib.load(os.path.join(args.save_dir, args.exp, "buffer.gz"))
-    for k in buffer.observations.keys():
-        buffer.observations[k] = buffer.observations[k][: len(buffer)]
-    buffer.actions = buffer.actions[: len(buffer)]
-
-    # idcs = joblib.load(os.path.join(args.save_dir, args.exp, "idcs.gz"))
+    from os import listdir
+    from os.path import isfile, join
     
-    # imgs = buffer.observations["img_obs_0"]
-    # imageio.mimsave("real_rollout.mp4", imgs.cpu().numpy(), fps=30)
-    # print(f"Loaded {len(buffer)} time steps")
+    # get all filenames
+    path = os.path.join(args.save_dir, args.exp)
+    filenames = [f for f in listdir(path) if isfile(join(path, f)) and f.split('_')[0] == "traj" and f.split('.')[-1] == "gz"]
 
+    # load single sample
+    obs_keys = ['lowdim_ee', 'lowdim_qpos', '207322251049_rgb']
+    obs_dict = {}
+    acts = []
+    obs, act = joblib.load(os.path.join(path, filenames[0]))
+    for k in obs_keys:
+        obs_dict[k] = [obs[k]]
+    acts.append(act) 
+
+    # setup obs and act space
     state_obs_shape = None
     img_obs_shape = None
     if args.modality == "state" or args.modality == "all":
         state_obs_shape = (
-            buffer.observations["lowdim_ee"].shape[1]
-            + buffer.observations["lowdim_qpos"].shape[1],
+            obs_dict["lowdim_ee"].shape[1]
+            + obs_dict["lowdim_qpos"].shape[1],
         ) 
     if args.modality == "images" or args.modality == "all":
-        img_shape = buffer.observations["img_obs_0"].shape
+        img_shape = obs_dict["207322251049_rgb"].shape
         img_obs_shape = (img_shape[3], img_shape[1], img_shape[2])
-
-    act_shape = (buffer.actions.shape[1],)
+    act_shape = (acts.shape[1],)
+    
     policy = GaussianPolicy(
         act_shape,
         state_obs_shape=state_obs_shape,
@@ -144,7 +150,22 @@ if __name__ == "__main__":
 
     if args.mode == "train":
 
-        dataset = DictDataset(buffer.observations, buffer.actions, device=device)
+        # load rest of the data
+        for filename in tqdm(filenames[1:]):
+            obs, act = joblib.load(os.path.join(path, filename))
+            for k in obs_keys:
+                obs_dict[k].append(obs[k])
+            acts.append(act) 
+
+        for k in obs_keys:
+            obs_dict[k] = np.concatenate(obs_dict[k], axis=0)
+        acts = np.concatenate(acts, axis=0)
+
+        # crop images
+        obs_dict["rgb"] = obs_dict.pop('207322251049_rgb')[:,:,50:530]
+
+        # push in dataloader
+        dataset = DictDataset(obs_dict, acts, device=device)
         dataloader = DataLoader(
             dataset,
             batch_size=args.batch_size,

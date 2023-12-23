@@ -36,8 +36,6 @@ if __name__ == '__main__':
         gripper=True,
         ip_address=args.ip_address,
         camera_model=args.camera_model,
-        max_lin_vel=1.0,
-        max_rot_vel=1.0,
         max_path_length=args.max_episode_length,
     )
 

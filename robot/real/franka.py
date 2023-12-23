@@ -207,8 +207,12 @@ class FrankaHardware:
 
         command = float(np.clip(command, 0, 1))
         # https://github.com/facebookresearch/fairo/issues/1398
-        self._gripper.grasp(grasp_width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
-        
+        # for robotiq consider using
+        # self._gripper.grasp(grasp_width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
+        if command > 0.:
+            self._gripper.grasp(grasp_width=0.0, speed=0.5, force=5., blocking=blocking)
+        else:
+            self._gripper.grasp(grasp_width=self._max_gripper_width, speed=0.5, force=5., blocking=blocking)
 
     def add_noise_to_joints(self, original_joints, cartesian_noise):
         original_joints = torch.Tensor(original_joints)

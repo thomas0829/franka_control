@@ -104,9 +104,9 @@ if __name__ == '__main__':
                 if args.dof == 3:
                     act = np.concatenate((delta_act[:3], delta_act[-1:]))
                 elif args.dof == 4:
-                    act = np.concatenate((delta_act[:3], delta_act[5:6], delta_gripper))
+                    act = np.concatenate((delta_act[:3], delta_act[5:6], vel_act[-1:]))
                 elif args.dof == 6:
-                    act = np.concatenate((delta_act, delta_gripper))
+                    act = np.concatenate((delta_act, vel_act[-1:]))
                 
                 next_obs, rew, done, _ = env.step(act)
 

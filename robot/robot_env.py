@@ -242,7 +242,7 @@ class RobotEnv(gym.Env):
         pos_action, angle_action, gripper = self._format_action(action)
 
         # clipping + any safety corrections for position
-        desired_pos = self._get_valid_pos_and_gripper(self._curr_pos + pos_action)
+        desired_pos = self._get_valid_pos(self._curr_pos + pos_action)
         desired_angle = add_angles(angle_action, self._curr_angle)
         # if self.DoF == 4:
         #     desired_angle[2] = desired_angle[2].clip(
@@ -301,7 +301,7 @@ class RobotEnv(gym.Env):
         return norm_qpos
 
     def reset_gripper(self):
-        self._robot.update_gripper(-1., velocity=False, blocking=True)
+        self._robot.update_gripper(0., velocity=False, blocking=True)
 
     def reset(self):
         # ensure robot releases grasp before reset
@@ -383,7 +383,7 @@ class RobotEnv(gym.Env):
             gripper = 0.0
         return np.array(delta_pos), np.array(delta_angle), gripper
 
-    def _get_valid_pos_and_gripper(self, pos):
+    def _get_valid_pos(self, pos):
         """To avoid situations where robot can break the object / burn out joints,
         allowing us to specify (x, y, z, gripper) where the robot cannot enter. Gripper is included
         because (x, y, z) is different when gripper is open/closed.

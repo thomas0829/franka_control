@@ -209,6 +209,7 @@ class FrankaHardware:
         # https://github.com/facebookresearch/fairo/issues/1398
         # for robotiq consider using
         # self._gripper.grasp(grasp_width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
+        # for franka gripper, use discrete grasp/ungrasp
         if command > 0.:
             self._gripper.grasp(grasp_width=0.0, speed=0.5, force=5., blocking=blocking)
         else:

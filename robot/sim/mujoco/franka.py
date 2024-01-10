@@ -82,7 +82,7 @@ class FrankaMujoco(FrankaBase):
 
         # polymetis control: load robot model
         import torchcontrol as toco
-        robot_description_path = "panda_arm.urdf"
+        robot_description_path = "robot/real/config/panda_arm.urdf"
         ee_link_name = "panda_link8"
         self.robot_model = toco.models.RobotModelPinocchio(
                     robot_description_path, ee_link_name
@@ -91,7 +91,7 @@ class FrankaMujoco(FrankaBase):
         # polymetis control: load robot hardware config
         import yaml
         # polymetis/polymetis/conf/robot_client/franka_hardware.yaml -> replaced by R2D2 
-        with open("franka_hardware.yaml", "r") as stream:
+        with open("robot/real/config/franka_hardware.yaml", "r") as stream:
             try:
                 franka_hardware_conf = yaml.safe_load(stream)
             except yaml.YAMLError as exc:

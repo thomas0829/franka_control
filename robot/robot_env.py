@@ -71,7 +71,16 @@ class RobotEnv(gym.Env):
         self._pause_after_reset = pause_after_reset
         # polymetis _robot.home_pose
         self._reset_joint_qpos = np.array(
-            [-0.1394, -0.0205, -0.0520, -2.0691, 0.0506, 2.0029, -0.9168]
+            # [-0.1394, -0.0205, -0.0520, -2.0691, 0.0506, 2.0029, -0.9168]
+            [
+                -0.13677763938903809,
+                0.006021707784384489,
+                -0.048125553876161575,
+                -2.0723488330841064,
+                -0.021774671971797943,
+                2.0718562602996826,
+                0.5588430762290955,
+            ]
         )
 
         # observation space config
@@ -301,7 +310,7 @@ class RobotEnv(gym.Env):
         return norm_qpos
 
     def reset_gripper(self):
-        self._robot.update_gripper(0., velocity=False, blocking=True)
+        self._robot.update_gripper(0.0, velocity=False, blocking=True)
 
     def reset(self):
         # ensure robot releases grasp before reset

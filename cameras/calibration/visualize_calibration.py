@@ -19,6 +19,8 @@ if __name__ == "__main__":
         from cameras.zed_camera import gather_zed_cameras
         cameras = gather_zed_cameras()
 
+    print(f"Found {len(cameras)} {camera_model} camera(s).")
+
     from cameras.multi_camera_wrapper import MultiCameraWrapper
     camera_reader = MultiCameraWrapper(cameras)
     

@@ -17,13 +17,13 @@ from robot.controllers.utils import generate_joint_space_min_jerk
 
 class FrankaHardware:
 
-    def __init__(self, ip_address, robot_type, gripper=True, control_hz=15, custom_controller=False, gain_scale=1.5, reset_gain_scale=1.0):
+    def __init__(self, ip_address, robot_type, gripper=True, control_hz=15, custom_controller=True, gain_scale=1.5, reset_gain_scale=1.0):
         
         self.control_hz = control_hz
         self.robot_type = robot_type
         
         # TODO verify on FR3 but works on panda
-        self.custom_controller = False # False if robot_type == "panda" else custom_controller
+        self.custom_controller = False if robot_type == "panda" else custom_controller
 
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
@@ -127,7 +127,8 @@ class FrankaHardware:
         if blocking and self.custom_controller:
             if not self._robot.is_running_policy():
                 self._start_custom_controller()
-            self.move_to_joint_positions(command, time_to_go=3)
+            time_to_go = self.adaptive_time_to_go(command)
+            self.move_to_joint_positions(command, time_to_go=time_to_go)
         # kill cartesian impedance
         elif blocking:
             if self._robot.is_running_policy():
@@ -289,7 +290,7 @@ class FrankaHardware:
 
         return state_dict, timestamp_dict
 
-    def adaptive_time_to_go(self, desired_joint_position, t_min=0, t_max=4):
+    def adaptive_time_to_go(self, desired_joint_position, t_min=1, t_max=4):
         curr_joint_position = self._robot.get_joint_positions()
         displacement = desired_joint_position - curr_joint_position
         time_to_go = self._robot._adaptive_time_to_go(displacement)

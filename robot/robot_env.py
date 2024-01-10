@@ -91,10 +91,10 @@ class RobotEnv(gym.Env):
         # action space
         self.action_space = Box(
             np.array(
-                [-1.0] * (self.DoF + 1), dtype=np.float32
+                [-1.0] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
             ),  # dx_low, dy_low, dz_low, dgripper_low
             np.array(
-                [1.0] * (self.DoF + 1), dtype=np.float32
+                [1.0] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
             ),  # dx_high, dy_high, dz_high, dgripper_high
         )
         self.action_shape = self.action_space.shape
@@ -102,8 +102,8 @@ class RobotEnv(gym.Env):
         # EE position (x, y, z) + EE rot (roll, pitch, yaw) + gripper width
         # ee_space_low = np.array([0.2, -0.4, 0.15, -3.14, -3.14, -3.14, 0.00])
         # ee_space_high = np.array([0.65, 0.4, 0.8, 3.14, 3.14, 3.14, 0.085])
-        ee_space_low = np.array([0.2, -0.4, 0.13, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.65, 0.4, 0.8, 3.14, 3.14, 3.14, 0.085])
+        ee_space_low = np.array([0.35, -0.38, 0.13, -3.14, -3.14, -3.14, 0.00])
+        ee_space_high = np.array([0.65, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:

@@ -24,7 +24,7 @@ if __name__ == '__main__':
     
     # hardware
     parser.add_argument("--dof", type=int, default=2, choices=[2, 3, 4, 6])
-    parser.add_argument("--robot_type", type=str, default="panda", choices=["panda", "fr3"])
+    parser.add_argument("--robot_type", type=str, default="fr3", choices=["panda", "fr3"])
     parser.add_argument("--ip_address", type=str, default="172.16.0.1", choices=[None, "localhost", "172.16.0.1"])
     parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
     
@@ -46,8 +46,6 @@ if __name__ == '__main__':
         gripper=False,
         ip_address=args.ip_address,
         camera_model=args.camera_model,
-        max_lin_vel=1.0,
-        max_rot_vel=1.0,
         max_path_length=args.max_episode_length,
     )
 
@@ -72,7 +70,7 @@ if __name__ == '__main__':
     obs = env.reset()
 
     # fixed z value (overwrites reset)
-    env.ee_space.low[2] = 0.13
+    env.ee_space.low[2] = 0.14
     env.ee_space.high[2] = 0.14
     
     # env._robot.update_command(_reset_joint_qpos, action_space="joint_position", blocking=True)
@@ -99,6 +97,7 @@ if __name__ == '__main__':
 
         # PREDICT
         obs_tmp = np.concatenate((obs["lowdim_ee"][:2], rod_pose, obs["lowdim_qpos"][:-1]))
+        # print("ee", obs["lowdim_ee"][:2], "rod", rod_pose[:2])
         actions, _state = model.predict(obs_tmp, deterministic=False)
 
         # ACT

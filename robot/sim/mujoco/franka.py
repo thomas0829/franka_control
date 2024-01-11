@@ -1,18 +1,21 @@
+import os
+
+import torch
+
 from robot.franka_base import FrankaBase
 
-import os
-import torch
 os.environ["MUJOCO_GL"] = "egl"
 
-import numpy as np
-import mujoco
-from robot.real.inverse_kinematics.robot_ik_solver import RobotIKSolver
-import mujoco_viewer
 import copy
 
-from helpers.transformations import euler_to_quat, quat_to_euler, rmat_to_quat, rmat_to_euler
-from polymetis import RobotInterface
+import mujoco
+import mujoco_viewer
+import numpy as np
+
+from helpers.transformations import (euler_to_quat, quat_to_euler,
+                                     rmat_to_euler, rmat_to_quat)
 from robot.controllers.utils import generate_joint_space_min_jerk
+
 
 class FrankaMujoco(FrankaBase):
     def __init__(
@@ -90,6 +93,7 @@ class FrankaMujoco(FrankaBase):
 
         # polymetis control: load robot hardware config
         import yaml
+
         # polymetis/polymetis/conf/robot_client/franka_hardware.yaml -> replaced by R2D2 
         with open("robot/real/config/franka_hardware.yaml", "r") as stream:
             try:
@@ -191,9 +195,8 @@ class FrankaMujoco(FrankaBase):
         return self.policy is not None
     
     def _start_custom_controller(self, q_desired=None, ctrl_mode=0.0):
-        from robot.controllers.mixed_cartesian_impedance import (
-            MixedCartesianImpedanceControl,
-        )
+        from robot.controllers.mixed_cartesian_impedance import \
+            MixedCartesianImpedanceControl
 
         self.policy = MixedCartesianImpedanceControl(
             joint_pos_current=torch.tensor(self.get_joint_positions()),
@@ -339,13 +342,13 @@ class FrankaMujoco(FrankaBase):
         output_pkt = self._update_current_controller(udpate_pkt)
 
         # TODO torque control
-        # self.data.ctrl[: len(self.franka_joint_ids)] = output_pkt["joint_torques"].detach().numpy()
-        # mujoco.mj_step(self.model, self.data)
+        self.data.ctrl[: len(self.franka_joint_ids)] = output_pkt["joint_torques"].detach().numpy() + self.data.qfrc_bias
+        mujoco.mj_step(self.model, self.data)
         # mujoco.mj_step(self.model, self.data, nstep=self.frame_skip // 10)
         
-        if "q_desired" in udpate_pkt:
-            self.data.qpos[: len(self.franka_joint_ids)] = udpate_pkt["q_desired"]
-            mujoco.mj_forward(self.model, self.data)
+        # if "q_desired" in udpate_pkt:
+        #     self.data.qpos[: len(self.franka_joint_ids)] = udpate_pkt["q_desired"]
+        #     mujoco.mj_forward(self.model, self.data)
 
     def move_to_joint_positions(self, q_desired=None, time_to_go=3):
         # Use registered controller

@@ -3,6 +3,7 @@ results/
 models/
 caldata.pkl
 data/
+outputs/
 
 *.gif
 *.json

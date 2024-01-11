@@ -13,13 +13,6 @@ from training.policies import GaussianPolicy
 from torch.utils.data import DataLoader
 from training.dataset import DictDataset
 
-# def process_obs(obs):
-#     sn = env._camera_reader._all_cameras[0]._camera._serial_number
-#     # crop to 480x480
-#     obs[f"{sn}_rgb"] = obs.pop(f"{sn}_rgb")[:,50:530]
-#     obs[f"{sn}_depth"] = obs.pop(f"{sn}_depth")[:,50:530]
-#     return obs
-
 def train_policy(
     policy,
     dataloader,
@@ -48,7 +41,7 @@ def train_policy(
                     (obs["lowdim_ee"], obs["lowdim_qpos"]), dim=1
                 )
             if args.modality == "images" or args.modality == "all":
-                obs_dict["img"] = obs["img_obs_0"].permute(0, 3, 1, 2)
+                obs_dict["img"] = obs["rgb"].permute(0, 3, 1, 2)
 
             for k in obs_dict.keys():
                 obs_dict[k] = torch.tensor(
@@ -131,13 +124,13 @@ if __name__ == "__main__":
     img_obs_shape = None
     if args.modality == "state" or args.modality == "all":
         state_obs_shape = (
-            obs_dict["lowdim_ee"].shape[1]
-            + obs_dict["lowdim_qpos"].shape[1],
+            obs_dict["lowdim_ee"][0].shape[1]
+            + obs_dict["lowdim_qpos"][0].shape[1],
         ) 
     if args.modality == "images" or args.modality == "all":
-        img_shape = obs_dict["207322251049_rgb"].shape
+        img_shape = [0, 480, 480, 3] # obs_dict["207322251049_rgb"][0].shape
         img_obs_shape = (img_shape[3], img_shape[1], img_shape[2])
-    act_shape = (acts.shape[1],)
+    act_shape = (acts[0].shape[1],)
     
     policy = GaussianPolicy(
         act_shape,

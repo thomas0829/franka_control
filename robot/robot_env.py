@@ -71,7 +71,16 @@ class RobotEnv(gym.Env):
         self._pause_after_reset = pause_after_reset
         # polymetis _robot.home_pose
         self._reset_joint_qpos = np.array(
-            [-0.1394, -0.0205, -0.0520, -2.0691, 0.0506, 2.0029, -0.9168]
+            # [-0.1394, -0.0205, -0.0520, -2.0691, 0.0506, 2.0029, -0.9168]
+            [
+                -0.13677763938903809,
+                0.006021707784384489,
+                -0.048125553876161575,
+                -2.0723488330841064,
+                -0.021774671971797943,
+                2.0718562602996826,
+                0.5588430762290955,
+            ]
         )
 
         # observation space config
@@ -82,10 +91,10 @@ class RobotEnv(gym.Env):
         # action space
         self.action_space = Box(
             np.array(
-                [-1.0] * (self.DoF + 1), dtype=np.float32
+                [-1.0] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
             ),  # dx_low, dy_low, dz_low, dgripper_low
             np.array(
-                [1.0] * (self.DoF + 1), dtype=np.float32
+                [1.0] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
             ),  # dx_high, dy_high, dz_high, dgripper_high
         )
         self.action_shape = self.action_space.shape
@@ -93,8 +102,8 @@ class RobotEnv(gym.Env):
         # EE position (x, y, z) + EE rot (roll, pitch, yaw) + gripper width
         # ee_space_low = np.array([0.2, -0.4, 0.15, -3.14, -3.14, -3.14, 0.00])
         # ee_space_high = np.array([0.65, 0.4, 0.8, 3.14, 3.14, 3.14, 0.085])
-        ee_space_low = np.array([0.2, -0.4, 0.13, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.65, 0.4, 0.8, 3.14, 3.14, 3.14, 0.085])
+        ee_space_low = np.array([0.35, -0.38, 0.13, -3.14, -3.14, -3.14, 0.00])
+        ee_space_high = np.array([0.65, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:
@@ -205,16 +214,17 @@ class RobotEnv(gym.Env):
         }
 
         imgs = self.get_images()
-        for sn, img in imgs.items():
-            for m, modality in img.items():
-                if m == "rgb":
-                    env_obs_spaces[f"{sn}_{m}"] = Box(0, 255, modality.shape, np.uint8)
-                elif m == "depth":
-                    env_obs_spaces[f"{sn}_{m}"] = Box(
-                        0, 65535, modality.shape, np.uint16
-                    )
-                elif m == "points":
-                    pass
+        if len(imgs) > 0:
+            for sn, img in imgs.items():
+                for m, modality in img.items():
+                    if m == "rgb":
+                        env_obs_spaces[f"{sn}_{m}"] = Box(0, 255, modality.shape, np.uint8)
+                    elif m == "depth":
+                        env_obs_spaces[f"{sn}_{m}"] = Box(
+                            0, 65535, modality.shape, np.uint16
+                        )
+                    elif m == "points":
+                        pass
 
         if not self._qpos:
             env_obs_spaces.pop("lowdim_qpos", None)
@@ -261,7 +271,8 @@ class RobotEnv(gym.Env):
 
         comp_time = time.time() - start_time
         sleep_left = max(0, (1 / self.control_hz) - comp_time)
-        time.sleep(sleep_left)
+        if not self.sim:
+            time.sleep(sleep_left)
         obs = self.get_observation()
 
         self._curr_path_length += 1
@@ -301,7 +312,7 @@ class RobotEnv(gym.Env):
         return norm_qpos
 
     def reset_gripper(self):
-        self._robot.update_gripper(0., velocity=False, blocking=True)
+        self._robot.update_gripper(0.0, velocity=False, blocking=True)
 
     def reset(self):
         # ensure robot releases grasp before reset
@@ -309,12 +320,9 @@ class RobotEnv(gym.Env):
             self.reset_gripper()
         # reset to home pose
         for _ in range(3):
-            if self.sim:
-                self._robot.update_joints(self._reset_joint_qpos)
-            else:
-                self._robot.update_joints(
-                    self._reset_joint_qpos, velocity=False, blocking=True
-                )
+            self._robot.update_joints(
+                self._reset_joint_qpos, velocity=False, blocking=True
+            )
 
             epsilon = 0.1
             is_reset, joint_dist = self.is_robot_reset(epsilon=epsilon)
@@ -325,7 +333,8 @@ class RobotEnv(gym.Env):
                 print(
                     f"WARNING: reset failed w/ joint_dist={np.round(joint_dist,4)} > {epsilon}, trying again"
                 )
-                time.sleep(1.0)
+                if not self.sim:
+                    time.sleep(1.0)
 
         # fix default pos and angle at first joint reset
         if self._episode_count == 0:
@@ -339,7 +348,8 @@ class RobotEnv(gym.Env):
 
         if self._randomize_ee_on_reset:
             self._randomize_reset_pos()
-            time.sleep(1)
+            if not self.sim:
+                time.sleep(1)
 
         if self._pause_after_reset:
             user_input = input(
@@ -366,7 +376,7 @@ class RobotEnv(gym.Env):
             )
         if self.DoF == 3:
             delta_pos, delta_angle = (
-                action[:-1],
+                action[:3],
                 default_delta_angle,
             )
         elif self.DoF == 4:
@@ -427,32 +437,29 @@ class RobotEnv(gym.Env):
         return len(self._camera_reader._all_cameras)
 
     def render(self):
-        if self.sim:
-            return self._robot.render()
-        else:
-            imgs = self.get_images()
-            sn = next(iter(imgs))
-            return imgs[sn]["rgb"]
+        imgs = self.get_images()
+        sn = next(iter(imgs))
+        return imgs[sn]["rgb"]
 
     def get_images(self):
         if self.sim:
-            return self._robot.render()
+            imgs = self._robot.render()
         else:
             imgs = self._camera_reader.read_cameras()
 
-            img_dict = {}
-            for img in imgs:
-                sn = img["serial_number"].split("/")[0]
+        img_dict = {}
+        for img in imgs:
+            sn = img["serial_number"].split("/")[0]
 
-                if img_dict.get(sn) is None:
-                    img_dict[sn] = {}
+            if img_dict.get(sn) is None:
+                img_dict[sn] = {}
 
-                if img["type"] == "depth":
-                    img_dict[sn]["depth"] = img["array"]
-                elif img["type"] == "rgb":
-                    img_dict[sn]["rgb"] = img["array"]
+            if img["type"] == "depth":
+                img_dict[sn]["depth"] = img["array"]
+            elif img["type"] == "rgb":
+                img_dict[sn]["rgb"] = img["array"]
 
-            return img_dict
+        return img_dict
 
     def get_state(self):
         state_dict = {}
@@ -572,9 +579,10 @@ class RobotEnv(gym.Env):
             "lowdim_qpos": self.normalize_ee_obs(qpos) if self.normalize else qpos,
         }
 
-        for sn, img in current_images.items():
-            for m, modality in img.items():
-                obs_dict[f"{sn}_{m}"] = modality
+        if len(current_images) > 0:
+            for sn, img in current_images.items():
+                for m, modality in img.items():
+                    obs_dict[f"{sn}_{m}"] = modality
 
         if not self._qpos:
             obs_dict.pop("lowdim_qpos", None)

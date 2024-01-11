@@ -19,6 +19,7 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
         kd_pos,
         desired_joint_pos,
         robot_model: torch.nn.Module,
+        ctrl_mode=1,
         ignore_gravity=True,
     ):
         """
@@ -53,7 +54,7 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
         self.ee_vel_desired = torch.nn.Parameter(torch.zeros(3))
         self.ee_rvel_desired = torch.nn.Parameter(torch.zeros(3))
         self.ctrl_mode = torch.nn.Parameter(
-            torch.ones(1)
+            torch.ones(1) * ctrl_mode
         )  # Mode 0 joint PD Mode 1 cartesian
 
     def forward(self, state_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
@@ -102,8 +103,15 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
             # print("Doing joint PD")
             q_current = state_dict["joint_positions"]
             qd_current = state_dict["joint_velocities"]
-            self.feedback.Kp = torch.diag(self.kp)
-            self.feedback.Kd = torch.diag(self.kd)
+            
+            kp_diag = torch.diag(self.kp)
+            kd_diag = torch.diag(self.kd)
+            if type(kp_diag) is torch.Tensor:
+                kp_diag = torch.nn.Parameter(kp_diag)
+            if type(kd_diag) is torch.Tensor:
+                kd_diag = torch.nn.Parameter(kd_diag)
+            self.feedback.Kp = kp_diag
+            self.feedback.Kd = kd_diag
 
             # Execute PD control
             output = self.feedback(

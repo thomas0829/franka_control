@@ -1,7 +1,11 @@
 __pycache__/
 results/
-*.png
-*.zip
 models/
 caldata.pkl
 data/
+outputs/
+
+*.gif
+*.json
+*.png
+*.zip

@@ -7,23 +7,27 @@ import numpy as np
 import torch
 from polymetis import GripperInterface, RobotInterface
 
-from helpers.subprocess_utils import run_terminal_command, run_threaded_command
-
 # UTILITY SPECIFIC IMPORTS
+from helpers.subprocess_utils import run_threaded_command
 from helpers.transformations import add_poses, euler_to_quat, pose_diff, quat_to_euler
-from robot.real.inverse_kinematics.robot_ik_solver import RobotIKSolver
+
+from robot.franka_base import FrankaBase
 from robot.controllers.utils import generate_joint_space_min_jerk
 
 
-class FrankaHardware:
+class FrankaHardware(FrankaBase):
+    def __init__(
+        self,
+        ip_address,
+        robot_type="panda",
+        control_hz=15,
+        gripper=True,
+        custom_controller=True,
+        gain_scale=1.5,
+        reset_gain_scale=1.0,
+    ):
 
-    def __init__(self, ip_address, robot_type, gripper=True, control_hz=15, gain_scale=1.5, reset_gain_scale=1.0):
-        
-        self.control_hz = control_hz
-        self.robot_type = robot_type
-        
-        # TODO verify on FR3 but works on panda
-        self.custom_controller = False if robot_type == "panda" else True
+        super().__init__(robot_type=robot_type, control_hz=control_hz, gripper=gripper, custom_controller=custom_controller)
 
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
@@ -33,60 +37,36 @@ class FrankaHardware:
     def reset(self):
         self.update_joints(self._robot.home_pose, velocity=False, blocking=True)
 
-    # def launch_controller(self):
-    #     try:
-    #         self.kill_controller()
-    #     except:
-    #         pass
-
-    #     dir_path = os.path.dirname(os.path.realpath(__file__))
-    #     self._robot_process = run_terminal_command(
-    #         "echo " + sudo_password + " | sudo -S " + "bash " + dir_path + "/launch_robot.sh"
-    #     )
-    #     self._gripper_process = run_terminal_command(
-    #         "echo " + sudo_password + " | sudo -S " + "bash " + dir_path + "/launch_gripper.sh"
-    #     )
-    #     self._server_launched = True
-    #     time.sleep(5)
-    
     def launch_robot(self, ip_address, gripper=True):
         self._robot = RobotInterface(ip_address=ip_address)
         self._gripper = None
         if gripper:
             self._gripper = GripperInterface(ip_address=ip_address)
             self._max_gripper_width = self._gripper.metadata.max_width
-        self._ik_solver = RobotIKSolver(robot_type=self.robot_type, control_hz=self.control_hz)
-
-    # def kill_controller(self):
-    #     self._robot_process.kill()
-    #     self._gripper_process.kill()
-
-    def update_command(self, command, action_space="cartesian_velocity", blocking=False):
-        action_dict = self.create_action_dict(command, action_space=action_space)
-
-        self.update_joints(action_dict["joint_position"], velocity=False, blocking=blocking)
-        
-        if self._gripper:
-            self.update_gripper(action_dict["gripper_position"], velocity=False, blocking=blocking)
-
-        return action_dict
 
     def _start_custom_controller(self):
-        from robot.controllers.mixed_cartesian_impedance import MixedCartesianImpedanceControl
+        from robot.controllers.mixed_cartesian_impedance import (
+            MixedCartesianImpedanceControl,
+        )
+
         policy = MixedCartesianImpedanceControl(
-                    joint_pos_current=self._robot.get_joint_positions(),
-                    Kp=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kx), # the higher, the faster it returns to pos
-                    Kd=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kxd), # the higher, the stiffer around pos
-                    kp_pos=self.gain_scale
-                    * torch.Tensor(self._robot.metadata.default_Kq),
-                    kd_pos=self.gain_scale
-                    * torch.Tensor(self._robot.metadata.default_Kqd),
-                    desired_joint_pos=self._robot.get_joint_positions(),
-                    robot_model=self._robot.robot_model,
-                    ignore_gravity=True,
-                )
+            joint_pos_current=self._robot.get_joint_positions(),
+            Kp=self.gain_scale
+            * torch.Tensor(
+                self._robot.metadata.default_Kx
+            ),  # the higher, the faster it returns to pos
+            Kd=self.gain_scale
+            * torch.Tensor(
+                self._robot.metadata.default_Kxd
+            ),  # the higher, the stiffer around pos
+            kp_pos=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kq),
+            kd_pos=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kqd),
+            desired_joint_pos=self._robot.get_joint_positions(),
+            robot_model=self._robot.robot_model,
+            ignore_gravity=True,
+        )
         self._robot.send_torch_policy(policy, blocking=False)
-        
+
     def update_pose(self, command, velocity=False, blocking=False):
         if blocking:
             if velocity:
@@ -97,7 +77,9 @@ class FrankaHardware:
             pos = torch.Tensor(command[:3])
             quat = torch.Tensor(euler_to_quat(command[3:6]))
             curr_joints = self._robot.get_joint_positions()
-            desired_joints, success = self._robot.solve_inverse_kinematics(pos, quat, curr_joints)
+            desired_joints, success = self._robot.solve_inverse_kinematics(
+                pos, quat, curr_joints
+            )
             if success:
                 self.update_joints(desired_joints, velocity=False, blocking=True)
             else:
@@ -109,11 +91,15 @@ class FrankaHardware:
                 command = self._ik_solver.cartesian_delta_to_velocity(cartesian_delta)
 
             robot_state = self.get_robot_state()[0]
-            joint_velocity = self._ik_solver.cartesian_velocity_to_joint_velocity(command, robot_state=robot_state)
+            joint_velocity = self._ik_solver.cartesian_velocity_to_joint_velocity(
+                command, robot_state=robot_state
+            )
 
             self.update_joints(joint_velocity, velocity=True, blocking=False)
 
-    def update_joints(self, command, velocity=False, blocking=False, cartesian_noise=None):
+    def update_joints(
+        self, command, velocity=False, blocking=False, cartesian_noise=None
+    ):
         if cartesian_noise is not None:
             command = self.add_noise_to_joints(command, cartesian_noise)
         command = torch.Tensor(command)
@@ -121,13 +107,14 @@ class FrankaHardware:
         if velocity:
             joint_delta = self._ik_solver.joint_velocity_to_delta(command)
             command = joint_delta + self._robot.get_joint_positions()
-        
+
         # BLOCKING EXECUTION
         # make sure custom controller is running
         if blocking and self.custom_controller:
             if not self._robot.is_running_policy():
                 self._start_custom_controller()
-            self.move_to_joint_positions(command, time_to_go=3)
+            time_to_go = self.adaptive_time_to_go(command)
+            self.move_to_joint_positions(command, time_to_go=time_to_go)
         # kill cartesian impedance
         elif blocking:
             if self._robot.is_running_policy():
@@ -140,8 +127,9 @@ class FrankaHardware:
 
             self._robot.start_cartesian_impedance()
 
-        # NON BLOCKING   
+        # NON BLOCKING
         else:
+
             def helper_non_blocking():
                 if not self._robot.is_running_policy():
                     if self.custom_controller:
@@ -155,6 +143,7 @@ class FrankaHardware:
                         self._robot.update_desired_joint_positions(command)
                 except grpc.RpcError:
                     pass
+
             run_threaded_command(helper_non_blocking)
 
     def update_desired_joint_positions(self, q_desired=None, kp=None, kd=None):
@@ -171,11 +160,10 @@ class FrankaHardware:
         if kd is not None:
             udpate_pkt["kd"] = kd if torch.is_tensor(kd) else torch.tensor(kd)
         assert udpate_pkt, "Atleast one parameter needs to be specified for udpate"
-        
+
         self._robot.update_current_policy(udpate_pkt)
 
     def move_to_joint_positions(self, q_desired=None, time_to_go=3):
-
         # Use registered controller
         q_current = self._robot.get_joint_positions()
 
@@ -188,7 +176,8 @@ class FrankaHardware:
         for i in range(len(waypoints)):
             self.update_desired_joint_positions(
                 q_desired=waypoints[i]["position"],
-                kp=self.reset_gain_scale * torch.Tensor(self._robot.metadata.default_Kq),
+                kp=self.reset_gain_scale
+                * torch.Tensor(self._robot.metadata.default_Kq),
                 kd=self.reset_gain_scale
                 * torch.Tensor(self._robot.metadata.default_Kqd),
             )
@@ -210,10 +199,17 @@ class FrankaHardware:
         # for robotiq consider using
         # self._gripper.grasp(grasp_width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
         # for franka gripper, use discrete grasp/ungrasp
-        if command > 0.:
-            self._gripper.grasp(grasp_width=0.0, speed=0.5, force=5., blocking=blocking)
+        if command > 0.0:
+            self._gripper.grasp(
+                grasp_width=0.0, speed=0.5, force=5.0, blocking=blocking
+            )
         else:
-            self._gripper.grasp(grasp_width=self._max_gripper_width, speed=0.5, force=5., blocking=blocking)
+            self._gripper.grasp(
+                grasp_width=self._max_gripper_width,
+                speed=0.5,
+                force=5.0,
+                blocking=blocking,
+            )
 
     def add_noise_to_joints(self, original_joints, cartesian_noise):
         original_joints = torch.Tensor(original_joints)
@@ -225,7 +221,9 @@ class FrankaHardware:
         new_pos = torch.Tensor(new_pose[:3])
         new_quat = torch.Tensor(euler_to_quat(new_pose[3:]))
 
-        noisy_joints, success = self._robot.solve_inverse_kinematics(new_pos, new_quat, original_joints)
+        noisy_joints, success = self._robot.solve_inverse_kinematics(
+            new_pos, new_quat, original_joints
+        )
 
         if success:
             desired_joints = noisy_joints
@@ -245,7 +243,7 @@ class FrankaHardware:
             return 1 - (self._gripper.get_state().width / self._max_gripper_width)
         else:
             return 0.0
-        
+
     def get_ee_pose(self):
         pos, quat = self._robot.get_ee_pose()
         angle = quat_to_euler(quat.numpy())
@@ -266,7 +264,9 @@ class FrankaHardware:
     def get_robot_state(self):
         robot_state = self._robot.get_robot_state()
         gripper_position = self.get_gripper_position()
-        pos, quat = self._robot.robot_model.forward_kinematics(torch.Tensor(robot_state.joint_positions))
+        pos, quat = self._robot.robot_model.forward_kinematics(
+            torch.Tensor(robot_state.joint_positions)
+        )
         cartesian_position = pos.tolist() + quat_to_euler(quat.numpy()).tolist()
 
         state_dict = {
@@ -275,8 +275,12 @@ class FrankaHardware:
             "joint_positions": list(robot_state.joint_positions),
             "joint_velocities": list(robot_state.joint_velocities),
             "joint_torques_computed": list(robot_state.joint_torques_computed),
-            "prev_joint_torques_computed": list(robot_state.prev_joint_torques_computed),
-            "prev_joint_torques_computed_safened": list(robot_state.prev_joint_torques_computed_safened),
+            "prev_joint_torques_computed": list(
+                robot_state.prev_joint_torques_computed
+            ),
+            "prev_joint_torques_computed_safened": list(
+                robot_state.prev_joint_torques_computed_safened
+            ),
             "motor_torques_measured": list(robot_state.motor_torques_measured),
             "prev_controller_latency_ms": robot_state.prev_controller_latency_ms,
             "prev_command_successful": robot_state.prev_command_successful,
@@ -289,60 +293,9 @@ class FrankaHardware:
 
         return state_dict, timestamp_dict
 
-    def adaptive_time_to_go(self, desired_joint_position, t_min=0, t_max=4):
+    def adaptive_time_to_go(self, desired_joint_position, t_min=1, t_max=4):
         curr_joint_position = self._robot.get_joint_positions()
         displacement = desired_joint_position - curr_joint_position
         time_to_go = self._robot._adaptive_time_to_go(displacement)
         clamped_time_to_go = min(t_max, max(time_to_go, t_min))
         return clamped_time_to_go
-
-    def create_action_dict(self, action, action_space, robot_state=None):
-        assert action_space in ["cartesian_position", "joint_position", "joint_position_slow", "cartesian_velocity", "joint_velocity"]
-        if robot_state is None:
-            robot_state = self.get_robot_state()[0]
-        action_dict = {"robot_state": robot_state}
-        velocity = "velocity" in action_space
-
-        if velocity:
-            action_dict["gripper_velocity"] = action[-1]
-            gripper_delta = self._ik_solver.gripper_velocity_to_delta(action[-1])
-            gripper_position = robot_state["gripper_position"] + gripper_delta
-            action_dict["gripper_position"] = float(np.clip(gripper_position, 0, 1))
-        else:
-            action_dict["gripper_position"] = float(np.clip(action[-1], 0, 1))
-            gripper_delta = action_dict["gripper_position"] - robot_state["gripper_position"]
-            gripper_velocity = self._ik_solver.gripper_delta_to_velocity(gripper_delta)
-            action_dict["gripper_delta"] = gripper_velocity
-
-        if "cartesian" in action_space:
-            if velocity:
-                action_dict["cartesian_velocity"] = action[:-1]
-                cartesian_delta = self._ik_solver.cartesian_velocity_to_delta(action[:-1])
-                action_dict["cartesian_position"] = add_poses(
-                    cartesian_delta, robot_state["cartesian_position"]
-                ).tolist()
-            else:
-                action_dict["cartesian_position"] = action[:-1]
-                cartesian_delta = pose_diff(action[:-1], robot_state["cartesian_position"])
-                cartesian_velocity = self._ik_solver.cartesian_delta_to_velocity(cartesian_delta)
-                action_dict["cartesian_velocity"] = cartesian_velocity.tolist()
-
-            action_dict["joint_velocity"] = self._ik_solver.cartesian_velocity_to_joint_velocity(
-                action_dict["cartesian_velocity"], robot_state=robot_state
-            ).tolist()
-            joint_delta = self._ik_solver.joint_velocity_to_delta(action_dict["joint_velocity"])
-            action_dict["joint_position"] = (joint_delta + np.array(robot_state["joint_positions"])).tolist()
-
-        if "joint" in action_space:
-            # NOTE: Joint to Cartesian has undefined dynamics due to IK
-            if velocity:
-                action_dict["joint_velocity"] = action[:-1]
-                joint_delta = self._ik_solver.joint_velocity_to_delta(action[:-1])
-                action_dict["joint_position"] = (joint_delta + np.array(robot_state["joint_positions"])).tolist()
-            else:
-                action_dict["joint_position"] = action[:-1]
-                joint_delta = np.array(action[:-1]) - np.array(robot_state["joint_positions"])
-                joint_velocity = self._ik_solver.joint_delta_to_velocity(joint_delta)
-                action_dict["joint_velocity"] = joint_velocity.tolist()
-
-        return action_dict

@@ -23,9 +23,9 @@ if __name__ == '__main__':
     parser.add_argument("--save_dir", type=str, default="data")
     
     # hardware
-    parser.add_argument("--dof", type=int, default=2, choices=[2, 3, 4, 6])
+    parser.add_argument("--dof", type=int, default=3, choices=[2, 3, 4, 6])
     parser.add_argument("--robot_type", type=str, default="fr3", choices=["panda", "fr3"])
-    parser.add_argument("--ip_address", type=str, default="172.16.0.1", choices=[None, "localhost", "172.16.0.1"])
+    parser.add_argument("--ip_address", type=str, default=None, choices=[None, "localhost", "172.16.0.1"])
     parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
     
     # training
@@ -46,6 +46,7 @@ if __name__ == '__main__':
         gripper=False,
         ip_address=args.ip_address,
         camera_model=args.camera_model,
+        camera_resolution=(480, 480),
         max_path_length=args.max_episode_length,
     )
 
@@ -56,22 +57,7 @@ if __name__ == '__main__':
     crop_max = [0.5, 0.4, 0.5]
     
     # custom reset pose
-    env._reset_joint_qpos = np.array(
-            [
-                0.02013862,
-                0.50847548,
-                -0.09224909,
-                -2.36841345,
-                0.1598147,
-                2.88097692,
-                0.63428867
-            ]
-        )
     obs = env.reset()
-
-    # fixed z value (overwrites reset)
-    env.ee_space.low[2] = 0.14
-    env.ee_space.high[2] = 0.14
     
     # env._robot.update_command(_reset_joint_qpos, action_space="joint_position", blocking=True)
     # obs = env.get_observation()
@@ -85,26 +71,18 @@ if __name__ == '__main__':
     imgs = []
     for i in range(args.max_episode_length):
         
-        # TRACKING
-        obs_dict = env.get_images_and_points()
-        rgbs, points = [], []
-        for key in obs_dict.keys():
-            rgbs.append(obs_dict[key]['rgb'])
-            points.append(obs_dict[key]['points'])
-        tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
-        cropped_points = crop_points(tracked_points, crop_min=crop_min, crop_max=crop_max)
-        rod_pose = tracker.get_rod_pose(cropped_points, lowpass_filter=True, cutoff_freq=1, control_hz=control_hz, show=False)
-
         # PREDICT
-        obs_tmp = np.concatenate((obs["lowdim_ee"][:2], rod_pose, obs["lowdim_qpos"][:-1]))
-        # print("ee", obs["lowdim_ee"][:2], "rod", rod_pose[:2])
-        actions, _state = model.predict(obs_tmp, deterministic=False)
+        # obs_tmp = np.concatenate((obs["lowdim_ee"][:2], rod_pose, obs["lowdim_qpos"][:-1]))
+        # actions, _state = model.predict(obs_tmp, deterministic=False)
 
         # ACT
         actions = np.random.uniform(-1, 1, size=env.action_shape)
+        actions = np.array([0.5, 0.0, 0.0])
         next_obs, rew, done, _ = env.step(actions)
         imgs.append(env.render())
         obs = next_obs
+
+        print("ee", obs["lowdim_ee"][:2])
 
     env.reset()
 

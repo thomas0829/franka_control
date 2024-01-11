@@ -22,3 +22,9 @@ python scripts/behavior_cloning.py --exp pick_red --mode train --modality state 
 
 # todos
 - gripper on FR3, panda (WEIRD), panda (RSE) seem to behave differently...
+
+# debugging server/controller issues
+- restart server
+- sudo pkill -9 run_server
+- use default controller for panda and custom controller for FR3
+- move endeffector to home position (out of bbox defined in polymetis config)

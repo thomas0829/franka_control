@@ -1,5 +1,3 @@
-import stable_baselines3 as sb3
-
 import torch
 import os
 import time
@@ -24,8 +22,8 @@ if __name__ == '__main__':
     
     # hardware
     parser.add_argument("--dof", type=int, default=4, choices=[2, 3, 4, 6])
-    parser.add_argument("--robot_type", type=str, default="panda", choices=["panda", "fr3"])
-    parser.add_argument("--ip_address", type=str, default="172.16.0.1", choices=[None, "localhost", "172.16.0.1"])
+    parser.add_argument("--robot_type", type=str, default="fr3", choices=["panda", "fr3"])
+    parser.add_argument("--ip_address", type=str, default="localhost", choices=[None, "localhost", "172.16.0.1"])
     parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
     
     # training
@@ -46,8 +44,6 @@ if __name__ == '__main__':
         gripper=True,
         ip_address=args.ip_address,
         camera_model=args.camera_model,
-        max_lin_vel=2.0,
-        max_rot_vel=5.0,
         max_path_length=args.max_episode_length,
     )
 

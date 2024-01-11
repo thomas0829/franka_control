@@ -17,13 +17,13 @@ from robot.controllers.utils import generate_joint_space_min_jerk
 
 class FrankaHardware:
 
-    def __init__(self, ip_address, robot_type, gripper=True, control_hz=15, custom_controller=False, gain_scale=1.5, reset_gain_scale=1.0):
+    def __init__(self, ip_address, robot_type, gripper=True, control_hz=15, gain_scale=1.5, reset_gain_scale=1.0):
         
         self.control_hz = control_hz
         self.robot_type = robot_type
         
         # TODO verify on FR3 but works on panda
-        self.custom_controller = False # False if robot_type == "panda" else custom_controller
+        self.custom_controller = False if robot_type == "panda" else True
 
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale

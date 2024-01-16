@@ -342,7 +342,7 @@ class FrankaMujoco(FrankaBase):
         output_pkt = self._update_current_controller(udpate_pkt)
 
         # TODO torque control
-        self.data.ctrl[: len(self.franka_joint_ids)] = output_pkt["joint_torques"].detach().numpy() + self.data.qfrc_bias
+        self.data.ctrl[: len(self.franka_joint_ids)] = output_pkt["joint_torques"].detach().numpy() + self.data.qfrc_bias[: len(self.franka_joint_ids)]
         mujoco.mj_step(self.model, self.data)
         # mujoco.mj_step(self.model, self.data, nstep=self.frame_skip // 10)
         

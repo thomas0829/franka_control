@@ -1,5 +1,3 @@
-import stable_baselines3 as sb3
-
 import torch
 import os
 import time
@@ -64,9 +62,6 @@ if __name__ == '__main__':
 
     from gym.spaces import Box
     env.observation_space = Box(-np.ones(16), np.ones(16))
-
-    model = sb3.PPO("MlpPolicy", env, device=device, n_steps=10, batch_size=48)
-    model = model.load("policy.zip")
 
     imgs = []
     for i in range(args.max_episode_length):

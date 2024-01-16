@@ -11,7 +11,7 @@
   </equality>
 
   <actuator>
-    <general class="panda" name="actuator1" joint="robot:joint1" gainprm="4500" biasprm="0 -4500 -450"/>
+    <!-- <general class="panda" name="actuator1" joint="robot:joint1" gainprm="4500" biasprm="0 -4500 -450"/>
     <general class="panda" name="actuator2" joint="robot:joint2" gainprm="4500" biasprm="0 -4500 -450"
         ctrlrange="-1.7628 1.7628"/>
     <general class="panda" name="actuator3" joint="robot:joint3" gainprm="3500" biasprm="0 -3500 -350"/>
@@ -24,8 +24,14 @@
     <general class="panda" name="actuator7" joint="robot:joint7" gainprm="2000" biasprm="0 -2000 -200"
         forcerange="-12 12"/>
     <general class="panda" name="actuator8" tendon="split" forcerange="-100 100" ctrlrange="0 255"
-        gainprm="0.01568627451 0 0" biasprm="0 -100 -10"/>
-  </actuator>
+        gainprm="0.01568627451 0 0" biasprm="0 -100 -10"/> -->
+        <motor joint="panda_joint1" name="panda_actuator1"/>
+        <motor joint="panda_joint2" name="panda_actuator2"/>
+        <motor joint="panda_joint3" name="panda_actuator3"/>
+        <motor joint="panda_joint4" name="panda_actuator4"/>
+        <motor joint="panda_joint5" name="panda_actuator5"/>
+        <motor joint="panda_joint6" name="panda_actuator6"/>
+        <motor joint="panda_joint7" name="panda_actuator7"/>
+    </actuator>
+  
 </mujocoinclude>
-
-

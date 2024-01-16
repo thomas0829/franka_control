@@ -104,14 +104,14 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
             q_current = state_dict["joint_positions"]
             qd_current = state_dict["joint_velocities"]
             
-            kp_diag = torch.diag(self.kp)
-            kd_diag = torch.diag(self.kd)
-            if type(kp_diag) is torch.Tensor:
-                kp_diag = torch.nn.Parameter(kp_diag)
-            if type(kd_diag) is torch.Tensor:
-                kd_diag = torch.nn.Parameter(kd_diag)
-            self.feedback.Kp = kp_diag
-            self.feedback.Kd = kd_diag
+            # kp_diag = torch.nn.Parameter(torch.diag(self.kp))
+            # kd_diag = torch.nn.Parameter(torch.diag(self.kd))
+            # if type(kp_diag) is torch.Tensor:
+            #     kp_diag = torch.nn.Parameter(kp_diag)
+            # if type(kd_diag) is torch.Tensor:
+            #     kd_diag = torch.nn.Parameter(kd_diag)
+            self.feedback.Kp = torch.nn.Parameter(torch.diag(self.kp))
+            self.feedback.Kd = torch.nn.Parameter(torch.diag(self.kd))
 
             # Execute PD control
             output = self.feedback(

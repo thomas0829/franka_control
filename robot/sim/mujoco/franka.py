@@ -77,7 +77,7 @@ class FrankaMujoco(FrankaBase):
         for i in range(7):
             self.franka_joint_ids += [
                 mujoco.mj_name2id(
-                    self.model, mujoco.mjtObj.mjOBJ_JOINT, f"robot:joint{i+1}"
+                    self.model, mujoco.mjtObj.mjOBJ_JOINT, f"franka_joint{i+1}"
                 )
             ]
 
@@ -342,9 +342,12 @@ class FrankaMujoco(FrankaBase):
         output_pkt = self._update_current_controller(udpate_pkt)
 
         # TODO torque control
-        self.data.ctrl[: len(self.franka_joint_ids)] = output_pkt["joint_torques"].detach().numpy() + self.data.qfrc_bias
-        mujoco.mj_step(self.model, self.data)
-        # mujoco.mj_step(self.model, self.data, nstep=self.frame_skip // 10)
+        torque = output_pkt["joint_torques"].detach().numpy()
+        control = torque + self.data.qfrc_bias[: len(self.franka_joint_ids)]
+        print(torque, control)
+        self.data.ctrl[: len(self.franka_joint_ids)] = control
+        # mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
+        mujoco.mj_step(self.model, self.data, nstep=self.frame_skip // 10)
         
         # if "q_desired" in udpate_pkt:
         #     self.data.qpos[: len(self.franka_joint_ids)] = udpate_pkt["q_desired"]
@@ -355,20 +358,23 @@ class FrankaMujoco(FrankaBase):
         q_current = torch.tensor(self.get_joint_positions())
 
         # generate min jerk trajectory
-        dt = 0.1
-        waypoints = generate_joint_space_min_jerk(
-            start=q_current, goal=q_desired, time_to_go=time_to_go, dt=dt
-        )
-        # reset using min_jerk traj
-        for i in range(len(waypoints)):
-            self.update_desired_joint_positions(
-                q_desired=waypoints[i]["position"],
-                kp=self.reset_gain_scale
-                * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
-                kd=self.reset_gain_scale
-                * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
-            )
-            # time.sleep(dt)
+        # dt = 0.1
+        # waypoints = generate_joint_space_min_jerk(
+        #     start=q_current, goal=q_desired, time_to_go=time_to_go, dt=dt
+        # )
+        # # reset using min_jerk traj
+        # for i in range(len(waypoints)):
+        #     self.update_desired_joint_positions(
+        #         q_desired=waypoints[i]["position"],
+        #         kp=self.reset_gain_scale
+        #         * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
+        #         kd=self.reset_gain_scale
+        #         * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
+        #     )
+        #     # time.sleep(dt)
+
+        self.data.qpos[: len(self.franka_joint_ids)] = q_desired
+        mujoco.mj_forward(self.model, self.data)
 
         # reset back gains to gain-policy
         self.update_desired_joint_positions(

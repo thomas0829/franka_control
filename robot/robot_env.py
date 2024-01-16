@@ -1,14 +1,6 @@
-"""
-Basic Robot Environment Wrapper
-Robot Specific Functions: self._update_pose(), self.get_ee_pos(), self.get_ee_angle()
-Camera Specific Functions: self.render_obs()
-Experiment Specific Functions: self.get_info(), self.get_reward(), self.get_observation()
-"""
-import torch
 import numpy as np
 import time
 import gym
-import cv2
 
 from helpers.transformations import add_angles, angle_diff
 from gym.spaces import Box, Dict
@@ -22,7 +14,6 @@ from helpers.pointclouds import (
     crop_points,
     visualize_pcds,
 )
-
 
 class RobotEnv(gym.Env):
     """
@@ -190,13 +181,22 @@ class RobotEnv(gym.Env):
             self.sim = False
 
         else:
-            from robot.sim.mujoco.franka import FrankaMujoco
 
-            self._robot = FrankaMujoco(
+            # from robot.sim.mujoco.franka import FrankaMujoco
+            # self._robot = FrankaMujoco(
+            #     robot_type=robot_type,
+            #     control_hz=self.control_hz,
+            #     img_height=self.camera_resolution[0],
+            #     img_width=self.camera_resolution[1],
+            # )
+            
+            from robot.sim.mujoco.franka_poly import MujocoManipulatorEnv
+
+            self._robot = MujocoManipulatorEnv(
                 robot_type=robot_type,
                 control_hz=self.control_hz,
-                img_height=self.camera_resolution[0],
-                img_width=self.camera_resolution[1],
+                has_renderer=True,
+                has_offscreen_renderer=False,
             )
 
             # TODO create calibration from sim or use calibration in file to create sim
@@ -254,6 +254,7 @@ class RobotEnv(gym.Env):
         # clipping + any safety corrections for position
         desired_pos = self._get_valid_pos(self._curr_pos + pos_action)
         desired_angle = add_angles(angle_action, self._curr_angle)
+        
         # if self.DoF == 4:
         #     desired_angle[2] = desired_angle[2].clip(
         #         self.ee_space.low[3], self.ee_space.high[3]
@@ -266,7 +267,7 @@ class RobotEnv(gym.Env):
         # cartesian position (delta) control
         self._update_robot(
             np.concatenate((desired_pos, desired_angle, [gripper])),
-            action_space="cartesian_position",
+            action_space="cartesian_position"
         )
 
         comp_time = time.time() - start_time

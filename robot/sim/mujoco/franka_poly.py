@@ -518,6 +518,9 @@ class MujocoManipulatorEnv(FrankaBase):
     def get_gripper_state(self):
         return np.array(0)
     
+    def get_gripper_position(self):
+        return np.array(0)
+
 import hydra
 
 

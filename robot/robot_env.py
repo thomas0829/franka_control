@@ -435,7 +435,10 @@ class RobotEnv(gym.Env):
 
     @property
     def _num_cameras(self):
-        return len(self._camera_reader._all_cameras)
+        if self.sim:
+            return len(self._robot.camera_names)
+        else:
+            return len(self._camera_reader._all_cameras)
 
     def render(self):
         imgs = self.get_images()

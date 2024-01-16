@@ -12,7 +12,7 @@ class FrankaBase(abc.ABC):
 
         self.robot_type = robot_type
         self.control_hz = control_hz
-        self.custom_controller = False if self.robot_type == "panda" else custom_controller
+        self.custom_controller = True # False if self.robot_type == "panda" else custom_controller
 
         self.launch_ik()
 
@@ -23,7 +23,7 @@ class FrankaBase(abc.ABC):
         self, command, action_space="cartesian_velocity", blocking=False
     ):
         action_dict = self.create_action_dict(command, action_space=action_space)
-
+        
         self.update_joints(
             action_dict["joint_position"], velocity=False, blocking=blocking
         )
@@ -141,10 +141,6 @@ class FrankaBase(abc.ABC):
     @abc.abstractmethod
     def get_gripper_state(self):
         """Get gripper state"""
-
-    @abc.abstractmethod
-    def update_pose(self):
-        """Update robot pose [pos (xyz), angle (euler)]"""
 
     @abc.abstractmethod
     def update_joints(self, qpos, velocity=False, blocking=False):

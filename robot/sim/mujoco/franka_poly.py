@@ -488,7 +488,9 @@ class MujocoManipulatorEnv(FrankaBase):
             kp=self.gain_scale * torch.nn.Parameter(torch.tensor(self.metadata["default_Kq"], dtype=torch.float32)),
             kd=self.gain_scale * torch.nn.Parameter(torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32)),
         )
-
+        if self.has_renderer:
+            self.render()
+            
     def update_gripper(self, command, velocity=True, blocking=False):
         
         # TODO grasping for sim

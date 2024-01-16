@@ -4,6 +4,7 @@ from dm_robotics.moma.effectors import arm_effector, cartesian_6d_velocity_effec
 
 from robot.real.inverse_kinematics.arm import FrankaArm
 
+from helpers.transformations import quat_diff, quat_to_euler
 
 class RobotIKSolver:
     def __init__(self, robot_type, control_hz=10):
@@ -54,6 +55,24 @@ class RobotIKSolver:
         joint_velocity = self.joint_delta_to_velocity(joint_delta)
 
         return joint_velocity
+    
+    def cartesian_position_to_joint_position(self, desired_ee_pos, desired_ee_quat, robot_state):
+        qpos = np.array(robot_state["joint_positions"])
+        qvel = np.array(robot_state["joint_velocities"])
+        curr_pos, curr_quat = robot_state["cartesian_position"][:3], robot_state["cartesian_position"][3:]
+
+        lin_vel = desired_ee_pos - curr_pos
+        rot_vel = quat_to_euler(quat_diff(desired_ee_quat, curr_quat))
+
+        action = np.concatenate([lin_vel, rot_vel])
+        self._arm.update_state(self._physics, qpos, qvel)
+        self._cart_effector_6d.set_control(self._physics, action)
+        joint_vel_ctrl = self._physics.bind(self._arm.actuators).ctrl.copy()
+		
+        desired_qpos = qpos + joint_vel_ctrl
+        np.any(desired_qpos)
+
+        return desired_qpos
 
     ### Velocity To Delta ###
     def gripper_velocity_to_delta(self, gripper_velocity):

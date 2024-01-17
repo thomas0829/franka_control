@@ -92,12 +92,12 @@ class MujocoManipulatorEnv(FrankaBase):
         # self.robot_description_path = get_full_path_to_urdf(
         #     self.model_cfg.robot_description_path
         # )
-        self.robot_description_path = "/home/weirdlab/Projects/polymetis_franka/panda_arm.urdf"
+        self.robot_description_path = "panda_arm.urdf"
         robot_desc_mjcf_path = (
             os.path.splitext(self.robot_description_path)[0] + ".mjcf"
         )
 
-        robot_desc_mjcf_path = "/home/weirdlab/Projects/polymetis_franka/robot/sim/mujoco/assets/base_franka.xml"
+        robot_desc_mjcf_path = "robot/sim/mujoco/assets/base_franka.xml"
 
         assert os.path.exists(
             robot_desc_mjcf_path
@@ -295,7 +295,7 @@ class MujocoManipulatorEnv(FrankaBase):
         joint_velocities = self.get_joint_velocities()
 
         gripper_position = self.get_gripper_state()
-        pos, quat = self.get_ee_pos(), self.get_ee_angle(quat=True)
+        pos, quat = self.get_ee_pos(), self.get_ee_angle(quat=False)
 
         state_dict = {
             "cartesian_position": np.concatenate([pos, quat]),
@@ -416,7 +416,7 @@ class MujocoManipulatorEnv(FrankaBase):
                 
                 if self.custom_controller:
                     # run controller loop for int((1/self.control_hz) / self.model.opt.timestep) instead of time.sleep(1/self.control_hz)
-                    for _ in range(self.frame_skip):
+                    for _ in range(self.frame_skip*8):
                         self.update_desired_joint_positions(command)
                 else:
                     self._robot.update_desired_joint_positions(command)

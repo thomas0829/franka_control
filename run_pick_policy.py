@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     # hardware
     parser.add_argument("--dof", type=int, default=4, choices=[2, 3, 4, 6])
-    parser.add_argument("--robot_type", type=str, default="fr3", choices=["panda", "fr3"])
+    parser.add_argument("--robot_type", type=str, default="panda", choices=["panda", "fr3"])
     parser.add_argument("--ip_address", type=str, default="localhost", choices=[None, "localhost", "172.16.0.1"])
     parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
     

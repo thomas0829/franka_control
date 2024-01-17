@@ -143,7 +143,7 @@ class FrankaMujoco(FrankaBase):
         joint_velocities = self.get_joint_velocities()
 
         gripper_position = self.get_gripper_state()
-        pos, quat = self.get_ee_pos(), self.get_ee_angle(quat=True)
+        pos, quat = self.get_ee_pos(), self.get_ee_angle(quat=False)
 
         state_dict = {
             "cartesian_position": np.concatenate([pos, quat]),

@@ -10,7 +10,7 @@ import joblib
 from robot.robot_env import RobotEnv
 from trackers.color_tracker import ColorTracker
 from helpers.pointclouds import crop_points
-from helpers.transformations import quat_to_euler
+from helpers.transformations import quat_to_euler, euler_to_quat
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # hardware
     parser.add_argument("--dof", type=int, default=3, choices=[2, 3, 4, 6])
     parser.add_argument(
-        "--robot_type", type=str, default="panda", choices=["panda", "fr3"]
+        "--robot_type", type=str, default="fr3", choices=["panda", "fr3"]
     )
     parser.add_argument(
         "--ip_address",
@@ -77,10 +77,12 @@ if __name__ == "__main__":
     env.observation_space = Box(-np.ones(16), np.ones(16))
 
     # TODO REMOVE
-    ee_quat = env._robot.get_ee_angle(quat=True).copy()    
+    ee_quat = euler_to_quat(env._robot.get_ee_angle().copy())
 
+    pose = []
     imgs = []
-    for i in range(args.max_episode_length * 10):
+    # for i in range(args.max_episode_length):
+    for i in range(20):
     # while True:
         # PREDICT
         # obs_tmp = np.concatenate((obs["lowdim_ee"][:2], rod_pose, obs["lowdim_qpos"][:-1]))
@@ -88,19 +90,22 @@ if __name__ == "__main__":
 
         # ACT
         # actions = np.random.uniform(-1, 1, size=env.action_shape)
-        actions = np.array([0.0, 0.0, 0.1])
+        actions = np.array([0.0, 0.1, 0.0])
 
-        # ee_pos = np.array([0.5, 0.3, 0.3])
-        ee_pos = env._robot.get_ee_pos() + actions + np.random.uniform(-0.01, 0.01, size=3)
+        # # ee_pos = np.array([0.5, 0.3, 0.3])
+        ee_pos = env._robot.get_ee_pos() + actions # + np.random.uniform(-0.01, 0.01, size=3)
         # ee_quat = env._robot.get_ee_angle(quat=True)
         qpos = env._robot._ik_solver.cartesian_position_to_joint_position(ee_pos, ee_quat, env._robot.get_robot_state()[0])
 
         env._robot.update_command(
             np.concatenate((qpos, np.zeros((1,)))), action_space="joint_position", blocking=False
         )
-        env._robot.render()
+        time.sleep(0.1)
+        # # env._robot.render()
 
-        print(env._robot.get_ee_pose())
+        pose.append(env._robot.get_ee_pose())
+
+        print(env._robot.get_ee_pos())
         # next_obs, rew, done, _ = env.step(actions)
         # time.sleep(0.1)
         # imgs.append(env.render())
@@ -110,4 +115,5 @@ if __name__ == "__main__":
 
     env.reset()
 
-    imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
+    # np.save("real" if args.ip_address is not None else 'sim', np.array(pose))
+    # imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)

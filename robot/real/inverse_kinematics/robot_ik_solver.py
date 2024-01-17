@@ -4,7 +4,7 @@ from dm_robotics.moma.effectors import arm_effector, cartesian_6d_velocity_effec
 
 from robot.real.inverse_kinematics.arm import FrankaArm
 
-from helpers.transformations import quat_diff, quat_to_euler
+from helpers.transformations import quat_diff, quat_to_euler, euler_to_quat
 
 class RobotIKSolver:
     def __init__(self, robot_type, control_hz=10):
@@ -59,7 +59,7 @@ class RobotIKSolver:
     def cartesian_position_to_joint_position(self, desired_ee_pos, desired_ee_quat, robot_state):
         qpos = np.array(robot_state["joint_positions"])
         qvel = np.array(robot_state["joint_velocities"])
-        curr_pos, curr_quat = robot_state["cartesian_position"][:3], robot_state["cartesian_position"][3:]
+        curr_pos, curr_quat = robot_state["cartesian_position"][:3], euler_to_quat(robot_state["cartesian_position"][3:])
 
         lin_vel = desired_ee_pos - curr_pos
         rot_vel = quat_to_euler(quat_diff(desired_ee_quat, curr_quat))

@@ -4,6 +4,7 @@ models/
 caldata.pkl
 data/
 outputs/
+wandb/
 
 *.gif
 *.json

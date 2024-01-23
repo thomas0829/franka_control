@@ -575,7 +575,7 @@ import hydra
 
 @hydra.main(
     config_path="/home/weirdlab/Projects/polymetis_franka/",
-    config_name="franka_panda_with_hand",
+    config_name="franka_panda_with_hand", version_base="1.1"
 )
 def run(cfg):
     env = MujocoManipulatorEnv(cfg, gui=True)

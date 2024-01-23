@@ -1,18 +1,11 @@
-import argparse
-import datetime
 import os
 import time
+import datetime
+import argparse
 
-import imageio
-import joblib
-import numpy as np
 import torch
-from torchcontrol.policies import CartesianImpedanceControl
-
-from helpers.pointclouds import crop_points
-from helpers.transformations import euler_to_quat, quat_to_euler
-from robot.robot_env import RobotEnv
-from trackers.color_tracker import ColorTracker
+import imageio
+import numpy as np
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -65,33 +58,26 @@ if __name__ == "__main__":
         "on_screen_rendering": False,
     }
 
-    env = RobotEnv(**cfg)
-    from robot.sim.mujoco.asid_wrapper import ASIDWrapper
-    # from robot.real.asid_wrapper import ASIDWrapper
+    from robot.sim.vec_env.asid_vec import make_vec_env
 
-    env = ASIDWrapper(
-        env
+    num_workers = 1
+    env = make_vec_env(
+        cfg,
+        num_workers=num_workers,
+        seed=0,
+        device_id=args.gpu_id,
+        exp_reward=True,
+        gymnasium=False,
     )
-    env.reset()
-
-    seed = 0
-    env.seed(seed)
-    env.create_exp_reward(cfg, seed)
-    rew = env.compute_reward(np.zeros(args.dof))
 
     obs = env.reset()
 
     imgs = []
     for i in range(20):
-        
-        # ACT
-        actions = np.array([0.0, 1.0, 0.0])
+        actions = np.ones((num_workers, args.dof)) * 0.1
 
         next_obs, rew, done, _ = env.step(actions)
-        print("reward", rew)
+
         imgs.append(env.render())
 
-    env.reset()
-
-    imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
-    import matplotlib.pyplot as plt
+    imageio.mimsave("test_rollout.gif", np.stack(imgs)[:,0], duration=3)

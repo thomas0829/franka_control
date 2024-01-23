@@ -442,7 +442,7 @@ class RobotEnv(gym.Env):
         else:
             return len(self._camera_reader._all_cameras)
 
-    def render(self):
+    def render(self, mode=None):
         imgs = self.get_images()
         sn = next(iter(imgs))
         return imgs[sn]["rgb"]

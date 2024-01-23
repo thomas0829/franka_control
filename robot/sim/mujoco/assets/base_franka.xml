@@ -1,4 +1,4 @@
-<mujoco model="franka_kitchen">
+<mujoco model="base_franka">
 
     <option>
         <flag multiccd="enable" />

@@ -1,6 +1,7 @@
 import torch
 import torchcontrol as toco
 from torchcontrol.utils import to_tensor
+from torchcontrol.utils.tensor_utils import to_tensor, diagonalize_gain
 
 from typing import Dict
 
@@ -43,6 +44,12 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
             self.robot_model, ignore_gravity=ignore_gravity
         )
         self.pose_pd = toco.modules.feedback.CartesianSpacePDFast(Kp, Kd)
+        
+        self.joint_pd = toco.modules.feedback.JointSpacePD(self.kp, self.kd)
+
+        # Reference pose
+        self.joint_pos_desired = torch.nn.Parameter(to_tensor(joint_pos_current))
+        self.joint_vel_desired = torch.zeros_like(self.joint_pos_desired)
 
         # Reference pose
         joint_pos_current = to_tensor(joint_pos_current)
@@ -66,11 +73,12 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
             A dictionary containing the controller output
         """
         if self.ctrl_mode.data == 1:
-            # print("Doing cartesian")
-
-            # State extraction
+            
             joint_pos_current = state_dict["joint_positions"]
             joint_vel_current = state_dict["joint_velocities"]
+
+            self.ee_pos_desired = torch.nn.Parameter(state_dict["ee_pos_desired"])
+            self.ee_quat_desired = torch.nn.Parameter(state_dict["ee_quat_desired"])
 
             # Control logic
             ee_pos_current, ee_quat_current = self.robot_model.forward_kinematics(
@@ -90,31 +98,35 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
             torque_feedback = jacobian.T @ wrench_feedback
 
             torque_feedforward = self.invdyn(
-                joint_pos_current,
-                joint_vel_current,
-                torch.zeros_like(joint_pos_current),
+                joint_pos_current, joint_vel_current, torch.zeros_like(joint_pos_current)
             )  # coriolis
 
             torque_out = torque_feedback + torque_feedforward
 
+            print(torque_out)
             return {"joint_torques": torque_out}
         else:
-            # Parse states
-            # print("Doing joint PD")
-            q_current = state_dict["joint_positions"]
-            qd_current = state_dict["joint_velocities"]
             
-            # kp_diag = torch.nn.Parameter(torch.diag(self.kp))
-            # kd_diag = torch.nn.Parameter(torch.diag(self.kd))
-            # if type(kp_diag) is torch.Tensor:
-            #     kp_diag = torch.nn.Parameter(kp_diag)
-            # if type(kd_diag) is torch.Tensor:
-            #     kd_diag = torch.nn.Parameter(kd_diag)
-            self.feedback.Kp = torch.nn.Parameter(torch.diag(self.kp))
-            self.feedback.Kd = torch.nn.Parameter(torch.diag(self.kd))
+            # PD impedance control
 
-            # Execute PD control
-            output = self.feedback(
-                q_current, qd_current, self.q_desired, torch.zeros_like(qd_current)
+            # State extraction
+            joint_pos_current = state_dict["joint_positions"]
+            joint_vel_current = state_dict["joint_velocities"]
+
+            # # temp fix
+            self.joint_pos_desired = torch.nn.Parameter(to_tensor(self.q_desired))
+            self.joint_vel_desired = torch.zeros_like(self.joint_pos_desired)
+
+            # Control logic
+            torque_feedback = self.joint_pd(
+                joint_pos_current,
+                joint_vel_current,
+                self.joint_pos_desired,
+                self.joint_vel_desired,
             )
-            return {"joint_torques": output}
+            torque_feedforward = self.invdyn(
+                joint_pos_current, joint_vel_current, torch.zeros_like(joint_pos_current)
+            )  # coriolis
+            torque_out = torque_feedback + torque_feedforward
+
+            return {"joint_torques": torque_out}

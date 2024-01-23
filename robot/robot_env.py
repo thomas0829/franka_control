@@ -1,19 +1,16 @@
-import numpy as np
 import time
-import gym
 
-from helpers.transformations import add_angles, angle_diff
+import gym
+import numpy as np
 from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file
-from helpers.pointclouds import (
-    depth_to_points,
-    compute_camera_intrinsic,
-    compute_camera_extrinsic,
-    points_to_pcd,
-    crop_points,
-    visualize_pcds,
-)
+from helpers.pointclouds import (compute_camera_extrinsic,
+                                 compute_camera_intrinsic, crop_points,
+                                 depth_to_points, points_to_pcd,
+                                 visualize_pcds)
+from helpers.transformations import add_angles, angle_diff
+
 
 class RobotEnv(gym.Env):
     """
@@ -44,6 +41,9 @@ class RobotEnv(gym.Env):
         camera_model="realsense",
         camera_resolution=None,  # (128, 128) -> HxW
         calibration_file="cameras/calibration/calibration.json",
+        # Mujoco: model name
+        model_name = "base_franka",
+        on_screen_rendering=False,
     ):
         # initialize gym environment
         super().__init__()
@@ -182,25 +182,27 @@ class RobotEnv(gym.Env):
 
         else:
 
-            # from robot.sim.mujoco.franka import FrankaMujoco
-            # self._robot = FrankaMujoco(
-            #     robot_type=robot_type,
-            #     control_hz=self.control_hz,
-            #     img_height=self.camera_resolution[0],
-            #     img_width=self.camera_resolution[1],
-            # )
-            
-            from robot.sim.mujoco.franka_poly import MujocoManipulatorEnv
+            from robot.sim.mujoco.franka import MujocoManipulatorEnv
 
             self._robot = MujocoManipulatorEnv(
                 robot_type=robot_type,
+                model_name=model_name,
                 control_hz=self.control_hz,
-                has_renderer=True,
-                has_offscreen_renderer=False,
+                has_renderer=on_screen_rendering,
+                has_offscreen_renderer=not on_screen_rendering,
             )
 
             # TODO create calibration from sim or use calibration in file to create sim
             self.calib_dict = None
+            
+            calib_dict = (
+                read_calibration_file(calibration_file)
+                if calibration_file is not None
+                else None
+            )
+            self.calib_dict = {}
+            self.calib_dict["front"] = calib_dict["213522250963"]
+            self.calib_dict["left"] = calib_dict["213522250963"]
 
             self.sim = True
 

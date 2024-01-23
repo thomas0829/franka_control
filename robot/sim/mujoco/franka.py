@@ -1,33 +1,63 @@
+# Copyright (c) Facebook, Inc. and its affiliates.
+
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+import logging
 import os
-
-import torch
-
-from robot.franka_base import FrankaBase
-
-os.environ["MUJOCO_GL"] = "egl"
-
-import copy
+from typing import List, Tuple
 
 import mujoco
 import mujoco_viewer
 import numpy as np
+import omegaconf
+import torch
+import torchcontrol as toco
+import yaml
 
+# from polymetis.utils.data_dir import get_full_path_to_urdf
+# from polysim.envs import AbstractControlledEnv
 from helpers.transformations import (euler_to_quat, quat_to_euler,
                                      rmat_to_euler, rmat_to_quat)
+
+log = logging.getLogger(__name__)
+from torchcontrol.modules.feedback import JointSpacePD
+from torchcontrol.policies import JointImpedanceControl
+
 from robot.controllers.utils import generate_joint_space_min_jerk
+from robot.franka_base import FrankaBase
 
 
-class FrankaMujoco(FrankaBase):
+class MujocoManipulatorEnv(FrankaBase):
+    """A manipulator environment using MuJoCo.
+
+    Args:
+        robot_model_cfg: A Hydra configuration file containing information needed for the
+                        robot model, e.g. URDF. For an example, see
+                        `polymetis/conf/robot_model/franka_panda.yaml`
+
+                        NB: When specifying the path to a URDF file in
+                        `robot_description_path`, ensure an MJCF file exists at the
+                        same path and same filename with a .mjcf extension. For an
+                        example, see `polymetis/data/franka_panda/panda_arm.[urdf|mjcf]`
+
+        use_grav_comp: If True, adds gravity compensation torques to the input torques.
+
+        gravity: Value of gravity, default to 9.81
+    """
+
     def __init__(
         self,
-        # robot
+        # robot_model_cfg: DictConfig,
+        config_name: str = "franka_panda_with_hand",
+        model_name: str = "base_franka",
+        use_grav_comp: bool = True,
+        gravity: float = 9.81,
         robot_type="panda",
         control_hz=15,
         gripper=True,
         custom_controller=True,
-        gain_scale=1.5,
+        gain_scale=1.0,  # 0.9,
         reset_gain_scale=1.0,
-        # rendering
         has_renderer=False,
         has_offscreen_renderer=True,
         camera_names=["front", "left"],
@@ -35,20 +65,18 @@ class FrankaMujoco(FrankaBase):
         use_depth=True,
         img_height=480,
         img_width=640,
-        # noise
-        obs_noise=0.0,
-        act_drop=0.0,
-        # mujoco
-        seed=0,
-        xml_path="robot/sim/mujoco/assets/base_franka.xml",
     ):
-        
-        super().__init__(robot_type=robot_type, control_hz=control_hz, gripper=gripper, custom_controller=custom_controller)
+        super().__init__(
+            robot_type=robot_type,
+            control_hz=control_hz,
+            gripper=gripper,
+            custom_controller=custom_controller,
+        )
+
         self.policy = None
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
 
-        # rendering
         assert (
             has_renderer and has_offscreen_renderer
         ) is False, "both has_renderer and has_offscreen_renderer not supported"
@@ -61,40 +89,68 @@ class FrankaMujoco(FrankaBase):
         self.img_height = img_height
         self.camera_names = camera_names
 
-        self.obs_noise = obs_noise
-        self.act_drop = act_drop
+        # import hydra
+        # hydra.initialize(config_path=".")
+        # robot_model_cfg = hydra.compose(config_name=config_name)
 
-        # setup model
-        self.model = mujoco.MjModel.from_xml_path(xml_path)
-        self.model_backup = copy.deepcopy(self.model)
+        robot_model_cfg = omegaconf.OmegaConf.load(f"{config_name}.yaml")
+        self.model_cfg = robot_model_cfg
+        # self.robot_description_path = get_full_path_to_urdf(
+        #     self.model_cfg.robot_description_path
+        # )
+        self.robot_description_path = "panda_arm.urdf"
+        # robot_desc_mjcf_path = (
+        #     os.path.splitext(self.robot_description_path)[0] + ".mjcf"
+        # )
+
+        robot_desc_mjcf_path=f"robot/sim/mujoco/assets/{model_name}.xml"
+        assert os.path.exists(
+            robot_desc_mjcf_path
+        ), f"No MJCF file found. Create an MJCF file at {robot_desc_mjcf_path} to use the MuJoCo simulator."
+        self.model = mujoco.MjModel.from_xml_path(robot_desc_mjcf_path)
         self.data = mujoco.MjData(self.model)
 
-        # TODO verify this
-        self.frame_skip = int((1/self.control_hz) / self.model.opt.timestep)
+        # shouldnt make a difference if use_grav_comp
+        self.model.opt.gravity = np.array([0, 0, -gravity])
 
-        self.ee_site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, "EEF")
-        self.franka_joint_ids = []
-        for i in range(7):
-            self.franka_joint_ids += [
-                mujoco.mj_name2id(
-                    self.model, mujoco.mjtObj.mjOBJ_JOINT, f"franka_joint{i+1}"
-                )
-            ]
+        self.frame_skip = int((1 / self.control_hz) / self.model.opt.timestep)
 
-        self.franka_body_names = ["link0", "link1", "link2", "link3", "link4", "link5", "link6", "link7", "hand"]
+        self.controlled_joints = self.model_cfg.controlled_joints
+        self.n_dofs = self.model_cfg.num_dofs
+        assert (
+            len(self.controlled_joints) == self.n_dofs
+        ), f"Number of controlled joints ({len(self.controlled_joints)}) != number of DOFs ({self.n_dofs})"
+        assert (
+            self.model.nu == self.n_dofs
+        ), f"Number of actuators ({self.model.nu}) != number of DOFs ({self.n_dofs})"
+
+        self.ee_link_idx = self.model_cfg.ee_link_idx
+        self.ee_link_name = self.model_cfg.ee_link_name
+        self.rest_pose = self.model_cfg.rest_pose
+        self.joint_limits_low = np.array(self.model_cfg.joint_limits_low)
+        self.joint_limits_high = np.array(self.model_cfg.joint_limits_high)
+        if self.model_cfg.joint_damping is None:
+            self.joint_damping = None
+        else:
+            self.joint_damping = np.array(self.model_cfg.joint_damping)
+        if self.model_cfg.torque_limits is None:
+            self.torque_limits = np.inf * np.ones(self.n_dofs)
+        else:
+            self.torque_limits = np.array(self.model_cfg.torque_limits)
+        self.use_grav_comp = False  # use_grav_comp
+
+        self.prev_torques_commanded = np.zeros(self.n_dofs)
+        self.prev_torques_applied = np.zeros(self.n_dofs)
+        self.prev_torques_measured = np.zeros(self.n_dofs)
+        self.prev_torques_external = np.zeros(self.n_dofs)
 
         # polymetis control: load robot model
-        import torchcontrol as toco
-        robot_description_path = "robot/real/config/panda_arm.urdf"
-        ee_link_name = "panda_link8"
-        self.robot_model = toco.models.RobotModelPinocchio(
-                    robot_description_path, ee_link_name
-                )
+        self.toco_robot_model = toco.models.RobotModelPinocchio(
+            self.robot_description_path, robot_model_cfg["ee_link_name"]
+        )
 
         # polymetis control: load robot hardware config
-        import yaml
-
-        # polymetis/polymetis/conf/robot_client/franka_hardware.yaml -> replaced by R2D2 
+        # polymetis/polymetis/conf/robot_client/franka_hardware.yaml -> replaced by R2D2
         with open("robot/real/config/franka_hardware.yaml", "r") as stream:
             try:
                 franka_hardware_conf = yaml.safe_load(stream)
@@ -102,7 +158,123 @@ class FrankaMujoco(FrankaBase):
                 print(exc)
         self.metadata = franka_hardware_conf["robot_client"]["metadata_cfg"]
 
-        self.seed(seed)
+        self.ee_site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, "EEF")
+        self.franka_joint_ids = []
+        for i in range(7):
+            self.franka_joint_ids += [
+                mujoco.mj_name2id(
+                    self.model, mujoco.mjtObj.mjOBJ_JOINT, f"panda_joint{i+1}"
+                )
+            ]
+
+        mujoco.mj_step(self.model, self.data)
+
+    def get_current_joint_torques(
+        self,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Returns:
+            np.ndarray: Torques received from apply_joint_torques
+            np.ndarray: Torques sent to robot (e.g. after clipping)
+            np.ndarray: Torques generated by the actuators (e.g. after grav comp)
+            np.ndarray: Torques exerted onto the robot
+        """
+        return (
+            self.prev_torques_commanded,
+            self.prev_torques_applied,
+            self.prev_torques_measured,
+            self.prev_torques_external,  # zeros
+        )
+
+    def apply_joint_torques(self, torques: np.ndarray):
+        """
+        input:
+            np.ndarray: Desired torques
+        Returns:
+            np.ndarray: final applied torque
+        """
+
+        self.prev_torques_commanded = torques
+
+        applied_torques = np.clip(torques, -self.torque_limits, self.torque_limits)
+        self.prev_torques_applied = applied_torques.copy()
+
+        if self.use_grav_comp:
+            # applied_torques += (self.data.qfrc_bias[self.franka_joint_ids] * 0.97)
+            applied_torques += self.data.qfrc_bias[self.franka_joint_ids]
+        self.prev_torques_measured = applied_torques.copy()
+
+        self.data.ctrl[self.franka_joint_ids] = applied_torques
+        mujoco.mj_step(self.model, self.data)
+
+        return applied_torques
+
+    def viewer_setup(self):
+        if self.has_renderer:
+            return mujoco_viewer.MujocoViewer(
+                self.model,
+                self.data,
+                height=self.img_height,
+                width=self.img_width,
+                hide_menus=True,
+            )
+        if self.has_offscreen_renderer:
+            return mujoco.Renderer(
+                self.model, height=self.img_height, width=self.img_width
+            )
+
+    def render(self):
+        assert (
+            self.has_renderer or self.has_offscreen_renderer
+        ), "no renderer available."
+
+        imgs = []
+
+        if not self.viewer:
+            self.viewer = self.viewer_setup()
+
+        if self.has_renderer:
+            self.viewer.render()
+        elif self.has_offscreen_renderer:
+            for camera in self.camera_names:
+                self.viewer.update_scene(self.data, camera=camera)
+                if self.use_depth:
+                    self.viewer.enable_depth_rendering()
+                    depth = self.viewer.render().copy()
+                    self.viewer.disable_depth_rendering()
+
+                if not self.use_rgb and self.use_depth:
+                    color_image = np.zeros((depth.shape[0], depth.shape[1], 3))
+                else:
+                    color_image = self.viewer.render().copy()
+
+                dict_1 = {
+                    "serial_number": camera,
+                    "array": color_image,
+                    "shape": color_image.shape,
+                    "type": "rgb",
+                }
+                dict_2 = {
+                    "serial_number": camera,
+                    "array": depth,
+                    "shape": depth.shape,
+                    "type": "depth",
+                }
+                imgs.append(dict_1)
+                imgs.append(dict_2)
+
+        return imgs
+
+    def set_robot_state(self, robot_state):
+        log.warning(
+            "set_robot_state is numerically unstable for mujoco_manipulator, proceed with caution...",
+        )
+        self.data.qpos = robot_state.joint_positions
+        self.data.qvel = robot_state.joint_velocities
+        self.data.ctrl = self.data.qfrc_bias
+        mujoco.mj_step(self.model, self.data)
+        if self.gui:
+            self.render()
 
     @property
     def dt(self):
@@ -110,13 +282,11 @@ class FrankaMujoco(FrankaBase):
 
     def get_ee_pose(self):
         return self.get_ee_pos(), self.get_ee_angle()
-    
+
     def get_ee_pos(self):
         ee_pos = self.data.site_xpos[self.ee_site_id].copy()
-        if self.obs_noise:
-            ee_pos = self.apply_obs_noise(ee_pos)
         return ee_pos
-    
+
     def get_ee_angle(self, quat=False):
         ee_mat = self.data.site_xmat[self.ee_site_id].copy().reshape(3, 3)
         ee_angle = rmat_to_euler(ee_mat)
@@ -124,21 +294,16 @@ class FrankaMujoco(FrankaBase):
             return euler_to_quat(ee_angle)
         else:
             return ee_angle
-        
+
     def get_joint_positions(self):
         qpos = self.data.qpos[self.franka_joint_ids].copy()
-        if self.obs_noise:
-            qpos = self.apply_obs_noise(qpos)
         return qpos
 
     def get_joint_velocities(self):
         qvel = self.data.qvel[self.franka_joint_ids].copy()
-        if self.obs_noise:
-            qvel = self.apply_obs_noise(qvel)
         return qvel
 
     def get_robot_state(self):
-
         joint_positions = self.get_joint_positions()
         joint_velocities = self.get_joint_velocities()
 
@@ -169,89 +334,61 @@ class FrankaMujoco(FrankaBase):
         timestamp_dict = {}
 
         return state_dict, timestamp_dict
-    
-    def get_gripper_state(self):
-        return np.array(0)
-
-    def update_pose(self, pos, angle, gripper=None):
-        pos, angle = self.apply_action_drop(pos, angle)
-        desired_qpos, success = self.ik.compute(pos, angle)
-
-        self.data.ctrl[: len(desired_qpos)] = desired_qpos
-
-        if gripper is not None:
-        # TODO gripper in sim
-            self.data.ctrl[-1] = gripper * 255
-            
-        # advance simulation, use control callback to obtain external force and control.
-        mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
-
-        if self.has_renderer:
-            self.render()
-
-        return self.get_ee_pos(), self.get_ee_angle()
 
     def is_running_policy(self):
         return self.policy is not None
-    
-    def _start_custom_controller(self, q_desired=None, ctrl_mode=0.0):
-        from robot.controllers.mixed_cartesian_impedance import \
-            MixedCartesianImpedanceControl
 
-        self.policy = MixedCartesianImpedanceControl(
-            joint_pos_current=torch.tensor(self.get_joint_positions()),
-            Kp=self.gain_scale
-            * torch.tensor(
-                self.metadata["default_Kx"], dtype=torch.float32
-            ),  # the higher, the faster it returns to pos
-            Kd=self.gain_scale
-            * torch.tensor(
-                self.metadata["default_Kxd"], dtype=torch.float32
-            ),  # the higher, the stiffer around pos
-            kp_pos=self.gain_scale * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
-            kd_pos=self.gain_scale * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
-            desired_joint_pos=torch.tensor(self.get_joint_positions(), dtype=torch.float32) if q_desired is None else q_desired.float(),
-            ctrl_mode=ctrl_mode,
-            robot_model=self.robot_model,
+    def _start_custom_controller(self, q_desired=None):
+
+        self.policy = JointImpedanceControl(
+            joint_pos_current=torch.tensor(self.get_joint_positions())
+            if q_desired is None
+            else q_desired,
+            Kp=0.4
+            * self.gain_scale
+            * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
+            Kd=1
+            * self.gain_scale
+            * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
+            robot_model=self.toco_robot_model,
             ignore_gravity=True,
         )
+
+        # self.policy = JointSpacePD(
+        #     Kp=1
+        #     * self.gain_scale
+        #     * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
+        #     Kd=1
+        #     * self.gain_scale
+        #     * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
+        # )
+
         return self.policy
 
     def _terminate_current_controller(self):
         self.policy = None
 
     def _update_current_controller(self, udpate_pkt):
-        self._start_custom_controller(q_desired=udpate_pkt["q_desired"] if "q_desired" in udpate_pkt else None, ctrl_mode=udpate_pkt["ctrl_mode"])
+        # self._start_custom_controller(
+        #     q_desired=udpate_pkt["q_desired"] if "q_desired" in udpate_pkt else None
+        # )
+        if "q_desired" in udpate_pkt.keys():
+            self.policy.joint_pos_desired = torch.nn.Parameter(udpate_pkt["q_desired"])
+
+        # if "q_desired" in udpate_pkt.keys():
+        #     return self.policy.forward(
+        #         joint_pos_current=self.get_robot_state()[0]["joint_positions"],
+        #         joint_vel_current=self.get_robot_state()[0]["joint_velocities"],
+        #         joint_pos_desired=torch.tensor(udpate_pkt["q_desired"]),
+        #         joint_vel_desired=torch.zeros_like(udpate_pkt["q_desired"]),
+        #     )
+        # else:
+        #     return None
         return self.policy.forward(self.get_robot_state()[0])
-    
-    # def update_joints(self, qpos, velocity=False, blocking=False):
-        # self.data.qpos[: len(qpos)] = qpos
-        # # forward dynamics: same as mj_step but do not integrate in time.
-        # mujoco.mj_forward(self.model, self.data)
 
-    def add_noise_to_joints(self, original_joints, cartesian_noise):
-        original_joints = torch.Tensor(original_joints)
-
-        pos, quat = self._robot.get_ee_pos(), self._robot.get_ee_angle(quat=True)
-        
-        curr_pose = pos.tolist() + quat_to_euler(quat).tolist()
-        new_pose = add_poses(cartesian_noise, curr_pose)
-
-        new_pos = torch.Tensor(new_pose[:3])
-        new_quat = torch.Tensor(euler_to_quat(new_pose[3:]))
-
-        noisy_joints, success = self._robot.solve_inverse_kinematics(
-            new_pos, new_quat, original_joints
-        )
-
-        if success:
-            desired_joints = noisy_joints
-        else:
-            desired_joints = original_joints
-
-        return desired_joints.tolist()
-    
-    def _adaptive_time_to_go_polymetis(self, robot_model, joint_displacement: torch.Tensor, time_to_go_default=1.):
+    def _adaptive_time_to_go_polymetis(
+        self, robot_model, joint_displacement: torch.Tensor, time_to_go_default=1.0
+    ):
         """Compute adaptive time_to_go
         Computes the corresponding time_to_go such that the mean velocity is equal to one-eighth
         of the joint velocity limit:
@@ -265,14 +402,16 @@ class FrankaMujoco(FrankaBase):
         joint_pos_diff = torch.abs(joint_displacement)
         time_to_go = torch.max(joint_pos_diff / joint_vel_limits * 8.0)
         return max(time_to_go, time_to_go_default)
-    
+
     def adaptive_time_to_go(self, desired_joint_position, t_min=1, t_max=4):
         curr_joint_position = self.get_joint_positions()
         displacement = desired_joint_position - curr_joint_position
-        time_to_go = self._adaptive_time_to_go_polymetis(self.robot_model, displacement)
+        time_to_go = self._adaptive_time_to_go_polymetis(
+            self.toco_robot_model, displacement
+        )
         clamped_time_to_go = min(t_max, max(time_to_go, t_min))
         return clamped_time_to_go
-    
+
     def update_joints(
         self, command, velocity=False, blocking=False, cartesian_noise=None
     ):
@@ -310,9 +449,10 @@ class FrankaMujoco(FrankaBase):
                         self._start_custom_controller()
                     else:
                         self._robot.start_cartesian_impedance()
-                
                 if self.custom_controller:
-                    self.update_desired_joint_positions(command)
+                    # run controller loop for int((1/self.control_hz) / self.model.opt.timestep) instead of time.sleep(1/self.control_hz)
+                    for _ in range(self.frame_skip):
+                        self.update_desired_joint_positions(command)
                 else:
                     self._robot.update_desired_joint_positions(command)
 
@@ -326,8 +466,8 @@ class FrankaMujoco(FrankaBase):
 
     def update_desired_joint_positions(self, q_desired=None, kp=None, kd=None):
         """update joint pos"""
+
         udpate_pkt = {}
-        udpate_pkt["ctrl_mode"] = 0.0 # torch.Tensor([0.0])
 
         if q_desired is not None:
             udpate_pkt["q_desired"] = (
@@ -341,52 +481,67 @@ class FrankaMujoco(FrankaBase):
 
         output_pkt = self._update_current_controller(udpate_pkt)
 
-        # TODO torque control
-        torque = output_pkt["joint_torques"].detach().numpy()
-        control = torque + self.data.qfrc_bias[: len(self.franka_joint_ids)]
-        print(torque, control)
-        self.data.ctrl[: len(self.franka_joint_ids)] = control
-        # mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
-        mujoco.mj_step(self.model, self.data, nstep=self.frame_skip // 10)
-        
+        # if output_pkt is not None:
+        #     self.apply_joint_torques(output_pkt.detach().numpy())
+
+        torques = output_pkt["joint_torques"].detach().numpy()
+        self.apply_joint_torques(torques)
+
+        # # make sure grav_comp is applied in mujoco xml
         # if "q_desired" in udpate_pkt:
         #     self.data.qpos[: len(self.franka_joint_ids)] = udpate_pkt["q_desired"]
-        #     mujoco.mj_forward(self.model, self.data)
+        #     # mujoco.mj_forward(self.model, self.data)
+        #     mujoco.mj_step(self.model, self.data)
 
     def move_to_joint_positions(self, q_desired=None, time_to_go=3):
+        # fast reset for simulation -> jump to joint positions
+        # self.data.qpos[self.franka_joint_ids] = q_desired
+        # mujoco.mj_step(self.model, self.data)
+        # return
+
         # Use registered controller
         q_current = torch.tensor(self.get_joint_positions())
 
         # generate min jerk trajectory
-        # dt = 0.1
-        # waypoints = generate_joint_space_min_jerk(
-        #     start=q_current, goal=q_desired, time_to_go=time_to_go, dt=dt
-        # )
-        # # reset using min_jerk traj
-        # for i in range(len(waypoints)):
-        #     self.update_desired_joint_positions(
-        #         q_desired=waypoints[i]["position"],
-        #         kp=self.reset_gain_scale
-        #         * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
-        #         kd=self.reset_gain_scale
-        #         * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
-        #     )
-        #     # time.sleep(dt)
-
-        self.data.qpos[: len(self.franka_joint_ids)] = q_desired
-        mujoco.mj_forward(self.model, self.data)
+        dt = 0.1
+        waypoints = generate_joint_space_min_jerk(
+            start=q_current, goal=q_desired, time_to_go=time_to_go, dt=dt
+        )
+        # reset using min_jerk traj
+        for i in range(len(waypoints)):
+            # run simulation for dt instead of time.sleep(dt)
+            for _ in range(int(dt // self.model.opt.timestep)):
+                self.update_desired_joint_positions(
+                    q_desired=waypoints[i]["position"],
+                    kp=self.reset_gain_scale
+                    * torch.nn.Parameter(
+                        torch.tensor(self.metadata["default_Kq"], dtype=torch.float32)
+                    ),
+                    kd=self.reset_gain_scale
+                    * torch.nn.Parameter(
+                        torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32)
+                    ),
+                )
+            # time.sleep(dt)
 
         # reset back gains to gain-policy
         self.update_desired_joint_positions(
-            kp=self.gain_scale * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
-            kd=self.gain_scale * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
+            kp=self.gain_scale
+            * torch.nn.Parameter(
+                torch.tensor(self.metadata["default_Kq"], dtype=torch.float32)
+            ),
+            kd=self.gain_scale
+            * torch.nn.Parameter(
+                torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32)
+            ),
         )
+        if self.has_renderer:
+            self.render()
 
     def update_gripper(self, command, velocity=True, blocking=False):
-        
         # TODO grasping for sim
-        return 
-    
+        return
+
         if velocity:
             gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)
             command = gripper_delta + self.get_gripper_position()
@@ -408,94 +563,26 @@ class FrankaMujoco(FrankaBase):
                 blocking=blocking,
             )
 
-    def apply_action_drop(self, pos, angle):
-        # with act_drop% chance use last action to simulate delay on real system
-        if self.act_drop > 0. and np.random.choice(
-            [0, 1], p=[1 - self.act_drop, self.act_drop]
-        ):
-            return self._last_pos, self._last_angle
-        self._last_pos = pos.copy()
-        self._last_angle = angle.copy()
-        return self._last_pos, self._last_angle
+    def get_gripper_state(self):
+        return np.array(0)
 
-    def apply_obs_noise(self, obs):
-        if self.noiseless:
-            return obs
-        if self.obs_noise is not None:
-            obs += np.random.normal(loc=0.0, scale=self.obs_noise, size=obs.shape)
-        return obs
+    def get_gripper_position(self):
+        return np.array(0)
 
-    def viewer_setup(self):
-        if self.has_renderer:
-            return mujoco_viewer.MujocoViewer(
-                self.model, self.data, height=720, width=720
-            )
-        if self.has_offscreen_renderer:
-            return mujoco.Renderer(
-                self.model, width=self.img_width, height=self.img_height
-            )
 
-    def render(self, mode="rgb_array"):
-        assert mode in ["rgb_array", "human"], "mode not in ['rgb_array', 'human']"
-        assert (
-            self.has_renderer or self.has_offscreen_renderer
-        ), "no renderer available."
+import hydra
 
-        imgs = []
 
-        if not self.viewer:
-            self.viewer = self.viewer_setup()
+@hydra.main(
+    config_path="/home/weirdlab/Projects/polymetis_franka/",
+    config_name="franka_panda_with_hand",
+)
+def run(cfg):
+    env = MujocoManipulatorEnv(cfg, gui=True)
+    while True:
+        env.apply_joint_torques(np.zeros(7))
+    env.reset()
 
-        if self.has_renderer and mode == "human":
-            self.viewer.render()
-        elif self.has_offscreen_renderer and mode == "rgb_array":
-            for camera in self.camera_names:
-                self.viewer.update_scene(self.data, camera=camera)
-                if self.use_depth:
-                    self.viewer.enable_depth_rendering()
-                    depth = self.viewer.render().copy()
-                    self.viewer.disable_depth_rendering()
-                
-                if not self.use_rgb and self.use_depth:
-                    color_image = np.zeros((depth.shape[0], depth.shape[1], 3))
-                else:
-                    color_image = self.viewer.render().copy()
-                
-                dict_1 = {'serial_number': camera, 'array': color_image, 'shape': color_image.shape, 'type': 'rgb'}
-                dict_2 = {'serial_number': camera, 'array': depth, 'shape': depth.shape, 'type': 'depth'}
-                imgs.append(dict_1)
-                imgs.append(dict_2)
 
-        return imgs
-
-    @property
-    def parameter_dim(self):
-        return len(self.get_parameters())
-
-    def seed(self, seed=0):
-        np.random.seed(seed)
-
-    def geoms_from_body_names(self, names):
-        geom_ids = []
-        for name in names:
-            body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, name) 
-            geom_ids += [i for i in range(self.model.ngeom) if self.model.geom_bodyid[i] == body_id]
-        return geom_ids
-    
-    def is_geom_contact(self, geom_list1, geom_list2):
-        contacts_from_1_to_2 = []
-        contacts_from_2_to_1 = []
-        for contact in self.data.contact:
-            geom1_id = contact.geom1
-            geom2_id = contact.geom2
-            if geom1_id in geom_list1 and geom2_id in geom_list2:
-                contacts_from_1_to_2.append((geom1_id, geom2_id))
-            elif geom1_id in geom_list2 and geom2_id in geom_list1:
-                contacts_from_2_to_1.append((geom1_id, geom2_id))
-        return len(contacts_from_1_to_2) > 0 or len(contacts_from_2_to_1) > 0
-    
-    def is_franka_contact(self):
-        franka_geom_ids = self.geoms_from_body_names(self.franka_body_names)
-        obstacle_geom_ids = self.geoms_from_body_names(self.obstacles_body_names)
-        return self.is_geom_contact(franka_geom_ids, obstacle_geom_ids)
-    
+if __name__ == "__main__":
+    run()

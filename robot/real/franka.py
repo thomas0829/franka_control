@@ -14,6 +14,8 @@ from helpers.transformations import add_poses, euler_to_quat, pose_diff, quat_to
 from robot.franka_base import FrankaBase
 from robot.controllers.utils import generate_joint_space_min_jerk
 
+from torchcontrol.policies import JointImpedanceControl
+
 
 class FrankaHardware(FrankaBase):
     def __init__(
@@ -49,20 +51,31 @@ class FrankaHardware(FrankaBase):
             MixedCartesianImpedanceControl,
         )
 
-        policy = MixedCartesianImpedanceControl(
+        # policy = MixedCartesianImpedanceControl(
+        #     joint_pos_current=self._robot.get_joint_positions(),
+        #     Kp=self.gain_scale
+        #     * torch.Tensor(
+        #         self._robot.metadata.default_Kx
+        #     ),  # the higher, the faster it returns to pos
+        #     Kd=self.gain_scale
+        #     * torch.Tensor(
+        #         self._robot.metadata.default_Kxd
+        #     ),  # the higher, the stiffer around pos
+        #     kp_pos=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kq),
+        #     kd_pos=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kqd),
+        #     desired_joint_pos=self._robot.get_joint_positions(),
+        #     robot_model=self._robot.robot_model,
+        #     ignore_gravity=True,
+        # )
+        self.policy = JointImpedanceControl(
             joint_pos_current=self._robot.get_joint_positions(),
-            Kp=self.gain_scale
-            * torch.Tensor(
-                self._robot.metadata.default_Kx
-            ),  # the higher, the faster it returns to pos
-            Kd=self.gain_scale
-            * torch.Tensor(
-                self._robot.metadata.default_Kxd
-            ),  # the higher, the stiffer around pos
-            kp_pos=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kq),
-            kd_pos=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kqd),
-            desired_joint_pos=self._robot.get_joint_positions(),
-            robot_model=self._robot.robot_model,
+            Kp=0.4
+            * self.gain_scale
+            * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
+            Kd=1
+            * self.gain_scale
+            * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
+            robot_model=self.toco_robot_model,
             ignore_gravity=True,
         )
         self._robot.send_torch_policy(policy, blocking=False)

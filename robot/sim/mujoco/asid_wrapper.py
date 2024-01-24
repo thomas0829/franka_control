@@ -4,7 +4,7 @@ import mujoco
 
 import numpy as np
 
-from helpers.transformations import euler_to_quat
+from helpers.transformations_mujoco import euler2quat
 
 
 class ASIDWrapper(gym.Wrapper):
@@ -203,7 +203,7 @@ class ASIDWrapper(gym.Wrapper):
                 self.obj_pose_noise_dict["y"]["min"],
                 self.obj_pose_noise_dict["y"]["max"],
             )
-            pose[3:7] = euler_to_quat(
+            pose[3:7] = euler2quat(
                 [
                     0.0,
                     0.0,

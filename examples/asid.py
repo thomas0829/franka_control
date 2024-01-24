@@ -58,26 +58,46 @@ if __name__ == "__main__":
         "on_screen_rendering": False,
     }
 
-    from robot.sim.vec_env.asid_vec import make_vec_env
-
-    num_workers = 1
-    env = make_vec_env(
+    from robot.sim.vec_env.asid_vec import make_env
+    env = make_env(
         cfg,
-        num_workers=num_workers,
         seed=0,
         device_id=args.gpu_id,
         exp_reward=True,
-        gymnasium=False,
+        verbose=False,
     )
 
     obs = env.reset()
 
     imgs = []
     for i in range(20):
-        actions = np.ones((num_workers, args.dof)) * 0.1
+        actions = np.ones((args.dof)) * 0.1
 
         next_obs, rew, done, _ = env.step(actions)
 
         imgs.append(env.render())
 
-    imageio.mimsave("test_rollout.gif", np.stack(imgs)[:,0], duration=3)
+    imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
+
+    # num_workers = 1
+    # from robot.sim.vec_env.asid_vec import make_env, make_vec_env
+    # env = make_vec_env(
+    #     cfg,
+    #     num_workers=num_workers,
+    #     seed=0,
+    #     device_id=args.gpu_id,
+    #     exp_reward=True,
+    #     gymnasium=False,
+    # )
+
+    # obs = env.reset()
+
+    # imgs = []
+    # for i in range(20):
+    #     actions = np.ones((num_workers, args.dof)) * 0.1
+
+    #     next_obs, rew, done, _ = env.step(actions)
+
+    #     imgs.append(env.render())
+
+    # imageio.mimsave("test_rollout.gif", np.stack(imgs)[:,0], duration=3)

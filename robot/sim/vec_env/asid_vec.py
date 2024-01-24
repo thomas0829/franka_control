@@ -10,7 +10,7 @@ def make_env(cfg, seed=0, device_id=0, exp_reward=False, verbose=False):
     if verbose:
         print(cfg)
 
-    env = RobotEnv(**cfg)
+    env = RobotEnv(**cfg, verbose=verbose)
     env = ASIDWrapper(env)
 
     if exp_reward:

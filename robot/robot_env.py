@@ -5,10 +5,14 @@ import numpy as np
 from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file
-from helpers.pointclouds import (compute_camera_extrinsic,
-                                 compute_camera_intrinsic, crop_points,
-                                 depth_to_points, points_to_pcd,
-                                 visualize_pcds)
+from helpers.pointclouds import (
+    compute_camera_extrinsic,
+    compute_camera_intrinsic,
+    crop_points,
+    depth_to_points,
+    points_to_pcd,
+    visualize_pcds,
+)
 from helpers.transformations import add_angles, angle_diff
 
 
@@ -42,11 +46,15 @@ class RobotEnv(gym.Env):
         camera_resolution=None,  # (128, 128) -> HxW
         calibration_file="cameras/calibration/calibration.json",
         # Mujoco: model name
-        model_name = "base_franka",
+        model_name="base_franka",
         on_screen_rendering=False,
+        # debugging
+        verbose=False,
     ):
         # initialize gym environment
         super().__init__()
+
+        self.verbose = verbose
 
         # physics
         self.DoF = DoF
@@ -181,7 +189,6 @@ class RobotEnv(gym.Env):
             self.sim = False
 
         else:
-
             from robot.sim.mujoco.franka import MujocoManipulatorEnv
 
             self._robot = MujocoManipulatorEnv(
@@ -194,7 +201,7 @@ class RobotEnv(gym.Env):
 
             # TODO create calibration from sim or use calibration in file to create sim
             self.calib_dict = None
-            
+
             calib_dict = (
                 read_calibration_file(calibration_file)
                 if calibration_file is not None
@@ -220,7 +227,9 @@ class RobotEnv(gym.Env):
             for sn, img in imgs.items():
                 for m, modality in img.items():
                     if m == "rgb":
-                        env_obs_spaces[f"{sn}_{m}"] = Box(0, 255, modality.shape, np.uint8)
+                        env_obs_spaces[f"{sn}_{m}"] = Box(
+                            0, 255, modality.shape, np.uint8
+                        )
                     elif m == "depth":
                         env_obs_spaces[f"{sn}_{m}"] = Box(
                             0, 65535, modality.shape, np.uint16
@@ -256,7 +265,7 @@ class RobotEnv(gym.Env):
         # clipping + any safety corrections for position
         desired_pos = self._get_valid_pos(self._curr_pos + pos_action)
         desired_angle = add_angles(angle_action, self._curr_angle)
-        
+
         # if self.DoF == 4:
         #     desired_angle[2] = desired_angle[2].clip(
         #         self.ee_space.low[3], self.ee_space.high[3]
@@ -269,7 +278,7 @@ class RobotEnv(gym.Env):
         # cartesian position (delta) control
         self._update_robot(
             np.concatenate((desired_pos, desired_angle, [gripper])),
-            action_space="cartesian_position"
+            action_space="cartesian_position",
         )
 
         comp_time = time.time() - start_time
@@ -333,9 +342,10 @@ class RobotEnv(gym.Env):
             if is_reset:
                 break
             else:
-                print(
-                    f"WARNING: reset failed w/ joint_dist={np.round(joint_dist,4)} > {epsilon}, trying again"
-                )
+                if self.verbose:
+                    print(
+                        f"WARNING: reset failed w/ joint_dist={np.round(joint_dist,4)} > {epsilon}, trying again"
+                    )
                 if not self.sim:
                     time.sleep(1.0)
 

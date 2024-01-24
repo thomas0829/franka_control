@@ -527,7 +527,12 @@ class RobotEnv(gym.Env):
         img_points = self.get_images_and_points()
         points = []
         for k in img_points.keys():
-            points.append(points_to_pcd(crop_points(img_points[k]["points"], crop_min=[-0.2, -0.5, 0.], crop_max=[8., 0.5, 1.])))
+            pts, clr = crop_points(img_points[k]["points"], colors=img_points[k]["rgb"].reshape(-1,3) / 255., crop_min=[-1., -1., -1.], crop_max=[1., 1., 1.])
+            points.append(points_to_pcd(pts, colors=clr))
+
+        zero = points_to_pcd(np.zeros((1,3)))
+        points.append(zero)
+
         visualize_pcds(points)
 
     def _randomize_reset_pos(self):

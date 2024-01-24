@@ -69,6 +69,8 @@ if __name__ == "__main__":
 
     obs = env.reset()
 
+    # env.show_points()
+
     imgs = []
     for i in range(20):
         actions = np.ones((args.dof)) * 0.1

@@ -6,11 +6,11 @@ from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file
 from helpers.pointclouds import (
-    compute_camera_extrinsic,
     compute_camera_intrinsic,
-    crop_points,
+    compute_camera_extrinsic,
     depth_to_points,
     points_to_pcd,
+    crop_points,
     visualize_pcds,
 )
 from helpers.transformations import add_angles, angle_diff
@@ -180,11 +180,27 @@ class RobotEnv(gym.Env):
 
             self._camera_reader = MultiCameraWrapper(cameras)
 
-            self.calib_dict = (
+            calib_dict = (
                 read_calibration_file(calibration_file)
                 if calibration_file is not None
                 else None
             )
+
+            if calib_dict is not None:
+                self.camera_intrinsic = {}
+                self.camera_extrinsic = {}
+                for sn in calib_dict.keys():
+                    self.camera_intrinsic[sn] = compute_camera_intrinsic(
+                        calib_dict[sn]["intrinsic"]["fx"],
+                        calib_dict[sn]["intrinsic"]["fy"],
+                        calib_dict[sn]["intrinsic"]["ppx"],
+                        calib_dict[sn]["intrinsic"]["ppy"],
+                    )
+                    self.camera_extrinsic[sn] = compute_camera_extrinsic(
+                        pos=calib_dict[sn]["extrinsic"]["pos"],
+                        ori=calib_dict[sn]["extrinsic"]["ori"],
+                    )
+            self.depth_scale = 1000.0
 
             self.sim = False
 
@@ -199,17 +215,12 @@ class RobotEnv(gym.Env):
                 has_offscreen_renderer=not on_screen_rendering,
             )
 
-            # TODO create calibration from sim or use calibration in file to create sim
-            self.calib_dict = None
-
-            calib_dict = (
-                read_calibration_file(calibration_file)
-                if calibration_file is not None
-                else None
-            )
-            self.calib_dict = {}
-            self.calib_dict["front"] = calib_dict["213522250963"]
-            self.calib_dict["left"] = calib_dict["213522250963"]
+            self.camera_intrinsic = {}
+            self.camera_extrinsic = {}
+            for cn in self._robot.camera_names:
+                self.camera_intrinsic[cn] = self._robot.get_camera_intrinsic(cn)
+                self.camera_extrinsic[cn] = self._robot.get_camera_extrinsic(cn)
+            self.depth_scale = 1.0
 
             self.sim = True
 
@@ -500,25 +511,24 @@ class RobotEnv(gym.Env):
         return state_dict
 
     def get_images_and_points(self):
-        assert self.calib_dict is not None, "Calibration file not provided!"
-
         img_dict = self.get_images()
 
         for sn, img in img_dict.items():
-            intrinsic = compute_camera_intrinsic(
-                self.calib_dict[sn]["intrinsic"]["fx"],
-                self.calib_dict[sn]["intrinsic"]["fy"],
-                self.calib_dict[sn]["intrinsic"]["ppx"],
-                self.calib_dict[sn]["intrinsic"]["ppy"],
+            img_dict[sn]["points"] = depth_to_points(
+                img["depth"],
+                self.camera_intrinsic[sn],
+                self.camera_extrinsic[sn],
+                depth_scale=self.depth_scale,
             )
-            extrinsic = compute_camera_extrinsic(
-                pos=self.calib_dict[sn]["extrinsic"]["pos"],
-                ori=self.calib_dict[sn]["extrinsic"]["ori"],
-            )
-
-            img_dict[sn]["points"] = depth_to_points(img["depth"], intrinsic, extrinsic)
 
         return img_dict
+
+    def show_points(self):
+        img_points = self.get_images_and_points()
+        points = []
+        for k in img_points.keys():
+            points.append(points_to_pcd(crop_points(img_points[k]["points"], crop_min=[-0.2, -0.5, 0.], crop_max=[8., 0.5, 1.])))
+        visualize_pcds(points)
 
     def _randomize_reset_pos(self):
         """takes random action along x-y plane, no change to z-axis / gripper"""

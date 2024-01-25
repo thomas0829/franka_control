@@ -36,7 +36,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    args.exp = "test"
     assert args.exp is not None, "Specify --exp"
     save_dir = os.path.join(args.save_dir, args.exp)
     os.makedirs(save_dir, exist_ok=True)
@@ -65,7 +64,7 @@ if __name__ == "__main__":
 
     for i in range(args.episodes):
         env.reset()
-        assert env._num_cameras > 0, "ERROR: camera(s) not connected!"
+        # assert env._num_cameras > 0, "ERROR: camera(s) not connected!"
         print(f"Camera(s) Connected ({env._num_cameras})")
 
         print(f"Press 'A' to Start Collecting")
@@ -99,8 +98,7 @@ if __name__ == "__main__":
             # check if 'trigger' button is pressed
             if info["movement_enabled"]:
                 # prepare obs for oculus
-                # pose = env._robot.get_ee_pose()
-                pose = np.concatenate(env._robot.get_ee_pose())
+                pose = env._robot.get_ee_pose()
                 gripper = env._robot.get_gripper_position()
                 state = {
                     "robot_state": {

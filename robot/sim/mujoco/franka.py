@@ -544,14 +544,14 @@ class MujocoManipulatorEnv(FrankaBase):
         # if output_pkt is not None:
         #     self.apply_joint_torques(output_pkt.detach().numpy())
 
-        torques = output_pkt["joint_torques"].detach().numpy()
-        self.apply_joint_torques(torques)
+        # torques = output_pkt["joint_torques"].detach().numpy()
+        # self.apply_joint_torques(torques)
 
-        # # make sure grav_comp is applied in mujoco xml
-        # if "q_desired" in udpate_pkt:
-        #     self.data.qpos[: len(self.franka_joint_ids)] = udpate_pkt["q_desired"]
-        #     # mujoco.mj_forward(self.model, self.data)
-        #     mujoco.mj_step(self.model, self.data)
+        # make sure grav_comp is applied in mujoco xml
+        if "q_desired" in udpate_pkt:
+            self.data.qpos[: len(self.franka_joint_ids)] = udpate_pkt["q_desired"]
+            # mujoco.mj_forward(self.model, self.data)
+            mujoco.mj_step(self.model, self.data)
 
     def move_to_joint_positions(self, q_desired=None, time_to_go=3):
         # fast reset for simulation -> jump to joint positions

@@ -1,7 +1,7 @@
-import gym
 import copy
-import mujoco
 
+import gym
+import mujoco
 import numpy as np
 
 from helpers.transformations_mujoco import euler2quat
@@ -9,7 +9,11 @@ from helpers.transformations_mujoco import euler2quat
 
 class ASIDWrapper(gym.Wrapper):
     def __init__(
-        self, env, obj_id="rod", obs_keys=["lowdim_ee", "lowdim_qpos", "obj_pose"]
+        self,
+        env,
+        obj_id="rod",
+        obs_keys=["lowdim_ee", "lowdim_qpos", "obj_pose"],
+        flatten=True,
     ):
         super().__init__(env)
 
@@ -81,14 +85,28 @@ class ASIDWrapper(gym.Wrapper):
 
         # Observations
         self.obs_keys = obs_keys
+        self.flatten = flatten
+        # obs space dict to array
+        for k in self.env.observation_space.keys():
+            if k not in self.obs_keys:
+                del self.env.observation_space[k]
 
-    def augment_observations(self, obs):
+        low = np.concatenate([v.low for v in self.env.observation_space.values()])
+        high = np.concatenate([v.high for v in self.env.observation_space.values()])
+        # add obj pose
+        low = np.concatenate([low, np.ones(7) * -np.inf])
+        high = np.concatenate([high, np.ones(7) * np.inf])
+        # overwrite observation_space
+        self.observation_space = gym.spaces.Box(low=low, high=high, shape=low.shape)
+
+    def augment_observations(self, obs, flatten=True):
         obs["obj_pose"] = self.get_obj_pose()
 
-        tmp = []
-        for k in self.obs_keys:
-            tmp.append(obs[k])
-        obs = np.concatenate(tmp)
+        if flatten:
+            tmp = []
+            for k in self.obs_keys:
+                tmp.append(obs[k])
+            obs = np.concatenate(tmp)
 
         return obs
 
@@ -101,7 +119,7 @@ class ASIDWrapper(gym.Wrapper):
         if not self.reward_first:
             reward = self.compute_reward(action)
 
-        return self.augment_observations(obs), reward, done, info
+        return self.augment_observations(obs, flatten=self.flatten), reward, done, info
 
     def reset(self, *args, **kwargs):
         # reset robot
@@ -119,7 +137,7 @@ class ASIDWrapper(gym.Wrapper):
             obj_pose = self.curr_obj_pose.copy()
         self.update_obj(obj_pose)
 
-        return self.augment_observations(obs)
+        return self.augment_observations(obs, flatten=self.flatten)
 
     def set_parameters(self, parameters):
         assert parameters.shape == self.get_parameters().shape
@@ -146,8 +164,8 @@ class ASIDWrapper(gym.Wrapper):
     def reset_parameters(self):
         self.params_set = False
 
-    def reset_task(self, task=None):
-        self.resample_parameters()
+    # def reset_task(self, task=None):
+    #     self.resample_parameters()
 
     def resample_parameters(self):
         for key in self.parameter_dict:

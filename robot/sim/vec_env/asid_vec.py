@@ -1,7 +1,6 @@
 from functools import partial
 
 from robot.robot_env import RobotEnv
-
 from robot.sim.mujoco.asid_wrapper import ASIDWrapper
 from robot.sim.vec_env.vec_wrapper import SubVecEnv
 
@@ -21,7 +20,7 @@ def make_env(cfg, seed=0, device_id=0, exp_reward=False, verbose=False):
 
 
 def make_vec_env(
-    cfg_dict, num_workers, seed, device_id=0, exp_reward=False, gymnasium=False
+    cfg_dict, num_workers, seed, device_id=0, exp_reward=False
 ):
     env_fns = [
         partial(
@@ -34,4 +33,4 @@ def make_vec_env(
         )
         for i in range(num_workers)
     ]
-    return SubVecEnv(env_fns, gymnasium=gymnasium)
+    return SubVecEnv(env_fns)

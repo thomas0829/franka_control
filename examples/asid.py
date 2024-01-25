@@ -1,11 +1,11 @@
+import argparse
+import datetime
 import os
 import time
-import datetime
-import argparse
 
-import torch
 import imageio
 import numpy as np
+import torch
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -53,44 +53,59 @@ if __name__ == "__main__":
         "ip_address": args.ip_address,
         "camera_model": args.camera_model,
         "camera_resolution": (480, 480),
+        "imgs": False,
         "max_path_length": args.max_episode_length,
         "model_name": "rod_franka",
         "on_screen_rendering": False,
     }
 
-    from robot.sim.vec_env.asid_vec import make_env
-    env = make_env(
-        cfg,
-        seed=0,
-        device_id=args.gpu_id,
-        exp_reward=True,
-        verbose=False,
-    )
-
-    obs = env.reset()
-
-    # env.show_points()
-
-    imgs = []
-    for i in range(20):
-        actions = np.ones((args.dof)) * 0.1
-
-        next_obs, rew, done, _ = env.step(actions)
-
-        imgs.append(env.render())
-
-    imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
-
-    # num_workers = 1
-    # from robot.sim.vec_env.asid_vec import make_env, make_vec_env
-    # env = make_vec_env(
+    # from robot.sim.vec_env.asid_vec import make_env
+    # env = make_env(
     #     cfg,
-    #     num_workers=num_workers,
     #     seed=0,
     #     device_id=args.gpu_id,
     #     exp_reward=True,
-    #     gymnasium=False,
+    #     verbose=False,
     # )
+
+    # obs = env.reset()
+
+    # # env.show_points()
+
+    # imgs = []
+    # for i in range(20):
+    #     actions = np.ones((args.dof)) * 0.1
+
+    #     next_obs, rew, done, _ = env.step(actions)
+
+    #     imgs.append(env.render())
+
+    # imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
+
+    num_workers = 32
+    from robot.sim.vec_env.asid_vec import make_vec_env
+
+    env = make_vec_env(
+        cfg,
+        num_workers=num_workers,
+        seed=0,
+        device_id=args.gpu_id,
+        exp_reward=True,
+    )
+
+    from stable_baselines3 import SAC
+
+    model = SAC(
+        "MlpPolicy",
+        env,
+        device=device,
+        learning_starts=500,
+        ent_coef=0.0001,
+        train_freq=1,
+        gradient_steps=1,
+    )
+    model.learn(total_timesteps=1e6, progress_bar=True)
+    env.close()
 
     # obs = env.reset()
 
@@ -102,4 +117,4 @@ if __name__ == "__main__":
 
     #     imgs.append(env.render())
 
-    # imageio.mimsave("test_rollout.gif", np.stack(imgs)[:,0], duration=3)
+    # imageio.mimsave("test_rollout.gif", np.stack(imgs)[:, 0], duration=3)

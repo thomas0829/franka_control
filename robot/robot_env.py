@@ -6,11 +6,11 @@ from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file
 from helpers.pointclouds import (
-    compute_camera_intrinsic,
     compute_camera_extrinsic,
+    compute_camera_intrinsic,
+    crop_points,
     depth_to_points,
     points_to_pcd,
-    crop_points,
     visualize_pcds,
 )
 from helpers.transformations import add_angles, angle_diff
@@ -36,6 +36,7 @@ class RobotEnv(gym.Env):
         # observation space configuration
         qpos=True,
         ee_pos=True,
+        imgs=True,
         normalize=False,
         # pass IP if not running on NUC, "localhost" if running on NUC, None if running sim
         ip_address=None,
@@ -85,6 +86,7 @@ class RobotEnv(gym.Env):
         # observation space config
         self._qpos = qpos
         self._ee_pos = ee_pos
+        self._imgs = imgs
         self.normalize = normalize
 
         # action space
@@ -228,30 +230,29 @@ class RobotEnv(gym.Env):
         self.qpos_space = Box(self._jointmin, self._jointmax)
 
         # final observation space configuration
-        env_obs_spaces = {
-            "lowdim_ee": self.ee_space,
-            "lowdim_qpos": self.qpos_space,
-        }
+        env_obs_spaces = {}
 
-        imgs = self.get_images()
-        if len(imgs) > 0:
-            for sn, img in imgs.items():
-                for m, modality in img.items():
-                    if m == "rgb":
-                        env_obs_spaces[f"{sn}_{m}"] = Box(
-                            0, 255, modality.shape, np.uint8
-                        )
-                    elif m == "depth":
-                        env_obs_spaces[f"{sn}_{m}"] = Box(
-                            0, 65535, modality.shape, np.uint16
-                        )
-                    elif m == "points":
-                        pass
+        if self._qpos:
+            env_obs_spaces["lowdim_ee"] = self.ee_space
+        if self._ee_pos:
+            env_obs_spaces["lowdim_qpos"] = self.qpos_space
 
-        if not self._qpos:
-            env_obs_spaces.pop("lowdim_qpos", None)
-        if not self._ee_pos:
-            env_obs_spaces.pop("lowdim_ee", None)
+        if self._imgs:
+            imgs = self.get_images()
+            if len(imgs) > 0:
+                for sn, img in imgs.items():
+                    for m, modality in img.items():
+                        if m == "rgb":
+                            env_obs_spaces[f"{sn}_{m}"] = Box(
+                                0, 255, modality.shape, np.uint8
+                            )
+                        elif m == "depth":
+                            env_obs_spaces[f"{sn}_{m}"] = Box(
+                                0, 65535, modality.shape, np.uint16
+                            )
+                        elif m == "points":
+                            pass
+
         self.observation_space = Dict(env_obs_spaces)
 
         self.observation_shape = {}
@@ -527,7 +528,15 @@ class RobotEnv(gym.Env):
         img_points = self.get_images_and_points()
         points = []
         for k in img_points.keys():
-            points.append(points_to_pcd(crop_points(img_points[k]["points"], crop_min=[-0.2, -0.5, 0.], crop_max=[8., 0.5, 1.])))
+            points.append(
+                points_to_pcd(
+                    crop_points(
+                        img_points[k]["points"],
+                        crop_min=[-0.2, -0.5, 0.0],
+                        crop_max=[8.0, 0.5, 1.0],
+                    )
+                )
+            )
         visualize_pcds(points)
 
     def _randomize_reset_pos(self):
@@ -552,7 +561,6 @@ class RobotEnv(gym.Env):
     def get_observation(self):
         # get state and images
         current_state = self.get_state()
-        current_images = self.get_images()
 
         # set gripper width
         gripper_width = current_state["current_pose"][-1:]
@@ -600,20 +608,23 @@ class RobotEnv(gym.Env):
 
         qpos = np.concatenate([current_state["joint_positions"], gripper_width])
 
-        obs_dict = {
-            "lowdim_ee": self.normalize_ee_obs(ee_pos) if self.normalize else ee_pos,
-            "lowdim_qpos": self.normalize_ee_obs(qpos) if self.normalize else qpos,
-        }
+        obs_dict = {}
 
-        if len(current_images) > 0:
-            for sn, img in current_images.items():
-                for m, modality in img.items():
-                    obs_dict[f"{sn}_{m}"] = modality
+        if self._qpos:
+            obs_dict["lowdim_qpos"] = (
+                self.normalize_ee_obs(qpos) if self.normalize else qpos
+            )
+        if self._ee_pos:
+            obs_dict["lowdim_ee"] = (
+                self.normalize_ee_obs(ee_pos) if self.normalize else ee_pos
+            )
 
-        if not self._qpos:
-            obs_dict.pop("lowdim_qpos", None)
-        if not self._ee_pos:
-            obs_dict.pop("lowdim_ee", None)
+        if self._imgs:
+            current_images = self.get_images()
+            if len(current_images) > 0:
+                for sn, img in current_images.items():
+                    for m, modality in img.items():
+                        obs_dict[f"{sn}_{m}"] = modality
 
         return obs_dict
 

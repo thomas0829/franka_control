@@ -4,11 +4,11 @@ import multiprocessing as mp
 import cloudpickle
 import numpy as np
 
-from robot.sim.vec_env.base_vec_env import CloudpickleWrapper, VecEnv
+from robot.sim.vec_env.base_vec_env import CloudpickleWrapper  # , VecEnv
 from robot.sim.vec_env.patch_gym import _patch_env
 
 
-def _worker(remote, parent_remote, env_fn_wrapper, gymnasium=False):
+def _worker(remote, parent_remote, env_fn_wrapper):
     parent_remote.close()
     env = _patch_env(env_fn_wrapper.var())
     # env = env_fn_wrapper.var()
@@ -26,22 +26,13 @@ def _worker(remote, parent_remote, env_fn_wrapper, gymnasium=False):
                     info["episode_return"] = sum(rewards)
                     info["episode_success"] = float(sum(successes) > 0)
                     rewards, successes = [], []
-
-                if gymnasium:
                     obs, _ = env.reset()
-                    remote.send((obs, reward, done, _, info))
-                else:
-                    obs = env.reset()
-                    remote.send((obs, reward, done, info))
+                remote.send((obs, reward, done, info))
             elif cmd == "seed":
                 remote.send(env.seed(data))
             elif cmd == "reset":
-                if gymnasium:
-                    obs, _ = env.reset()
-                    remote.send((obs, _))
-                else:
-                    obs = env.reset()
-                    remote.send(obs)
+                obs, _ = env.reset()
+                remote.send(obs)
                 rewards, successes = [], []
             elif cmd == "render":
                 remote.send(env.render())
@@ -101,6 +92,9 @@ def _worker(remote, parent_remote, env_fn_wrapper, gymnasium=False):
             break
 
 
+from stable_baselines3.common.vec_env.base_vec_env import VecEnv
+
+
 class SubVecEnv(VecEnv):
     """
     Creates a multiprocess vectorized wrapper for multiple environments, distributing each environment to its own
@@ -125,11 +119,10 @@ class SubVecEnv(VecEnv):
            Defaults to 'forkserver' on available platforms, and 'spawn' otherwise.
     """
 
-    def __init__(self, env_fns, start_method=None, gymnasium=False):
+    def __init__(self, env_fns, start_method=None):
         self.num_envs = len(env_fns)
         self.waiting = False
         self.closed = False
-        self.gymnasium = gymnasium
 
         if start_method is None:
             forkserver_available = "forkserver" in mp.get_all_start_methods()
@@ -144,7 +137,7 @@ class SubVecEnv(VecEnv):
         for work_remote, remote, env_fn in zip(
             self.work_remotes, self.remotes, env_fns
         ):
-            args = (work_remote, remote, CloudpickleWrapper(env_fn), self.gymnasium)
+            args = (work_remote, remote, CloudpickleWrapper(env_fn))
             # daemon=True: if the main process crashes, we should not cause things to hang
             process = ctx.Process(target=_worker, args=args, daemon=True)
             process.start()
@@ -166,19 +159,8 @@ class SubVecEnv(VecEnv):
     def step_wait(self):
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
-        
-        if self.gymnasium:
-            obs, rews, dones, _, infos = zip(*results)
-            return (
-                np.stack(obs),
-                np.stack(rews),
-                np.stack(dones),
-                np.stack(_),
-                list(infos),
-            )
-        else:
-            obs, rews, dones, infos = zip(*results)
-            return np.stack(obs), np.stack(rews), np.stack(dones), list(infos)
+        obs, rews, dones, infos = zip(*results)
+        return np.stack(obs), np.stack(rews), np.stack(dones), list(infos)
 
     def step(self, actions):
         self.step_async(actions)
@@ -198,11 +180,7 @@ class SubVecEnv(VecEnv):
         for remote in self.remotes:
             remote.send(("reset", None))
         results = [remote.recv() for remote in self.remotes]
-        obs, _ = zip(*results)
-        if self.gymnasium:
-            return np.stack(obs), np.stack(_)
-        else:
-            return np.stack(obs)
+        return np.stack(results)
 
     def close(self):
         if self.closed:

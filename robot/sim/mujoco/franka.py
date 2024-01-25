@@ -629,20 +629,3 @@ class MujocoManipulatorEnv(FrankaBase):
     def get_gripper_position(self):
         return np.array(0)
 
-
-import hydra
-
-
-@hydra.main(
-    config_path="/home/weirdlab/Projects/polymetis_franka/",
-    config_name="franka_panda_with_hand", version_base="1.1"
-)
-def run(cfg):
-    env = MujocoManipulatorEnv(cfg, gui=True)
-    while True:
-        env.apply_joint_torques(np.zeros(7))
-    env.reset()
-
-
-if __name__ == "__main__":
-    run()

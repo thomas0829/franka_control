@@ -40,6 +40,8 @@ class FrankaHardware(FrankaBase):
 
         self.launch_robot(ip_address=ip_address, gripper=gripper)
 
+        self._grasping = False
+
     def reset(self):
         self.update_joints(self._robot.home_pose, velocity=False, blocking=True)
 
@@ -164,18 +166,22 @@ class FrankaHardware(FrankaBase):
         # for robotiq consider using
         # self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
         
-        # for franka gripper, use discrete grasp/ungrasp
-        if command > 0.0:
+        # franka gripper
+        # goto interface doesn't grasp -> use discrete grasp/ungrasp
+        # gripper crashes when running multiple grasp,grasp,grasp,... or ungrasp,ungrasp,ungrasp,... -> use flag
+        if command > 0.0 and not self._grasping:
             self._gripper.grasp(
                 grasp_width=0.0, speed=0.5, force=5.0, blocking=blocking
             )
-        else:
+            self._grasping = True
+        elif command == 0.0 and self._grasping:
             self._gripper.grasp(
                 grasp_width=self._max_gripper_width,
                 speed=0.5,
                 force=5.0,
                 blocking=blocking,
             )
+            self._grasping = False
 
     def add_noise_to_joints(self, original_joints, cartesian_noise):
         original_joints = torch.Tensor(original_joints)

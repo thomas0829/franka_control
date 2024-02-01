@@ -35,8 +35,8 @@ class RealSenseCamera:
 		self._align = rs.align(rs.stream.color)
 
 		color_sensor = device.query_sensors()[1]
-		color_sensor.set_option(rs.option.enable_auto_exposure, False)
-		color_sensor.set_option(rs.option.exposure, 300)
+		# color_sensor.set_option(rs.option.enable_auto_exposure, False)
+		# color_sensor.set_option(rs.option.exposure, 300)
 
 	def read_camera(self):
 		# Wait for a coherent pair of frames: depth and color

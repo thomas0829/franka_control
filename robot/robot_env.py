@@ -82,10 +82,10 @@ class RobotEnv(gym.Env):
         # action space
         self.action_space = Box(
             np.array(
-                [-1.0] * (self.DoF + 1), dtype=np.float32
+                [-1.0] * (self.DoF + (1 if gripper else 0)), dtype=np.float32
             ),  # dx_low, dy_low, dz_low, dgripper_low
             np.array(
-                [1.0] * (self.DoF + 1), dtype=np.float32
+                [1.0] * (self.DoF + (1 if gripper else 0)), dtype=np.float32
             ),  # dx_high, dy_high, dz_high, dgripper_high
         )
         self.action_shape = self.action_space.shape

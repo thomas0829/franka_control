@@ -21,17 +21,17 @@ class RealSenseCamera:
 	def __init__(self, device):
 		self._pipeline = rs.pipeline()
 		self._serial_number = str(device.get_info(rs.camera_info.serial_number))
-		config = rs.config()
+		self._config = rs.config()
 
-		config.enable_device(self._serial_number)
+		self._config.enable_device(self._serial_number)
 
-		config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+		self._config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
 		device_product_line = str(device.get_info(rs.camera_info.product_line))
 		
-		if device_product_line == 'L500': config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
-		else: config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+		if device_product_line == 'L500': self._config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
+		else: self._config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
-		self._pipeline.start(config)
+		self._pipeline.start(self._config)
 		self._align = rs.align(rs.stream.color)
 
 		color_sensor = device.query_sensors()[1]
@@ -76,3 +76,4 @@ class RealSenseCamera:
 		
 	def disable_camera(self):
 		self._pipeline.stop()
+		self._config.disable_all_streams()

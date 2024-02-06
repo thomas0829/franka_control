@@ -5,3 +5,4 @@ results/
 models/
 caldata.pkl
 data/
+*.egg-info/

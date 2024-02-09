@@ -16,8 +16,12 @@ import yaml
 
 # from polymetis.utils.data_dir import get_full_path_to_urdf
 # from polysim.envs import AbstractControlledEnv
-from helpers.transformations import (euler_to_quat, quat_to_euler,
-                                     rmat_to_euler, rmat_to_quat)
+from helpers.transformations import (
+    euler_to_quat,
+    quat_to_euler,
+    rmat_to_euler,
+    rmat_to_quat,
+)
 
 log = logging.getLogger(__name__)
 from torchcontrol.modules.feedback import JointSpacePD
@@ -130,7 +134,7 @@ class MujocoManipulatorEnv(FrankaBase):
         # ), f"Number of actuators ({self.model.nu}) != number of DOFs ({self.n_dofs})"
 
         self.ee_link_idx = self.model_cfg.ee_link_idx
-        self.ee_link_name = self.model_cfg.ee_link_name # hand | 'panda_link8'
+        self.ee_link_name = self.model_cfg.ee_link_name  # hand | 'panda_link8'
         self.rest_pose = self.model_cfg.rest_pose
         self.joint_limits_low = np.array(self.model_cfg.joint_limits_low)
         self.joint_limits_high = np.array(self.model_cfg.joint_limits_high)
@@ -142,7 +146,7 @@ class MujocoManipulatorEnv(FrankaBase):
             self.torque_limits = np.inf * np.ones(self.n_dofs)
         else:
             self.torque_limits = np.array(self.model_cfg.torque_limits)
-        
+
         self.use_grav_comp = use_grav_comp
 
         self.prev_torques_commanded = np.zeros(self.n_dofs)
@@ -172,14 +176,25 @@ class MujocoManipulatorEnv(FrankaBase):
                     self.model, mujoco.mjtObj.mjOBJ_JOINT, f"panda_joint{i+1}"
                 )
             ]
-
+        self.franka_finger_joint_ids = [
+            mujoco.mj_name2id(
+                    self.model, mujoco.mjtObj.mjOBJ_JOINT, "robot:finger_joint1"
+                ),
+                mujoco.mj_name2id(
+                    self.model, mujoco.mjtObj.mjOBJ_JOINT, "robot:finger_joint2"
+                ),
+        ]
+        self._max_gripper_width = 0.08
+        
         if self.torque_control:
             # self.model.dof_damping[self.franka_joint_ids] = self.joint_damping * 100
             self.model.actuator_ctrlrange[self.franka_joint_ids] = np.array(
                 [self.joint_limits_low, self.joint_limits_high]
             ).T
             self.torque_limits = np.array(self.model_cfg.torque_limits)
-            self.model.actuator_forcerange[self.franka_joint_ids] = np.stack([-self.torque_limits, self.torque_limits], axis=-1)
+            self.model.actuator_forcerange[self.franka_joint_ids] = np.stack(
+                [-self.torque_limits, self.torque_limits], axis=-1
+            )
 
             mujoco.mj_resetData(self.model, self.data)
             mujoco.mj_step(self.model, self.data)
@@ -240,7 +255,6 @@ class MujocoManipulatorEnv(FrankaBase):
             )
 
     def render(self):
-        
         imgs = []
 
         if not self.viewer:
@@ -417,7 +431,7 @@ class MujocoManipulatorEnv(FrankaBase):
                 joint_pos_current=torch.tensor(self.get_joint_positions())
                 if q_desired is None
                 else q_desired,
-                Kp=1.0 # 0.4
+                Kp=1.0  # 0.4
                 * self.gain_scale
                 * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
                 Kd=1.0
@@ -442,11 +456,13 @@ class MujocoManipulatorEnv(FrankaBase):
         self.policy = None
 
     def _update_current_controller(self, udpate_pkt):
-        if self.impedance_control and "q_desired" in udpate_pkt.keys():
-            self.policy.joint_pos_desired = torch.nn.Parameter(udpate_pkt["q_desired"])
+        if self.impedance_control and "joint_pos_desired" in udpate_pkt.keys():
+            self.policy.joint_pos_desired = torch.nn.Parameter(
+                udpate_pkt["joint_pos_desired"]
+            )
             return self.policy.forward(self.get_robot_state()[0])
 
-        elif "q_desired" in udpate_pkt.keys():
+        elif "joint_pos_desired" in udpate_pkt.keys():
             return {
                 "joint_torques": self.policy.forward(
                     joint_pos_current=self.get_robot_state()[0][
@@ -455,8 +471,8 @@ class MujocoManipulatorEnv(FrankaBase):
                     joint_vel_current=self.get_robot_state()[0][
                         "joint_velocities"
                     ].clone(),
-                    joint_pos_desired=udpate_pkt["q_desired"].clone().detach(),
-                    joint_vel_desired=torch.zeros_like(udpate_pkt["q_desired"]),
+                    joint_pos_desired=udpate_pkt["joint_pos_desired"].clone().detach(),
+                    joint_vel_desired=torch.zeros_like(udpate_pkt["joint_pos_desired"]),
                 )
             }
 
@@ -546,7 +562,9 @@ class MujocoManipulatorEnv(FrankaBase):
 
         if joint_pos_desired is not None:
             udpate_pkt["joint_pos_desired"] = (
-                joint_pos_desired if torch.is_tensor(joint_pos_desired) else torch.tensor(joint_pos_desired)
+                joint_pos_desired
+                if torch.is_tensor(joint_pos_desired)
+                else torch.tensor(joint_pos_desired)
             )
         if kp is not None:
             udpate_pkt["kp"] = kp if torch.is_tensor(kp) else torch.tensor(kp)
@@ -560,9 +578,11 @@ class MujocoManipulatorEnv(FrankaBase):
             # WARNING: actuator must be motor
             torques = output_pkt["joint_torques"].detach().numpy()
             self.apply_joint_torques(torques)
-        elif "q_desired" in udpate_pkt:
+        elif "joint_pos_desired" in udpate_pkt:
             # WARNING: actuator must be general or position
-            self.data.ctrl[: len(self.franka_joint_ids)] = udpate_pkt["q_desired"]
+            self.data.ctrl[: len(self.franka_joint_ids)] = udpate_pkt[
+                "joint_pos_desired"
+            ]
             # mujoco.mj_forward(self.model, self.data)
             mujoco.mj_step(self.model, self.data)
 
@@ -612,32 +632,26 @@ class MujocoManipulatorEnv(FrankaBase):
             self.render()
 
     def update_gripper(self, command, velocity=True, blocking=False):
-        # TODO grasping for sim
-        return
-
+        # 1. -> close, 0. -> open
         if velocity:
             gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)
             command = gripper_delta + self.get_gripper_position()
 
         command = float(np.clip(command, 0, 1))
-        # https://github.com/facebookresearch/fairo/issues/1398
-        # for robotiq consider using
-        # self._gripper.grasp(grasp_width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
-        # for franka gripper, use discrete grasp/ungrasp
         if command > 0.0:
-            self._gripper.grasp(
-                grasp_width=0.0, speed=0.5, force=5.0, blocking=blocking
-            )
+            self.data.ctrl[len(self.franka_joint_ids) :] = 0.0
         else:
-            self._gripper.grasp(
-                grasp_width=self._max_gripper_width,
-                speed=0.5,
-                force=5.0,
-                blocking=blocking,
-            )
+            self.data.ctrl[len(self.franka_joint_ids) :] = 255.0
+        return
 
     def get_gripper_state(self):
-        return np.array(0)
+        if self._gripper:
+            return np.sum(self.data.qpos[self.franka_finger_joint_ids])
+        else:
+            return 0.0
 
     def get_gripper_position(self):
-        return np.array(0)
+        if self._gripper:
+            return 1 - (self.get_gripper_state() / self._max_gripper_width)
+        else:
+            return 0.0

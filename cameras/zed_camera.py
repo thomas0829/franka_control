@@ -36,13 +36,13 @@ class ZedCamera:
 			depth_minimum_distance=0.1,
 			depth_stabilization=False,
 			camera_resolution=sl.RESOLUTION.HD720,
-			camera_fps=60,
+			camera_fps=15,
 			camera_image_flip=sl.FLIP_MODE.OFF,
 		)
 		self._extriniscs = {}
 
 		self.depth = True
-		self.pointcloud = False
+		self.pointcloud = True
 
 		self._configure_camera()
 
@@ -147,21 +147,21 @@ class ZedCamera:
 			# 	'read_time': received_time, 'serial_number': self._serial_number + '/right'}
 
 		# if self.pointcloud:
-		#	 self._cam.retrieve_measure(self._left_pointcloud, sl.MEASURE.XYZRGBA)
-		#	 self._cam.retrieve_measure(self._right_pointcloud, sl.MEASURE.XYZRGBA_RIGHT)
+		# 	self._cam.retrieve_measure(self._left_pointcloud, sl.MEASURE.XYZRGBA)
+		# 	self._cam.retrieve_measure(self._right_pointcloud, sl.MEASURE.XYZRGBA_RIGHT)
 
-		#	 left_pointcloud = self._left_pointcloud.get_data().copy()
-		#	 right_pointcloud = self._right_pointcloud.get_data().copy()
+		# 	left_pointcloud = self._left_pointcloud.get_data().copy()
+		# 	right_pointcloud = self._right_pointcloud.get_data().copy()
 
-		#	 dict_3 = {
-		#		 "array": left_pointcloud,
-		#		 "shape": left_pointcloud.shape,
-		#		 "type": "pointcloud",
-		#		 "read_time": received_time,
-		#		 "serial_number": self._serial_number + "/left",
-		#	 }
-		#	 # dict_3 = {'array': right_pointcloud, 'shape': right_pointcloud.shape, 'type': 'pointcloud',
-		#	 # 'read_time': received_time, 'serial_number': self._serial_number + '/right'}
+		# 	dict_3 = {
+		# 		"array": left_pointcloud,
+		# 		"shape": left_pointcloud.shape,
+		# 		"type": "pointcloud",
+		# 		"read_time": received_time,
+		# 		"serial_number": self._serial_number + "/left",
+		# 	}
+		# 	# dict_3 = {'array': right_pointcloud, 'shape': right_pointcloud.shape, 'type': 'pointcloud',
+		# 	# 'read_time': received_time, 'serial_number': self._serial_number + '/right'}
 
 		return [dict_1, dict_2]
 

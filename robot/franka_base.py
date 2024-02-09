@@ -24,14 +24,19 @@ class FrankaBase(abc.ABC):
     ):
         action_dict = self.create_action_dict(command, action_space=action_space)
         
-        self.update_joints(
-            action_dict["joint_position"], velocity=False, blocking=blocking
-        )
-
         if self._gripper:
             self.update_gripper(
                 action_dict["gripper_position"], velocity=False, blocking=blocking
             )
+
+        self.update_joints(
+            action_dict["joint_position"], velocity=False, blocking=blocking
+        )
+
+        # if self._gripper:
+        #     self.update_gripper(
+        #         action_dict["gripper_position"], velocity=False, blocking=blocking
+        #     )
 
         return action_dict
 

@@ -26,6 +26,11 @@
     <general joint="panda_joint5" name="panda_actuator5" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
     <general joint="panda_joint6" name="panda_actuator6" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
     <general joint="panda_joint7" name="panda_actuator7" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
+      
+    <general class="panda" name="panda_actuator8" tendon="split" forcerange="-100 100"
+      ctrlrange="0 255"
+      gainprm="0.01568627451 0 0" biasprm="0 -100 -10" />
+
   </actuator>
 
 </mujocoinclude>

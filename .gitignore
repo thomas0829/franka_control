@@ -5,6 +5,7 @@ caldata.pkl
 data/
 outputs/
 wandb/
+logdir/
 
 *.gif
 *.json

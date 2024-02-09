@@ -1,0 +1,15 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - env: cube
+  - robot: sim
+  - log: wandb
+
+exp_id: "debug_sim"
+
+seed: 0
+gpu_id: 0
+episodes: 10
+max_episode_length: 20

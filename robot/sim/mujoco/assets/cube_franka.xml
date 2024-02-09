@@ -46,11 +46,11 @@
                 pos="0. -0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1" />
         </body> -->
 
-        <body pos="0.5 0.0 0.02" quat="1 0 0 0" name="box_body">
+        <body pos="0.5 0.0 0.02" quat="1 0 0 0" name="cube_body">
             <site name="rod_site" />
-            <freejoint name="rod_freejoint" />
+            <freejoint name="cube_freejoint" />
             <inertial pos="0. 0. 0." mass="0.3" diaginertia="1.0 1.0 1.0" />
-            <geom conaffinity="1" contype="1" condim="3" name="rod_geom_0" size="0.02 0.02 0.02" type="box"
+            <geom conaffinity="1" contype="1" condim="3" name="cube_geom_0" size="0.02 0.02 0.02" type="box"
         rgba="1 0 0 1" />
         </body>
 

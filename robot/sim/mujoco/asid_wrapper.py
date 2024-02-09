@@ -38,15 +38,13 @@ class ASIDWrapper(gym.Wrapper):
             self.obj_geom_ids = []
             for i in range(5):
                 obj_geom_id = mujoco.mj_name2id(
-                        self.env._robot.model,
-                        mujoco.mjtObj.mjOBJ_GEOM,
-                        f"{self.obj_id}_geom_{i}",
-                    )
+                    self.env._robot.model,
+                    mujoco.mjtObj.mjOBJ_GEOM,
+                    f"{self.obj_id}_geom_{i}",
+                )
                 if obj_geom_id == -1:
                     break
-                self.obj_geom_ids.append(
-                    obj_geom_id
-                )
+                self.obj_geom_ids.append(obj_geom_id)
 
         if -1 in self.obj_geom_ids:
             self.obj_geom_ids = mujoco.mj_name2id(
@@ -89,19 +87,26 @@ class ASIDWrapper(gym.Wrapper):
 
         # Observations
         self.obs_keys = obs_keys
-        self.flatten = flatten
         # obs space dict to array
         for k in self.env.observation_space.keys():
             if k not in self.obs_keys:
                 del self.env.observation_space.spaces[k]
 
-        low = np.concatenate([v.low for v in self.env.observation_space.values()])
-        high = np.concatenate([v.high for v in self.env.observation_space.values()])
-        # add obj pose
-        low = np.concatenate([low, np.ones(7) * -np.inf])
-        high = np.concatenate([high, np.ones(7) * np.inf])
-        # overwrite observation_space
-        self.observation_space = gym.spaces.Box(low=low, high=high, shape=low.shape)
+        self.flatten = flatten
+        obj_pose_low = -np.inf * np.ones(7)
+        obj_pose_high = np.inf * np.ones(7)
+        if self.flatten:
+            low = np.concatenate([v.low for v in self.env.observation_space.values()])
+            high = np.concatenate([v.high for v in self.env.observation_space.values()])
+            # add obj pose
+            low = np.concatenate([low, obj_pose_low])
+            high = np.concatenate([high, obj_pose_high])
+            # overwrite observation_space
+            self.observation_space = gym.spaces.Box(low=low, high=high, shape=low.shape)
+        else:
+            self.observation_space["obj_pose"] = gym.spaces.Box(
+                low=obj_pose_low, high=obj_pose_high
+            )
 
     def augment_observations(self, obs, flatten=True):
         obs["obj_pose"] = self.get_obj_pose()
@@ -115,7 +120,7 @@ class ASIDWrapper(gym.Wrapper):
         return obs
 
     def step(self, action):
-        
+
         self.last_action = action
 
         if self.reward_first:

@@ -1,16 +1,17 @@
 import time
 
-import gym
 import dm_env
-from dm_env import specs, TimeStep, StepType
+import gym
+import numpy as np
+from dm_env import StepType, TimeStep, specs
 
 
 def wrap_env_in_rlds_logger(env, exp, save_dir, max_episodes_per_shard=1):
 
     import envlogger
-    from envlogger.backends import tfds_backend_writer
     import tensorflow as tf
     import tensorflow_datasets as tfds
+    from envlogger.backends import tfds_backend_writer
 
     rlds_env = RLDSWrapper(env)
     rlds_env.action_spec()
@@ -44,9 +45,9 @@ def wrap_env_in_rlds_logger(env, exp, save_dir, max_episodes_per_shard=1):
         name=exp,
         observation_info=obs_feat_dict,
         action_info=act_feat_dict,
-        reward_info=tf.float64,
-        discount_info=tf.float64,
-        step_metadata_info={"timestamp_ns": tf.int64},
+        reward_info=np.float64,
+        discount_info=np.float64,
+        step_metadata_info={"timestamp_ns": np.int64},
     )
     
     # create logger

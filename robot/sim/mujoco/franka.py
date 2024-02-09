@@ -16,8 +16,12 @@ import yaml
 
 # from polymetis.utils.data_dir import get_full_path_to_urdf
 # from polysim.envs import AbstractControlledEnv
-from helpers.transformations import (euler_to_quat, quat_to_euler,
-                                     rmat_to_euler, rmat_to_quat)
+from helpers.transformations import (
+    euler_to_quat,
+    quat_to_euler,
+    rmat_to_euler,
+    rmat_to_quat,
+)
 
 log = logging.getLogger(__name__)
 from torchcontrol.modules.feedback import JointSpacePD
@@ -50,13 +54,15 @@ class MujocoManipulatorEnv(FrankaBase):
         # robot_model_cfg: DictConfig,
         config_name: str = "franka_panda_with_hand",
         model_name: str = "base_franka",
-        use_grav_comp: bool = True,
+        use_grav_comp: bool = False,
         gravity: float = 9.81,
+        impedance_control: bool = False,
+        torque_control: bool = False,
         robot_type="panda",
         control_hz=15,
         gripper=True,
         custom_controller=True,
-        gain_scale=1.0,  # 0.9,
+        gain_scale=1.0,
         reset_gain_scale=1.0,
         has_renderer=False,
         has_offscreen_renderer=True,
@@ -74,6 +80,8 @@ class MujocoManipulatorEnv(FrankaBase):
         )
 
         self.policy = None
+        self.torque_control = torque_control
+        self.impedance_control = impedance_control
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
 
@@ -103,11 +111,12 @@ class MujocoManipulatorEnv(FrankaBase):
         #     os.path.splitext(self.robot_description_path)[0] + ".mjcf"
         # )
 
-        robot_desc_mjcf_path=f"robot/sim/mujoco/assets/{model_name}.xml"
+        robot_desc_mjcf_path = f"robot/sim/mujoco/assets/{model_name}.xml"
         assert os.path.exists(
             robot_desc_mjcf_path
         ), f"No MJCF file found. Create an MJCF file at {robot_desc_mjcf_path} to use the MuJoCo simulator."
         self.model = mujoco.MjModel.from_xml_path(robot_desc_mjcf_path)
+        # self.model.opt.timestep = 1e-4 -> tried 1000hz, doesn't make a difference
         self.data = mujoco.MjData(self.model)
 
         # shouldnt make a difference if use_grav_comp
@@ -115,17 +124,17 @@ class MujocoManipulatorEnv(FrankaBase):
 
         self.frame_skip = int((1 / self.control_hz) / self.model.opt.timestep)
 
-        self.controlled_joints = self.model_cfg.controlled_joints
         self.n_dofs = self.model_cfg.num_dofs
-        assert (
-            len(self.controlled_joints) == self.n_dofs
-        ), f"Number of controlled joints ({len(self.controlled_joints)}) != number of DOFs ({self.n_dofs})"
-        assert (
-            self.model.nu == self.n_dofs
-        ), f"Number of actuators ({self.model.nu}) != number of DOFs ({self.n_dofs})"
+        # # no gripper
+        # assert (
+        #     len(self.model_cfg.controlled_joints - 1) == self.n_dofs
+        # ), f"Number of controlled joints ({len(self.model_cfg.controlled_joints - 1)}) != number of DOFs ({self.n_dofs})"
+        # assert (
+        #     self.model.nu == self.n_dofs
+        # ), f"Number of actuators ({self.model.nu}) != number of DOFs ({self.n_dofs})"
 
         self.ee_link_idx = self.model_cfg.ee_link_idx
-        self.ee_link_name = self.model_cfg.ee_link_name
+        self.ee_link_name = self.model_cfg.ee_link_name # hand | 'panda_link8'
         self.rest_pose = self.model_cfg.rest_pose
         self.joint_limits_low = np.array(self.model_cfg.joint_limits_low)
         self.joint_limits_high = np.array(self.model_cfg.joint_limits_high)
@@ -137,7 +146,8 @@ class MujocoManipulatorEnv(FrankaBase):
             self.torque_limits = np.inf * np.ones(self.n_dofs)
         else:
             self.torque_limits = np.array(self.model_cfg.torque_limits)
-        self.use_grav_comp = False  # use_grav_comp
+        
+        self.use_grav_comp = use_grav_comp
 
         self.prev_torques_commanded = np.zeros(self.n_dofs)
         self.prev_torques_applied = np.zeros(self.n_dofs)
@@ -167,7 +177,16 @@ class MujocoManipulatorEnv(FrankaBase):
                 )
             ]
 
-        mujoco.mj_step(self.model, self.data)
+        if self.torque_control:
+            # self.model.dof_damping[self.franka_joint_ids] = self.joint_damping * 100
+            self.model.actuator_ctrlrange[self.franka_joint_ids] = np.array(
+                [self.joint_limits_low, self.joint_limits_high]
+            ).T
+            self.torque_limits = np.array(self.model_cfg.torque_limits)
+            self.model.actuator_forcerange[self.franka_joint_ids] = np.stack([-self.torque_limits, self.torque_limits], axis=-1)
+
+            mujoco.mj_resetData(self.model, self.data)
+            mujoco.mj_step(self.model, self.data)
 
     def get_current_joint_torques(
         self,
@@ -205,6 +224,7 @@ class MujocoManipulatorEnv(FrankaBase):
         self.prev_torques_measured = applied_torques.copy()
 
         self.data.ctrl[self.franka_joint_ids] = applied_torques
+
         mujoco.mj_step(self.model, self.data)
 
         return applied_torques
@@ -224,10 +244,7 @@ class MujocoManipulatorEnv(FrankaBase):
             )
 
     def render(self):
-        assert (
-            self.has_renderer or self.has_offscreen_renderer
-        ), "no renderer available."
-
+        
         imgs = []
 
         if not self.viewer:
@@ -324,7 +341,7 @@ class MujocoManipulatorEnv(FrankaBase):
         R = R @ camera_axis_correction
 
         return R
-    
+
     def set_robot_state(self, robot_state):
         log.warning(
             "set_robot_state is numerically unstable for mujoco_manipulator, proceed with caution...",
@@ -399,29 +416,29 @@ class MujocoManipulatorEnv(FrankaBase):
         return self.policy is not None
 
     def _start_custom_controller(self, q_desired=None):
-
-        self.policy = JointImpedanceControl(
-            joint_pos_current=torch.tensor(self.get_joint_positions())
-            if q_desired is None
-            else q_desired,
-            Kp=0.4
-            * self.gain_scale
-            * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
-            Kd=1
-            * self.gain_scale
-            * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
-            robot_model=self.toco_robot_model,
-            ignore_gravity=True,
-        )
-
-        # self.policy = JointSpacePD(
-        #     Kp=1
-        #     * self.gain_scale
-        #     * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
-        #     Kd=1
-        #     * self.gain_scale
-        #     * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
-        # )
+        if self.impedance_control:
+            self.policy = JointImpedanceControl(
+                joint_pos_current=torch.tensor(self.get_joint_positions())
+                if q_desired is None
+                else q_desired,
+                Kp=1.0 # 0.4
+                * self.gain_scale
+                * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
+                Kd=1.0
+                * self.gain_scale
+                * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
+                robot_model=self.toco_robot_model,
+                ignore_gravity=True,
+            )
+        else:
+            self.policy = JointSpacePD(
+                Kp=1.0
+                * self.gain_scale
+                * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
+                Kd=1.0
+                * self.gain_scale
+                * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
+            )
 
         return self.policy
 
@@ -429,22 +446,23 @@ class MujocoManipulatorEnv(FrankaBase):
         self.policy = None
 
     def _update_current_controller(self, udpate_pkt):
-        # self._start_custom_controller(
-        #     q_desired=udpate_pkt["q_desired"] if "q_desired" in udpate_pkt else None
-        # )
-        if "q_desired" in udpate_pkt.keys():
+        if self.impedance_control and "q_desired" in udpate_pkt.keys():
             self.policy.joint_pos_desired = torch.nn.Parameter(udpate_pkt["q_desired"])
+            return self.policy.forward(self.get_robot_state()[0])
 
-        # if "q_desired" in udpate_pkt.keys():
-        #     return self.policy.forward(
-        #         joint_pos_current=self.get_robot_state()[0]["joint_positions"],
-        #         joint_vel_current=self.get_robot_state()[0]["joint_velocities"],
-        #         joint_pos_desired=torch.tensor(udpate_pkt["q_desired"]),
-        #         joint_vel_desired=torch.zeros_like(udpate_pkt["q_desired"]),
-        #     )
-        # else:
-        #     return None
-        return self.policy.forward(self.get_robot_state()[0])
+        elif "q_desired" in udpate_pkt.keys():
+            return {
+                "joint_torques": self.policy.forward(
+                    joint_pos_current=self.get_robot_state()[0][
+                        "joint_positions"
+                    ].clone(),
+                    joint_vel_current=self.get_robot_state()[0][
+                        "joint_velocities"
+                    ].clone(),
+                    joint_pos_desired=udpate_pkt["q_desired"].clone().detach(),
+                    joint_vel_desired=torch.zeros_like(udpate_pkt["q_desired"]),
+                )
+            }
 
     def _adaptive_time_to_go_polymetis(
         self, robot_model, joint_displacement: torch.Tensor, time_to_go_default=1.0
@@ -513,6 +531,7 @@ class MujocoManipulatorEnv(FrankaBase):
                     # run controller loop for int((1/self.control_hz) / self.model.opt.timestep) instead of time.sleep(1/self.control_hz)
                     for _ in range(self.frame_skip):
                         self.update_desired_joint_positions(command)
+                        # self.update_desired_joint_positions(command + torch.normal(mean=0., std=1e-1, size=command.shape))
                 else:
                     self._robot.update_desired_joint_positions(command)
 
@@ -541,15 +560,13 @@ class MujocoManipulatorEnv(FrankaBase):
 
         output_pkt = self._update_current_controller(udpate_pkt)
 
-        # if output_pkt is not None:
-        #     self.apply_joint_torques(output_pkt.detach().numpy())
-
-        # torques = output_pkt["joint_torques"].detach().numpy()
-        # self.apply_joint_torques(torques)
-
-        # make sure grav_comp is applied in mujoco xml
-        if "q_desired" in udpate_pkt:
-            self.data.qpos[: len(self.franka_joint_ids)] = udpate_pkt["q_desired"]
+        if output_pkt is not None and self.torque_control:
+            # WARNING: actuator must be motor
+            torques = output_pkt["joint_torques"].detach().numpy()
+            self.apply_joint_torques(torques)
+        elif "q_desired" in udpate_pkt:
+            # WARNING: actuator must be general or position
+            self.data.ctrl[: len(self.franka_joint_ids)] = udpate_pkt["q_desired"]
             # mujoco.mj_forward(self.model, self.data)
             mujoco.mj_step(self.model, self.data)
 
@@ -628,4 +645,3 @@ class MujocoManipulatorEnv(FrankaBase):
 
     def get_gripper_position(self):
         return np.array(0)
-

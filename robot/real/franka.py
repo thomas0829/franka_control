@@ -51,7 +51,7 @@ class FrankaHardware(FrankaBase):
             MixedCartesianImpedanceControl,
         )
 
-        # policy = MixedCartesianImpedanceControl(
+        # self.policy = MixedCartesianImpedanceControl(
         #     joint_pos_current=self._robot.get_joint_positions(),
         #     Kp=self.gain_scale
         #     * torch.Tensor(
@@ -78,7 +78,7 @@ class FrankaHardware(FrankaBase):
             robot_model=self.toco_robot_model,
             ignore_gravity=True,
         )
-        self._robot.send_torch_policy(policy, blocking=False)
+        self._robot.send_torch_policy(self.policy, blocking=False)
 
     def update_joints(
         self, command, velocity=False, blocking=False, cartesian_noise=None

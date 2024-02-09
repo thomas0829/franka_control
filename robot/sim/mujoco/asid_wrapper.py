@@ -12,6 +12,7 @@ class ASIDWrapper(gym.Wrapper):
         self,
         env,
         obj_id="rod",
+        obj_pos_noise=True,
         obs_keys=["lowdim_ee", "lowdim_qpos", "obj_pose"],
         flatten=True,
     ):
@@ -36,12 +37,15 @@ class ASIDWrapper(gym.Wrapper):
         if self.obj_geom_ids == -1:
             self.obj_geom_ids = []
             for i in range(5):
-                self.obj_geom_ids.append(
-                    mujoco.mj_name2id(
+                obj_geom_id = mujoco.mj_name2id(
                         self.env._robot.model,
                         mujoco.mjtObj.mjOBJ_GEOM,
                         f"{self.obj_id}_geom_{i}",
                     )
+                if obj_geom_id == -1:
+                    break
+                self.obj_geom_ids.append(
+                    obj_geom_id
                 )
 
         if -1 in self.obj_geom_ids:
@@ -51,11 +55,11 @@ class ASIDWrapper(gym.Wrapper):
                 f"{self.obj_id}_geom",
             )
 
-        assert (
-            self.obj_body_id != -1
-            and self.obj_joint_id != -1
-            and -1 not in self.obj_geom_ids
-        ), f"Object not found. Make sure RobotEnv(model_name) is passed!"
+        # assert (
+        #     self.obj_body_id != -1
+        #     and self.obj_joint_id != -1
+        #     and -1 not in self.obj_geom_ids
+        # ), f"Object not found. Make sure RobotEnv(model_name) is passed!"
 
         # Object position
         self.obj_pose_noise_dict = {
@@ -63,14 +67,14 @@ class ASIDWrapper(gym.Wrapper):
             "y": {"min": -0.2, "max": 0.2},
             "yaw": {"min": 0.0, "max": 3.14},
         }
-        self.obj_pos_noise = True
+        self.obj_pos_noise = obj_pos_noise
         self.init_obj_pose = self.get_obj_pose()
         self.curr_obj_pose = None
 
         # Physics parameters
         self.parameter_dict = {
-            "inertia": {"type": "uniform", "min": -0.12, "max": 0.12, "value": None},
-            "friction": {"type": "gaussian", "mean": 0.0, "std": 0.1, "value": None},
+            "inertia": {"type": "uniform", "min": -0.1, "max": 0.1, "value": None},
+            # "friction": {"type": "gaussian", "mean": 0.0, "std": 0.5, "value": None},
         }
 
         self.reset_parameters()
@@ -78,7 +82,7 @@ class ASIDWrapper(gym.Wrapper):
 
         # Exploration reward
         self.last_action = np.zeros(
-            self.env.DoF - 1 if not self.env.gripper else self.env.DoF
+            self.env.DoF if not self.env.gripper else self.env.DoF + 1
         )
         self.reward_first = True
         self.exp_reward = None
@@ -89,7 +93,7 @@ class ASIDWrapper(gym.Wrapper):
         # obs space dict to array
         for k in self.env.observation_space.keys():
             if k not in self.obs_keys:
-                del self.env.observation_space[k]
+                del self.env.observation_space.spaces[k]
 
         low = np.concatenate([v.low for v in self.env.observation_space.values()])
         high = np.concatenate([v.high for v in self.env.observation_space.values()])
@@ -111,6 +115,9 @@ class ASIDWrapper(gym.Wrapper):
         return obs
 
     def step(self, action):
+        
+        self.last_action = action
+
         if self.reward_first:
             reward = self.compute_reward(action)
 
@@ -122,20 +129,22 @@ class ASIDWrapper(gym.Wrapper):
         return self.augment_observations(obs, flatten=self.flatten), reward, done, info
 
     def reset(self, *args, **kwargs):
-        # reset robot
-        obs = self.env.reset()
 
-        # randomize obj parameters
+        # randomize obj parameters | mujoco reset data
         self.resample_parameters()
 
-        # randomize obj position
+        # randomize obj position |
         self.resample_obj_pose()
 
         if self.curr_obj_pose is None:
             obj_pose = self.init_obj_pose.copy()
         else:
             obj_pose = self.curr_obj_pose.copy()
+        # set obj qpos | mujoco forward
         self.update_obj(obj_pose)
+
+        # reset robot
+        obs = self.env.reset()
 
         return self.augment_observations(obs, flatten=self.flatten)
 
@@ -148,6 +157,7 @@ class ASIDWrapper(gym.Wrapper):
             for k, v in zip(self.parameter_dict.keys(), parameters):
                 self.parameter_dict[k]["value"] = v
         self.params_set = True
+        self.reset()
 
     def get_parameters(self):
         parameters = []
@@ -174,23 +184,28 @@ class ASIDWrapper(gym.Wrapper):
                 value = self.parameter_dict[key]["value"]
             elif self.parameter_dict[key]["type"] == "uniform":
                 value = np.random.uniform(
-                    self.parameter_dict[key]["min"], self.parameter_dict[key]["max"]
+                    low=self.parameter_dict[key]["min"],
+                    high=self.parameter_dict[key]["max"],
                 )
             elif self.parameter_dict[key]["type"] == "gaussian":
                 value = np.random.normal(
-                    self.parameter_dict[key]["mean"], self.parameter_dict[key]["std"]
+                    loc=self.parameter_dict[key]["mean"],
+                    scale=self.parameter_dict[key]["std"],
                 )
             self.parameter_dict[key]["value"] = value
 
             # set new parameter value
             if key == "inertia":
+                # bin_size = self.parameter_dict["inertia"]["max"] / len(self.obj_geom_ids)
+                # bin_idx = np.clip(np.ceil(value / bin_size), a_min=0., a_max=len(self.obj_geom_ids)-1).astype(np.uint8)
+
                 self.env._robot.model.body_ipos[self.obj_body_id][1] = value
                 self.env._robot.model.body_inertia[self.obj_body_id] = np.array(
                     [0.0002, 0.0002, 0.0002]
                 )
             elif key == "friction":
-                for geom in self.obj_geom_ids:
-                    self.env._robot.model.geom_friction[geom][0] = value
+                for geom_id in self.obj_geom_ids:
+                    self.env._robot.model.geom_friction[geom_id][0] = value
 
         # update sim
         mujoco.mj_resetData(self.env._robot.model, self.env._robot.data)
@@ -241,7 +256,7 @@ class ASIDWrapper(gym.Wrapper):
         ]
         mujoco.mj_forward(self.env._robot.model, self.env._robot.data)
 
-    def reset_data(self, new_data):
+    def set_data(self, new_data):
         self.env._robot.data = new_data
         mujoco.mj_forward(self.env._robot.model, self.env._robot.data)
 
@@ -258,9 +273,10 @@ class ASIDWrapper(gym.Wrapper):
     def set_full_state(self, full_state):
         self.last_action = full_state["last_action"]
         self.env._curr_path_length = full_state["curr_path_length"]
-        self.reset_data(full_state["robot_data"])
+        self.set_data(full_state["robot_data"])
 
     def create_exp_reward(self, cfg, seed, normalization=0.02):
+        cfg["on_screen_rendering"] = False
         exp_env = type(self.env)(**cfg)
         exp_env = ASIDWrapper(exp_env)
         exp_env.seed(seed)
@@ -270,8 +286,8 @@ class ASIDWrapper(gym.Wrapper):
 
         self.exp_reward = ASIDRewardWrapper(
             exp_env,
+            delta=0.1,
             normalization=normalization,
-            articulation=False,
         )
 
     def compute_reward(self, action):
@@ -280,7 +296,7 @@ class ASIDWrapper(gym.Wrapper):
             current_param = self.get_parameters()
             return self.exp_reward.get_reward(
                 full_state,
-                action[: self.env.DoF],
+                action,
                 params=current_param,
                 verbose=False,
             )

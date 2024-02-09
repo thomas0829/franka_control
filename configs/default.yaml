@@ -1,0 +1,14 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - log: wandb
+  - robot: sim
+
+exp_id: "debug"
+
+seed: 0
+gpu_id: -1
+num_workers: 2
+num_workers_eval: 2

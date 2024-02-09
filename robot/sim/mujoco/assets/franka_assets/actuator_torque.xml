@@ -1,0 +1,31 @@
+<mujocoinclude>
+  <tendon>
+    <fixed name="split">
+      <joint joint="robot:finger_joint1" coef="0.5" />
+      <joint joint="robot:finger_joint2" coef="0.5" />
+    </fixed>
+  </tendon>
+
+  <equality>
+    <joint joint1="robot:finger_joint1" joint2="robot:finger_joint2" solimp="0.95 0.99 0.001"
+      solref="0.005 1" />
+  </equality>
+
+  <actuator>
+    <!-- <motor joint="panda_joint1" name="panda_actuator1" />
+    <motor joint="panda_joint2" name="panda_actuator2" />
+    <motor joint="panda_joint3" name="panda_actuator3" />
+    <motor joint="panda_joint4" name="panda_actuator4" />
+    <motor joint="panda_joint5" name="panda_actuator5" />
+    <motor joint="panda_joint6" name="panda_actuator6" />
+    <motor joint="panda_joint7" name="panda_actuator7" /> -->
+    <general joint="panda_joint1" name="panda_actuator1" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
+    <general joint="panda_joint2" name="panda_actuator2" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
+    <general joint="panda_joint3" name="panda_actuator3" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
+    <general joint="panda_joint4" name="panda_actuator4" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
+    <general joint="panda_joint5" name="panda_actuator5" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
+    <general joint="panda_joint6" name="panda_actuator6" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
+    <general joint="panda_joint7" name="panda_actuator7" dyntype="none" dynprm="1 0 0" gaintype="fixed" gainprm="1 0 0" biastype="none" biasprm="0 0 0" />
+  </actuator>
+
+</mujocoinclude>

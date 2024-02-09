@@ -5,27 +5,32 @@ from robot.sim.mujoco.asid_wrapper import ASIDWrapper
 from robot.sim.vec_env.vec_wrapper import SubVecEnv
 
 
-def make_env(cfg, seed=0, device_id=0, exp_reward=False, verbose=False):
+def make_env(robot_cfg_dict, env_cfg_dict, seed=0, device_id=0, exp_reward=False, verbose=False):
+    
     if verbose:
-        print(cfg)
+        print("robot config", robot_cfg_dict)
+        print("env config", env_cfg_dict)
 
-    env = RobotEnv(**cfg, verbose=verbose)
-    env = ASIDWrapper(env)
+    robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace("base", env_cfg_dict["obj_id"])
+
+    env = RobotEnv(**robot_cfg_dict, device_id=device_id, verbose=verbose)
+    env = ASIDWrapper(env, **env_cfg_dict)
 
     if exp_reward:
-        env.create_exp_reward(cfg, seed)
+        env.create_exp_reward(robot_cfg_dict, seed)
     env.seed(seed)
 
     return env
 
 
 def make_vec_env(
-    cfg_dict, num_workers, seed, device_id=0, exp_reward=False
+    robot_cfg_dict, env_cfg_dict, num_workers, seed, device_id=0, exp_reward=False
 ):
     env_fns = [
         partial(
             make_env,
-            cfg_dict,
+            robot_cfg_dict,
+            env_cfg_dict,
             seed=seed + i,
             device_id=device_id,
             verbose=bool(i == 0),

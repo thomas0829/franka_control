@@ -50,7 +50,7 @@ if __name__ == "__main__":
         else "cpu"
     )
 
-    control_hz = 5
+    control_hz = 10
 
     cfg = {
         "control_hz": control_hz,
@@ -105,6 +105,8 @@ if __name__ == "__main__":
 
         # ACT
         actions = np.array([0.0, 1.0, 0.0])
+        # actions = np.random.uniform([-1., -1., 0.], [1., 1., 0.], size=3)
+
         # # ee_pos = np.array([0.5, 0.3, 0.3])
         # ee_pos = env._robot.get_ee_pos().copy() + actions # + np.random.uniform(-1e-3, 1e-3, size=3)
         # qpos = env._robot._ik_solver.cartesian_position_to_joint_position(ee_pos, ee_quat, env._robot.get_robot_state()[0])
@@ -193,5 +195,5 @@ if __name__ == "__main__":
     for i in range(3):
         plt.plot(data[:, i : i + 1], label=labels[i])
     plt.legend()
-    plt.show()
+    # plt.show()
     plt.savefig("plot.png")

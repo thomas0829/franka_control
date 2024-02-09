@@ -6,10 +6,9 @@ from typing import Any, Dict, List, Optional, Sequence, TextIO, Tuple, Union
 
 import numpy as np
 import torch
-import wandb
-import wandb.data_types
 from matplotlib import pyplot as plt
 
+import wandb
 
 try:
     from torch.utils.tensorboard import SummaryWriter

@@ -64,7 +64,7 @@ def _worker(remote, parent_remote, env_fn_wrapper):
 
             # pose
             elif cmd == "get_obj_pose":
-                remote.send(env.get_obj_pose(data))
+                remote.send(env.get_obj_pose())
             elif cmd == "set_obj_pose":
                 remote.send(env.set_obj_pose(data))
 

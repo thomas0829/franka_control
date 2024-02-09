@@ -5,10 +5,14 @@ import numpy as np
 from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file
-from helpers.pointclouds import (compute_camera_extrinsic,
-                                 compute_camera_intrinsic, crop_points,
-                                 depth_to_points, points_to_pcd,
-                                 visualize_pcds)
+from helpers.pointclouds import (
+    compute_camera_extrinsic,
+    compute_camera_intrinsic,
+    crop_points,
+    depth_to_points,
+    points_to_pcd,
+    visualize_pcds,
+)
 from helpers.transformations import add_angles, angle_diff
 
 
@@ -45,6 +49,7 @@ class RobotEnv(gym.Env):
         # Mujoco: model name
         model_name="base_franka",
         on_screen_rendering=False,
+        device_id=0,
         # debugging
         verbose=False,
     ):
@@ -79,6 +84,19 @@ class RobotEnv(gym.Env):
             ]
         )
 
+        if self.DoF == 2:
+            self._reset_joint_qpos = np.array(
+                [
+                    -0.06315325,
+                    0.33202057,
+                    -0.0462324,
+                    -2.79372462,
+                    0.07651035,
+                    3.18670704,
+                    0.44067877,
+                ]
+            )
+
         # observation space config
         self._qpos = qpos
         self._ee_pos = ee_pos
@@ -97,16 +115,11 @@ class RobotEnv(gym.Env):
         self.action_shape = self.action_space.shape
 
         # EE position (x, y, z) + EE rot (roll, pitch, yaw) + gripper width
-        # ee_space_low = np.array([0.2, -0.4, 0.15, -3.14, -3.14, -3.14, 0.00])
-        # ee_space_high = np.array([0.65, 0.4, 0.8, 3.14, 3.14, 3.14, 0.085])
-        ee_space_low = np.array([0.35, -0.38, 0.13, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.65, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
+        ee_space_low = np.array([0.32, -0.38, 0.13, -3.14, -3.14, -3.14, 0.00])
+        ee_space_high = np.array([0.7, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:
-            # height = 0.15
-            # ee_space_low = np.concatenate((ee_space_low[:2], [height]))
-            # ee_space_high = np.concatenate((ee_space_high[:2], [height]))
             ee_space_low = ee_space_low[:3]
             ee_space_high = ee_space_high[:3]
         # EE position (x, y, z)
@@ -257,13 +270,20 @@ class RobotEnv(gym.Env):
             self.observation_shape[k] = env_obs_spaces[k].shape
             self.observation_type[k] = env_obs_spaces[k].dtype
 
+    def get_spaces(self):
+        return self.observation_space, self.action_space
+
     def step(self, action):
         start_time = time.time()
 
         if not self.gripper:
-            assert len(action) == (self.DoF)
+            assert len(action) == (
+                self.DoF
+            ), f"Expected action shape: ({self.DoF},) got {action.shape}"
         else:
-            assert len(action) == (self.DoF + 1)
+            assert len(action) == (
+                self.DoF + 1
+            ), f"Expected action shape: ({self.DoF+1},) got {action.shape}"
 
         action = np.clip(action, -1.0, 1.0)
         assert (action.max() <= 1) and (action.min() >= -1)
@@ -288,6 +308,11 @@ class RobotEnv(gym.Env):
             np.concatenate((desired_pos, desired_angle, [gripper])),
             action_space="cartesian_position",
         )
+        # # cartesian velocity control
+        # self._update_robot(
+        #     np.concatenate((pos_action, angle_action, [gripper])),
+        #     action_space="cartesian_velocity",
+        # )
 
         comp_time = time.time() - start_time
         sleep_left = max(0, (1 / self.control_hz) - comp_time)
@@ -366,6 +391,10 @@ class RobotEnv(gym.Env):
             if self.DoF == 2:
                 self.ee_space.low[2] = self._default_pos[2]
                 self.ee_space.high[2] = self._default_pos[2]
+
+                # overwrite fixed z for 2DoF EE control with 0.13
+                self.ee_space.low[2] = 0.13
+                self.ee_space.high[2] = 0.13
 
         if self._randomize_ee_on_reset:
             self._randomize_reset_pos()
@@ -461,12 +490,16 @@ class RobotEnv(gym.Env):
             return len(self._camera_reader._all_cameras)
 
     def render(self, mode=None):
-        imgs = self.get_images()
-        sn = next(iter(imgs))
-        return imgs[sn]["rgb"]
+        if self.sim and self._robot.has_renderer:
+            self._robot.render()
+        else:
+            imgs = self.get_images()
+            sn = next(iter(imgs))
+            return imgs[sn]["rgb"]
 
     def get_images(self):
-        if self.sim:
+        imgs = []
+        if self.sim and not self._robot.has_renderer:
             imgs = self._robot.render()
         else:
             imgs = self._camera_reader.read_cameras()
@@ -524,10 +557,15 @@ class RobotEnv(gym.Env):
         img_points = self.get_images_and_points()
         points = []
         for k in img_points.keys():
-            pts, clr = crop_points(img_points[k]["points"], colors=img_points[k]["rgb"].reshape(-1,3) / 255., crop_min=[-1., -1., -1.], crop_max=[1., 1., 1.])
+            pts, clr = crop_points(
+                img_points[k]["points"],
+                colors=img_points[k]["rgb"].reshape(-1, 3) / 255.0,
+                crop_min=[-1.0, -1.0, -1.0],
+                crop_max=[1.0, 1.0, 1.0],
+            )
             points.append(points_to_pcd(pts, colors=clr))
 
-        zero = points_to_pcd(np.zeros((1,3)))
+        zero = points_to_pcd(np.zeros((1, 3)))
         points.append(zero)
 
         visualize_pcds(points)
@@ -558,13 +596,13 @@ class RobotEnv(gym.Env):
         # set gripper width
         gripper_width = current_state["current_pose"][-1:]
         # compute and normalize ee/qpos state
-        if self.DoF == 2:
-            ee_pos = (
-                np.concatenate([current_state["current_pose"][:2], gripper_width])
-                if self.gripper
-                else current_state["current_pose"][:2]
-            )
-        if self.DoF == 3:
+        # if self.DoF == 2:
+        #     ee_pos = (
+        #         np.concatenate([current_state["current_pose"][:2], gripper_width])
+        #         if self.gripper
+        #         else current_state["current_pose"][:2]
+        #     )
+        if self.DoF == 3 or self.DoF == 2:
             ee_pos = (
                 np.concatenate([current_state["current_pose"][:3], gripper_width])
                 if self.gripper

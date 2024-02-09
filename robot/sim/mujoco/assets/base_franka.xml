@@ -14,7 +14,7 @@
         <map force="0.1" fogend="5" />
     </visual>
 
-    <compiler inertiafromgeom='auto' inertiagrouprange='3 5' angle="radian" texturedir="texture"
+    <compiler inertiafromgeom='auto' inertiagrouprange='0 5' angle="radian" texturedir="texture"
         meshdir="franka_assets/meshes" />
     <worldbody>
 

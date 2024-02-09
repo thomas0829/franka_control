@@ -6,15 +6,14 @@ import grpc
 import numpy as np
 import torch
 from polymetis import GripperInterface, RobotInterface
+from torchcontrol.policies import JointImpedanceControl
 
 # UTILITY SPECIFIC IMPORTS
 from helpers.subprocess_utils import run_threaded_command
-from helpers.transformations import add_poses, euler_to_quat, pose_diff, quat_to_euler
-
-from robot.franka_base import FrankaBase
+from helpers.transformations import (add_poses, euler_to_quat, pose_diff,
+                                     quat_to_euler)
 from robot.controllers.utils import generate_joint_space_min_jerk
-
-from torchcontrol.policies import JointImpedanceControl
+from robot.franka_base import FrankaBase
 
 
 class FrankaHardware(FrankaBase):
@@ -28,13 +27,19 @@ class FrankaHardware(FrankaBase):
         gain_scale=1.5,
         reset_gain_scale=1.0,
     ):
-
-        super().__init__(robot_type=robot_type, control_hz=control_hz, gripper=gripper, custom_controller=custom_controller)
+        super().__init__(
+            robot_type=robot_type,
+            control_hz=control_hz,
+            gripper=gripper,
+            custom_controller=custom_controller,
+        )
 
         self.gain_scale = gain_scale
         self.reset_gain_scale = reset_gain_scale
 
         self.launch_robot(ip_address=ip_address, gripper=gripper)
+
+        self._grasping = False
 
     def reset(self):
         self.update_joints(self._robot.home_pose, velocity=False, blocking=True)
@@ -47,35 +52,12 @@ class FrankaHardware(FrankaBase):
             self._max_gripper_width = self._gripper.metadata.max_width
 
     def _start_custom_controller(self):
-        from robot.controllers.mixed_cartesian_impedance import (
-            MixedCartesianImpedanceControl,
-        )
-
-        # self.policy = MixedCartesianImpedanceControl(
-        #     joint_pos_current=self._robot.get_joint_positions(),
-        #     Kp=self.gain_scale
-        #     * torch.Tensor(
-        #         self._robot.metadata.default_Kx
-        #     ),  # the higher, the faster it returns to pos
-        #     Kd=self.gain_scale
-        #     * torch.Tensor(
-        #         self._robot.metadata.default_Kxd
-        #     ),  # the higher, the stiffer around pos
-        #     kp_pos=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kq),
-        #     kd_pos=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kqd),
-        #     desired_joint_pos=self._robot.get_joint_positions(),
-        #     robot_model=self._robot.robot_model,
-        #     ignore_gravity=True,
-        # )
+        
         self.policy = JointImpedanceControl(
             joint_pos_current=self._robot.get_joint_positions(),
-            Kp=0.4
-            * self.gain_scale
-            * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
-            Kd=1
-            * self.gain_scale
-            * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
-            robot_model=self.toco_robot_model,
+            Kp=1.0 * self.gain_scale * torch.Tensor(self._robot.metadata.default_Kq),
+            Kd=1.0 * self.gain_scale * torch.Tensor(self._robot.metadata.default_Kqd),
+            robot_model=self._robot.robot_model,
             ignore_gravity=True,
         )
         self._robot.send_torch_policy(self.policy, blocking=False)
@@ -129,36 +111,37 @@ class FrankaHardware(FrankaBase):
 
             run_threaded_command(helper_non_blocking)
 
-    def update_desired_joint_positions(self, q_desired=None, kp=None, kd=None):
+    def update_desired_joint_positions(self, joint_pos_desired=None, kp=None, kd=None):
         """update joint pos"""
         udpate_pkt = {}
-        udpate_pkt["ctrl_mode"] = torch.Tensor([0.0])
 
-        if q_desired is not None:
-            udpate_pkt["q_desired"] = (
-                q_desired if torch.is_tensor(q_desired) else torch.tensor(q_desired)
+        if joint_pos_desired is not None:
+            udpate_pkt["joint_pos_desired"] = (
+                joint_pos_desired if torch.is_tensor(joint_pos_desired) else torch.tensor(joint_pos_desired)
             )
-        if kp is not None:
-            udpate_pkt["kp"] = kp if torch.is_tensor(kp) else torch.tensor(kp)
-        if kd is not None:
-            udpate_pkt["kd"] = kd if torch.is_tensor(kd) else torch.tensor(kd)
-        assert udpate_pkt, "Atleast one parameter needs to be specified for udpate"
 
-        self._robot.update_current_policy(udpate_pkt)
+            # # can't update gains when using joint impedance control -> switch to hybrid in the future
+            # if kp is not None:
+            #     udpate_pkt["Kp"] = kp if torch.is_tensor(kp) else torch.tensor(kp)
+            # if kd is not None:
+            #     udpate_pkt["Kd"] = kd if torch.is_tensor(kd) else torch.tensor(kd)
+            # assert udpate_pkt, "Atleast one parameter needs to be specified for udpate"
 
-    def move_to_joint_positions(self, q_desired=None, time_to_go=3):
+            self._robot.update_current_policy(udpate_pkt)
+
+    def move_to_joint_positions(self, joint_pos_desired=None, time_to_go=3):
         # Use registered controller
         q_current = self._robot.get_joint_positions()
 
         # generate min jerk trajectory
         dt = 0.1
         waypoints = generate_joint_space_min_jerk(
-            start=q_current, goal=q_desired, time_to_go=time_to_go, dt=dt
+            start=q_current, goal=joint_pos_desired, time_to_go=time_to_go, dt=dt
         )
         # reset using min_jerk traj
         for i in range(len(waypoints)):
             self.update_desired_joint_positions(
-                q_desired=waypoints[i]["position"],
+                joint_pos_desired=waypoints[i]["position"],
                 kp=self.reset_gain_scale
                 * torch.Tensor(self._robot.metadata.default_Kq),
                 kd=self.reset_gain_scale
@@ -180,19 +163,24 @@ class FrankaHardware(FrankaBase):
         command = float(np.clip(command, 0, 1))
         # https://github.com/facebookresearch/fairo/issues/1398
         # for robotiq consider using
-        # self._gripper.grasp(grasp_width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
-        # for franka gripper, use discrete grasp/ungrasp
-        if command > 0.0:
+        # self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
+        
+        # franka gripper
+        # goto interface doesn't grasp -> use discrete grasp/ungrasp
+        # gripper crashes when running multiple grasp,grasp,grasp,... or ungrasp,ungrasp,ungrasp,... -> use flag
+        if command > 0.0 and not self._grasping:
             self._gripper.grasp(
                 grasp_width=0.0, speed=0.5, force=5.0, blocking=blocking
             )
-        else:
+            self._grasping = True
+        elif command == 0.0 and self._grasping:
             self._gripper.grasp(
                 grasp_width=self._max_gripper_width,
                 speed=0.5,
                 force=5.0,
                 blocking=blocking,
             )
+            self._grasping = False
 
     def add_noise_to_joints(self, original_joints, cartesian_noise):
         original_joints = torch.Tensor(original_joints)

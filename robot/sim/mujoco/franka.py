@@ -16,12 +16,8 @@ import yaml
 
 # from polymetis.utils.data_dir import get_full_path_to_urdf
 # from polysim.envs import AbstractControlledEnv
-from helpers.transformations import (
-    euler_to_quat,
-    quat_to_euler,
-    rmat_to_euler,
-    rmat_to_quat,
-)
+from helpers.transformations import (euler_to_quat, quat_to_euler,
+                                     rmat_to_euler, rmat_to_quat)
 
 log = logging.getLogger(__name__)
 from torchcontrol.modules.feedback import JointSpacePD
@@ -543,14 +539,14 @@ class MujocoManipulatorEnv(FrankaBase):
     #     self.data.ctrl[-1] = gripper * 255
     #     mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
 
-    def update_desired_joint_positions(self, q_desired=None, kp=None, kd=None):
+    def update_desired_joint_positions(self, joint_pos_desired=None, kp=None, kd=None):
         """update joint pos"""
 
         udpate_pkt = {}
 
-        if q_desired is not None:
-            udpate_pkt["q_desired"] = (
-                q_desired if torch.is_tensor(q_desired) else torch.tensor(q_desired)
+        if joint_pos_desired is not None:
+            udpate_pkt["joint_pos_desired"] = (
+                joint_pos_desired if torch.is_tensor(joint_pos_desired) else torch.tensor(joint_pos_desired)
             )
         if kp is not None:
             udpate_pkt["kp"] = kp if torch.is_tensor(kp) else torch.tensor(kp)
@@ -570,9 +566,9 @@ class MujocoManipulatorEnv(FrankaBase):
             # mujoco.mj_forward(self.model, self.data)
             mujoco.mj_step(self.model, self.data)
 
-    def move_to_joint_positions(self, q_desired=None, time_to_go=3):
+    def move_to_joint_positions(self, joint_pos_desired=None, time_to_go=3):
         # fast reset for simulation -> jump to joint positions
-        # self.data.qpos[self.franka_joint_ids] = q_desired
+        # self.data.qpos[self.franka_joint_ids] = joint_pos_desired
         # mujoco.mj_step(self.model, self.data)
         # return
 
@@ -582,14 +578,14 @@ class MujocoManipulatorEnv(FrankaBase):
         # generate min jerk trajectory
         dt = 0.1
         waypoints = generate_joint_space_min_jerk(
-            start=q_current, goal=q_desired, time_to_go=time_to_go, dt=dt
+            start=q_current, goal=joint_pos_desired, time_to_go=time_to_go, dt=dt
         )
         # reset using min_jerk traj
         for i in range(len(waypoints)):
             # run simulation for dt instead of time.sleep(dt)
             for _ in range(int(dt // self.model.opt.timestep)):
                 self.update_desired_joint_positions(
-                    q_desired=waypoints[i]["position"],
+                    joint_pos_desired=waypoints[i]["position"],
                     kp=self.reset_gain_scale
                     * torch.nn.Parameter(
                         torch.tensor(self.metadata["default_Kq"], dtype=torch.float32)

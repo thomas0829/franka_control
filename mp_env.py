@@ -10,20 +10,30 @@ from helpers.transformations import euler_to_quat, euler_to_rmat, quat_to_euler
 from robot.sim.vec_env.asid_vec import make_env, make_vec_env
 
 
-def move_to_cartesian_pose(target_pose, env):
+def move_to_cartesian_pose(target_pose, env, error_thresh=5e-2):
+    ctr = 0
     while True:
         robot_state, _ = env.unwrapped._robot.get_robot_state()
         q_desired = env.unwrapped._robot._ik_solver.cartesian_position_to_joint_position(target_pose[:3], target_pose[3:], robot_state)
         env.unwrapped._robot.update_joints(q_desired, blocking=True)
         error = np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0]- target_pose[:3])
-        print(error)
-        if error < 5e-2:
+        
+        ctr += 1
+        if error < error_thresh:
             break
+        
+        print("iter", ctr, "error", error)
+        
+def apply_noise(act, mean=0., std=1e-1):
+    return act.copy() + np.random.normal(loc=mean, scale=std, size=act.shape)
+
+# def get_demo_action(obs):
+
 
 @hydra.main(config_path="configs/", config_name="collect_sim", version_base="1.1")
 def run_experiment(cfg):
     
-    cfg.robot.on_screen_rendering = True
+    cfg.robot.on_screen_rendering = False
     cfg.env.obj_pos_noise = False
 
     env = make_env(
@@ -77,7 +87,7 @@ def run_experiment(cfg):
         act[:6] = np.clip(target_pose[:6] - curr_pose[:6], -.1, .1)
 
         env.step(act)
-        env.render()
+        imgs.append(env.render())
         print(act[:3], np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0]- target_pose[:3]))
         error = np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0]- target_pose[:3])
         if error < 5e-2:
@@ -99,7 +109,7 @@ def run_experiment(cfg):
         act[:6] = np.clip(target_pose[:6] - curr_pose[:6], -.1, .1)
 
         env.step(act)
-        env.render()
+        imgs.append(env.render())
         print(act[:3], np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0]- target_pose[:3]))
         error = np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0]- target_pose[:3])
         if error < 5e-2:
@@ -110,10 +120,10 @@ def run_experiment(cfg):
         act[-1] = 1.
         env.step(act)
         time.sleep(0.1)
-        env.render()
+        imgs.append(env.render())
 
     # move_to_cartesian_pose(target_pose, env)
-    # env.render()
+    # imgs.append(env.render())
 
     # # MOVE UP
     target_pose[2] = 0.2
@@ -133,7 +143,7 @@ def run_experiment(cfg):
         act[:6] = np.clip(target_pose[:6] - curr_pose[:6], -.1, .1)
 
         env.step(act)
-        env.render()
+        imgs.append(env.render())
         print(act[:3], np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0]- target_pose[:3]))
         error = np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0]- target_pose[:3])
         if error < 5e-2:
@@ -156,12 +166,13 @@ def run_experiment(cfg):
         act[:6] = np.clip(target_pose[:6] - curr_pose[:6], -.1, .1)
 
         env.step(act)
-        env.render()
+        imgs.append(env.render())
         print(act[:3], np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0]- target_pose[:3]))
         error = np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0]- target_pose[:3])
         if error < 5e-2:
             break
-    # imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
+
+    imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
 
 
 if __name__ == "__main__":

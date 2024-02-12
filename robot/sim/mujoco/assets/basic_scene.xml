@@ -21,6 +21,8 @@
 
         <geom name='floor' friction='0.2 0.001 0.00001' pos='0. 0. 0.' size='1. 1. 1'
             conaffinity='1' contype='1' type='plane' material="MatPlane" condim='3' />
+        <!-- <geom mesh="vention_table" material="MatPlane" class="visual" pos='0. 0. 0.' size='1. 1. 1' />
+        <geom mesh="vention_table" material="MatPlane" class="collision" /> -->
 
         <site name='xaxis' pos='.5 0 0' size='.005 .5' type='capsule' rgba='1 0 0 .25'
             euler='0 1.57 0' group='3' />

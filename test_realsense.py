@@ -39,6 +39,9 @@ for camera in multi_camera_wrapper._all_cameras:
     points, colors = crop_points(points, colors=colors, crop_min=-np.ones(3), crop_max=np.ones(3))
     pcds.append(points_to_pcd(points, colors=colors))
 
+import joblib
+joblib.dump({"intrinsic": intrinsics, "extrinsics": extrinsics}, 'cameras/calibration/calibration_aruco_real.json')
+
 # fixed translatation frame from aruco to robot on vention table
 # - table width / 2 + marker size / 2
 tvec = np.array([[-0.675 + marker_size / 2, 0., 0.]])

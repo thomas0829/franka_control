@@ -4,7 +4,7 @@ hydra:
   
 defaults:
   - env: cube
-  - robot: sim
+  - robot: sim_demo
   - log: wandb
 
 exp_id: "debug_sim"

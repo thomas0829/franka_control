@@ -5,14 +5,10 @@ import numpy as np
 from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file
-from helpers.pointclouds import (
-    compute_camera_extrinsic,
-    compute_camera_intrinsic,
-    crop_points,
-    depth_to_points,
-    points_to_pcd,
-    visualize_pcds,
-)
+from helpers.pointclouds import (compute_camera_extrinsic,
+                                 compute_camera_intrinsic, crop_points,
+                                 depth_to_points, points_to_pcd,
+                                 visualize_pcds)
 from helpers.transformations import add_angles, angle_diff
 
 
@@ -104,12 +100,14 @@ class RobotEnv(gym.Env):
         self.normalize = normalize
 
         # action space
+        # action_low, action_high = -1., 1.
+        action_low, action_high = -0.1, 0.1
         self.action_space = Box(
             np.array(
-                [-1.0] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
+                [action_low] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
             ),  # dx_low, dy_low, dz_low, dgripper_low
             np.array(
-                [1.0] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
+                [action_high] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
             ),  # dx_high, dy_high, dz_high, dgripper_high
         )
         self.action_shape = self.action_space.shape
@@ -285,9 +283,8 @@ class RobotEnv(gym.Env):
                 self.DoF + 1
             ), f"Expected action shape: ({self.DoF+1},) got {action.shape}"
 
-        action = np.clip(action, -1.0, 1.0)
-        assert (action.max() <= 1) and (action.min() >= -1)
-
+        action = np.clip(action, self.action_space.low, self.action_space.high)
+        
         pos_action, angle_action, gripper = self._format_action(action)
 
         # clipping + any safety corrections for position

@@ -4,7 +4,7 @@ hydra:
   
 defaults:
   - env: rod
-  - robot: sim
+  - robot: sim_2dof
   - train: explore
   - log: wandb
 

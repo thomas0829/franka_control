@@ -14,6 +14,7 @@ from robot.rlds_wrapper import (convert_rlds_to_np, load_rlds_dataset,
                                 wrap_env_in_rlds_logger)
 from robot.robot_env import RobotEnv
 
+from mp_env import collect_demo_pick_up
 
 @hydra.main(config_path="configs/", config_name="collect_sim", version_base="1.1")
 def run_experiment(cfg):
@@ -68,21 +69,23 @@ def run_experiment(cfg):
             obss = []
             acts = []
 
-            obs = rlds_env.reset()
+            # obs = rlds_env.reset()
 
-            for j in tqdm(
-                range(cfg.max_episode_length), desc=f"Collecting Trajectory {i}"
-            ):
+            # for j in tqdm(
+            #     range(cfg.max_episode_length), desc=f"Collecting Trajectory {i}"
+            # ):
 
-                    # TODO add MP / heuristic here
-                    act = rlds_env.action_space.sample()
+            #         # TODO add MP / heuristic here
+            #         act = rlds_env.action_space.sample()
 
-                    next_obs, rew, done, _ = rlds_env.step(rlds_env.type_action(act))
+            #         next_obs, rew, done, _ = rlds_env.step(rlds_env.type_action(act))
 
-                    obss.append(obs)
-                    acts.append(act)
+            #         obss.append(obs)
+            #         acts.append(act)
 
-                    obs = next_obs
+            #         obs = next_obs
+            
+            success, _ = collect_demo_pick_up(rlds_env, z_waypoints=[0.3, 0.2, 0.12], noise_std=[5e-2, 1e-2, 5e-3], render=False)
 
             print(f"Recorded Trajectory {i}")
 

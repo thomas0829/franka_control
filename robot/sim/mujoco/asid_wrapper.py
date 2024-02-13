@@ -88,7 +88,7 @@ class ASIDWrapper(gym.Wrapper):
         # Observations
         self.obs_keys = obs_keys
         # obs space dict to array
-        for k in self.env.observation_space.keys():
+        for k in copy.deepcopy(self.env.observation_space.keys()):
             if k not in self.obs_keys:
                 del self.env.observation_space.spaces[k]
 

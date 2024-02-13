@@ -20,7 +20,7 @@ def run_experiment(cfg):
         env_cfg_dict=hydra_to_dict(cfg.env),
         seed=cfg.seed,
         device_id=0,
-        exp_reward=True,
+        exp_reward=False,
     )
     env.reset()
 

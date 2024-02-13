@@ -13,7 +13,7 @@ pause_after_reset: false
 # observation space configuration
 qpos: true
 ee_pos: true
-imgs: false
+imgs: true
 normalize: false
 
 # pass IP if not running on NUC "localhost" if running on NUC None if running sim

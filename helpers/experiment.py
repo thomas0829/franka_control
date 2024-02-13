@@ -3,9 +3,7 @@ import random
 import numpy as np
 import omegaconf
 import torch
-
 import wandb
-
 
 def hydra_to_dict(cfg):
     cfg_dict = omegaconf.OmegaConf.to_container(
@@ -31,6 +29,7 @@ def set_random_seed(seed):
 
 
 def setup_wandb(cfg, name, entity, project):
+
     run = wandb.init(
         name=name,
         entity=entity,

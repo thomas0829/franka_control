@@ -31,13 +31,28 @@ class RealSenseCamera:
 		if device_product_line == 'L500': config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
 		else: config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
-		self._pipeline.start(config)
+		cfg = self._pipeline.start(config)
 		self._align = rs.align(rs.stream.color)
 
-		color_sensor = device.query_sensors()[1]
-		color_sensor.set_option(rs.option.enable_auto_exposure, False)
-		color_sensor.set_option(rs.option.exposure, 300)
+		profile = cfg.get_stream(rs.stream.color)
+		intr = profile.as_video_stream_profile().get_intrinsics()
+		self._intrinsics = {
+			self._serial_number
+			+ "_rgb": self._process_intrinsics(intr),
+		}
 
+		# color_sensor = device.query_sensors()[1]
+		# color_sensor.set_option(rs.option.enable_auto_exposure, False)
+		# color_sensor.set_option(rs.option.exposure, 300)
+
+	def _process_intrinsics(self, params):
+		intrinsics = {}
+		intrinsics["cameraMatrix"] = np.array(
+			[[params.fx, 0, params.ppx], [0, params.fy, params.ppy], [0, 0, 1]]
+		)
+		intrinsics["distCoeffs"] = np.array(list(params.coeffs))
+		return intrinsics
+	
 	def read_camera(self):
 		# Wait for a coherent pair of frames: depth and color
 		frames = self._pipeline.wait_for_frames()

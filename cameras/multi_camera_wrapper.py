@@ -129,19 +129,10 @@ class MultiCameraWrapper:
 
         frame = camera.read_camera()[0]["array"]
 
-        if self.type == 'zed':
-            sn = camera.read_camera()[0]["serial_number"]
-            intrinsics = camera._intrinsics[sn.replace("/", "_")]
-            camera_matrix = intrinsics["cameraMatrix"]
-            dist_coeff = intrinsics["distCoeffs"]
-
-        elif self.type == 'realsense':
-            camera_matrix = np.eye(3)
-            camera_matrix[0,0] = self.color_intrinsics.fx
-            camera_matrix[1,1] = self.color_intrinsics.fy
-            camera_matrix[0,2] = frame.shape[1] / 2
-            camera_matrix[1,2] = frame.shape[0] / 2
-            dist_coeff = np.array(self.color_intrinsics.coeffs)
+        sn = camera.read_camera()[0]["serial_number"]
+        intrinsics = camera._intrinsics[sn.replace("/", "_")]
+        camera_matrix = intrinsics["cameraMatrix"]
+        dist_coeff = intrinsics["distCoeffs"]
 
         # # create aruco detector
         dictionary = cv2.aruco.getPredefinedDictionary(aruco_dict)

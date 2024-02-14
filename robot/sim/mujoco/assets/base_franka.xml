@@ -38,7 +38,7 @@
 
     </worldbody>
 
-    <include file="franka_assets/actuator.xml" />
+    <include file="franka_assets/actuator_position.xml" />
 
     <keyframe>
     </keyframe>

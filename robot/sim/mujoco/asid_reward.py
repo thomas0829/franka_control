@@ -14,8 +14,12 @@ class ASIDRewardWrapper:
         grad = self.estimate_loss_grad(
             full_state, action, params=params, verbose=verbose
         )
+        if verbose:
+            print("grad", "mean", np.mean(grad), "std", np.std(grad))
         # compute reward
         reward = np.trace(grad.T @ grad)
+        if verbose:
+            print("rew", "mean", np.mean(reward), "std", np.std(reward))
         # clip reward
         return np.clip(reward, 0.0, self.max_reward)
 
@@ -34,7 +38,6 @@ class ASIDRewardWrapper:
         for i in range(num_params):
             params_temp = copy.deepcopy(params)
 
-            pose_1 = self.envs.get_obj_pose()
             # define +delta
             params_temp[i] += self.delta
             # apply theta_delta
@@ -45,7 +48,6 @@ class ASIDRewardWrapper:
             obs1, _, _, _ = self.envs.step(action)
             if verbose:
                 print(obs1, full_state)
-            pose_2 = self.envs.get_obj_pose()
 
             params_temp = copy.deepcopy(params)
             # define -delta
@@ -56,7 +58,6 @@ class ASIDRewardWrapper:
             self.envs.set_full_state(copy.deepcopy(full_state))
             # step environment
             obs2, _, _, _ = self.envs.step(action)
-            pose_3 = self.envs.get_obj_pose()
 
             # if np.sum(np.abs(pose_1 - pose_2)) > 1e-2 or np.sum(np.abs(pose_1 - pose_3 > 1e-2)):
             #     print(pose_1)

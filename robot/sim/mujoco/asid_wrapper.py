@@ -72,7 +72,7 @@ class ASIDWrapper(gym.Wrapper):
         # Physics parameters
         self.parameter_dict = {
             "inertia": {"type": "uniform", "min": -0.1, "max": 0.1, "value": None},
-            # "friction": {"type": "gaussian", "mean": 0.0, "std": 0.5, "value": None},
+            "friction": {"type": "gaussian", "mean": 1.0, "std": 0.5, "value": None},
         }
 
         self.reset_parameters()
@@ -201,13 +201,13 @@ class ASIDWrapper(gym.Wrapper):
 
             # set new parameter value
             if key == "inertia":
-                # bin_size = self.parameter_dict["inertia"]["max"] / len(self.obj_geom_ids)
-                # bin_idx = np.clip(np.ceil(value / bin_size), a_min=0., a_max=len(self.obj_geom_ids)-1).astype(np.uint8)
-
-                self.env._robot.model.body_ipos[self.obj_body_id][1] = value
-                self.env._robot.model.body_inertia[self.obj_body_id] = np.array(
-                    [0.0002, 0.0002, 0.0002]
+                com_body_ids = mujoco.mj_name2id(
+                    self.env._robot.model,
+                    mujoco.mjtObj.mjOBJ_BODY,
+                    f"{self.obj_id}_com",
                 )
+                self.env._robot.model.body_pos[com_body_ids][1] = value
+                
             elif key == "friction":
                 for geom_id in self.obj_geom_ids:
                     self.env._robot.model.geom_friction[geom_id][0] = value
@@ -280,10 +280,11 @@ class ASIDWrapper(gym.Wrapper):
         self.env._curr_path_length = full_state["curr_path_length"]
         self.set_data(full_state["robot_data"])
 
-    def create_exp_reward(self, cfg, seed, normalization=0.02):
-        cfg["on_screen_rendering"] = False
-        exp_env = type(self.env)(**cfg)
-        exp_env = ASIDWrapper(exp_env)
+    def create_exp_reward(self, robot_cfg_dict, env_cfg_dict, seed, delta=5e-2, normalization=1e-3):
+        robot_cfg_dict["on_screen_rendering"] = False
+        env_cfg_dict["obj_pos_noise"] = False
+        exp_env = type(self.env)(**robot_cfg_dict)
+        exp_env = ASIDWrapper(exp_env, **env_cfg_dict)
         exp_env.seed(seed)
         exp_env.reset()
         # exp_env._robot.set_noiseless()
@@ -291,7 +292,7 @@ class ASIDWrapper(gym.Wrapper):
 
         self.exp_reward = ASIDRewardWrapper(
             exp_env,
-            delta=0.1,
+            delta=delta,
             normalization=normalization,
         )
 

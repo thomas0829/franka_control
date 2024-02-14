@@ -128,20 +128,20 @@ class MujocoManipulatorEnv(FrankaBase):
         # calibrate cameras
         if calib_dict:
             print("Not Implemented Warning: extrinsics not applied correctly")
-            for sn, camera_name in zip(calib_dict.keys(), self.camera_names):
-                self.set_camera_intrinsic(
-                    camera_name,
-                    calib_dict[sn]["intrinsic"]["fx"],
-                    calib_dict[sn]["intrinsic"]["fy"],
-                    calib_dict[sn]["intrinsic"]["ppx"],
-                    calib_dict[sn]["intrinsic"]["ppy"],
-                )
-                mujoco.mj_resetData(self.model, self.data)
-                R = np.eye(4)
-                R[:3, :3] = np.array(calib_dict[sn]["extrinsic"]["ori"])
-                R[:3, 3] = np.array(calib_dict[sn]["extrinsic"]["pos"])
-                self.set_camera_extrinsic(camera_name, R)
-                mujoco.mj_step(self.model, self.data)
+            # for sn, camera_name in zip(calib_dict.keys(), self.camera_names):
+            #     self.set_camera_intrinsic(
+            #         camera_name,
+            #         calib_dict[sn]["intrinsic"]["fx"],
+            #         calib_dict[sn]["intrinsic"]["fy"],
+            #         calib_dict[sn]["intrinsic"]["ppx"],
+            #         calib_dict[sn]["intrinsic"]["ppy"],
+            #     )
+            #     mujoco.mj_resetData(self.model, self.data)
+            #     R = np.eye(4)
+            #     R[:3, :3] = np.array(calib_dict[sn]["extrinsic"]["ori"])
+            #     R[:3, 3] = np.array(calib_dict[sn]["extrinsic"]["pos"])
+            #     self.set_camera_extrinsic(camera_name, R)
+            #     mujoco.mj_step(self.model, self.data)
 
         self.n_dofs = self.model_cfg.num_dofs
         # # no gripper

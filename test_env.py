@@ -10,8 +10,8 @@ from helpers.experiment import hydra_to_dict, set_random_seed, setup_wandb
 @hydra.main(config_path="configs/", config_name="collect_sim", version_base="1.1")
 def run_experiment(cfg):
     
-    cfg.robot.DoF = 6
-    cfg.robot.on_screen_rendering = False
+    cfg.robot.DoF = 2
+    cfg.robot.on_screen_rendering = True
 
     cfg.env.obj_pos_noise = False
 
@@ -20,17 +20,17 @@ def run_experiment(cfg):
         env_cfg_dict=hydra_to_dict(cfg.env),
         seed=cfg.seed,
         device_id=0,
-        exp_reward=False,
+        exp_reward=True,
     )
     env.reset()
 
-    env.set_parameters(np.array([0.1]))
+    # env.set_parameters(np.array([0., 1.]))
 
     while True:
         # obs, reward, done, info = env.step(env.action_space.sample())
-        obs, reward, done, info = env.step(np.array([0.3, 0.]))
-        time.sleep(1.1)
-        print(env.unwrapped._robot.get_ee_pos(), env.get_obj_pose()[:3], reward)
+        obs, reward, done, info = env.step(np.array([0.3, 0., 1.]))
+        # time.sleep(0.3)
+        # print(env.unwrapped._robot.get_ee_pos(), env.get_obj_pose()[:3], reward)
         env.render()
         
 

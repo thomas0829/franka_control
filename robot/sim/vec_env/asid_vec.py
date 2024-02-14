@@ -20,7 +20,7 @@ def make_env(
     env = ASIDWrapper(env, **env_cfg_dict)
 
     if exp_reward:
-        env.create_exp_reward(robot_cfg_dict, seed)
+        env.create_exp_reward(robot_cfg_dict, env_cfg_dict, seed)
     env.seed(seed)
 
     return env

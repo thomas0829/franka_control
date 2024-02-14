@@ -67,6 +67,7 @@ class MujocoManipulatorEnv(FrankaBase):
         has_renderer=False,
         has_offscreen_renderer=True,
         camera_names=["front", "left"],
+        calib_dict=None,
         use_rgb=True,
         use_depth=True,
         img_height=480,
@@ -124,6 +125,24 @@ class MujocoManipulatorEnv(FrankaBase):
 
         self.frame_skip = int((1 / self.control_hz) / self.model.opt.timestep)
 
+        # calibrate cameras
+        if calib_dict:
+            print("Not Implemented Warning: extrinsics not applied correctly")
+            for sn, camera_name in zip(calib_dict.keys(), self.camera_names):
+                self.set_camera_intrinsic(
+                    camera_name,
+                    calib_dict[sn]["intrinsic"]["fx"],
+                    calib_dict[sn]["intrinsic"]["fy"],
+                    calib_dict[sn]["intrinsic"]["ppx"],
+                    calib_dict[sn]["intrinsic"]["ppy"],
+                )
+                mujoco.mj_resetData(self.model, self.data)
+                R = np.eye(4)
+                R[:3, :3] = np.array(calib_dict[sn]["extrinsic"]["ori"])
+                R[:3, 3] = np.array(calib_dict[sn]["extrinsic"]["pos"])
+                self.set_camera_extrinsic(camera_name, R)
+                mujoco.mj_step(self.model, self.data)
+
         self.n_dofs = self.model_cfg.num_dofs
         # # no gripper
         # assert (
@@ -178,14 +197,14 @@ class MujocoManipulatorEnv(FrankaBase):
             ]
         self.franka_finger_joint_ids = [
             mujoco.mj_name2id(
-                    self.model, mujoco.mjtObj.mjOBJ_JOINT, "robot:finger_joint1"
-                ),
-                mujoco.mj_name2id(
-                    self.model, mujoco.mjtObj.mjOBJ_JOINT, "robot:finger_joint2"
-                ),
+                self.model, mujoco.mjtObj.mjOBJ_JOINT, "robot:finger_joint1"
+            ),
+            mujoco.mj_name2id(
+                self.model, mujoco.mjtObj.mjOBJ_JOINT, "robot:finger_joint2"
+            ),
         ]
         self._max_gripper_width = 0.08
-        
+
         if self.torque_control:
             # self.model.dof_damping[self.franka_joint_ids] = self.joint_damping * 100
             self.model.actuator_ctrlrange[self.franka_joint_ids] = np.array(
@@ -292,6 +311,19 @@ class MujocoManipulatorEnv(FrankaBase):
 
         return imgs
 
+    def set_camera_intrinsic(self, camera_name, fx, fy, cx, cy):
+        """
+        Set camera intrinsic matrix.
+
+        Args:
+            camera_name (str): name of camera
+            K (np.array): 3x3 camera matrix
+        """
+        cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
+        self.model.cam_fovy[cam_id] = np.degrees(
+            2 * np.arctan(self.img_height / (2 * fy))
+        )
+
     def get_camera_intrinsic(self, camera_name):
         """
         Obtains camera intrinsic matrix.
@@ -313,6 +345,36 @@ class MujocoManipulatorEnv(FrankaBase):
         # Camera intrinsic matrix
         K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
         return K
+
+    def set_camera_extrinsic(self, camera_name, R):
+        """
+        Set camera extrinsic matrix.
+
+        Args:
+            camera_name (str): name of camera
+            pos (np.array): 3x1 position vector
+            ori (np.array): 3x3 orientation matrix
+        """
+        cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
+
+        # camera_axis_correction = np.array(
+        #     [
+        #         [1.0, 0.0, 0.0, 0.0],
+        #         [0.0, -1.0, 0.0, 0.0],
+        #         [0.0, 0.0, -1.0, 0.0],
+        #         [0.0, 0.0, 0.0, 1.0],
+        #     ]
+        # )
+        camera_axis_correction = np.array(
+            [[1.0, 0.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, 0.0, -1.0]])
+        # R = R @ np.linalg.inv(camera_axis_correction)
+
+        camera_rot = R[:3, :3] @ camera_axis_correction
+        camera_pos = R[:3, 3]
+        self.data.cam_xpos[cam_id] = camera_pos
+        self.data.cam_xmat[cam_id] = camera_rot.reshape(-1)
 
     def get_camera_extrinsic(self, camera_name):
         """
@@ -428,9 +490,11 @@ class MujocoManipulatorEnv(FrankaBase):
     def _start_custom_controller(self, q_desired=None):
         if self.impedance_control:
             self.policy = JointImpedanceControl(
-                joint_pos_current=torch.tensor(self.get_joint_positions())
-                if q_desired is None
-                else q_desired,
+                joint_pos_current=(
+                    torch.tensor(self.get_joint_positions())
+                    if q_desired is None
+                    else q_desired
+                ),
                 Kp=1.0  # 0.4
                 * self.gain_scale
                 * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),

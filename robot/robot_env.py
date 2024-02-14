@@ -5,10 +5,14 @@ import numpy as np
 from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file
-from helpers.pointclouds import (compute_camera_extrinsic,
-                                 compute_camera_intrinsic, crop_points,
-                                 depth_to_points, points_to_pcd,
-                                 visualize_pcds)
+from helpers.pointclouds import (
+    compute_camera_extrinsic,
+    compute_camera_intrinsic,
+    crop_points,
+    depth_to_points,
+    points_to_pcd,
+    visualize_pcds,
+)
 from helpers.transformations import add_angles, angle_diff
 
 
@@ -41,7 +45,7 @@ class RobotEnv(gym.Env):
         # camera type to use: 'realsense', 'zed'
         camera_model="realsense",
         camera_resolution=None,  # (128, 128) -> HxW
-        calibration_file="cameras/calibration/calibration.json",
+        calibration_file=None,
         # Mujoco: model name
         model_name="base_franka",
         on_screen_rendering=False,
@@ -104,10 +108,12 @@ class RobotEnv(gym.Env):
         action_low, action_high = -0.1, 0.1
         self.action_space = Box(
             np.array(
-                [action_low] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
+                [action_low] * (self.DoF + 1 if self.gripper else self.DoF),
+                dtype=np.float32,
             ),  # dx_low, dy_low, dz_low, dgripper_low
             np.array(
-                [action_high] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
+                [action_high] * (self.DoF + 1 if self.gripper else self.DoF),
+                dtype=np.float32,
             ),  # dx_high, dy_high, dz_high, dgripper_high
         )
         self.action_shape = self.action_space.shape
@@ -166,6 +172,13 @@ class RobotEnv(gym.Env):
         # robot configuration
         self.camera_resolution = camera_resolution
 
+        if calibration_file:
+            calib_dict = (
+                read_calibration_file(calibration_file)
+                if calibration_file is not None
+                else None
+            )
+
         if ip_address is not None:
             from robot.real.franka import FrankaHardware
 
@@ -188,12 +201,6 @@ class RobotEnv(gym.Env):
             from cameras.multi_camera_wrapper import MultiCameraWrapper
 
             self._camera_reader = MultiCameraWrapper(cameras)
-
-            calib_dict = (
-                read_calibration_file(calibration_file)
-                if calibration_file is not None
-                else None
-            )
 
             if calib_dict is not None:
                 self.camera_intrinsic = {}
@@ -222,6 +229,7 @@ class RobotEnv(gym.Env):
                 control_hz=self.control_hz,
                 has_renderer=on_screen_rendering,
                 has_offscreen_renderer=not on_screen_rendering,
+                calib_dict=calib_dict,
             )
 
             self.camera_intrinsic = {}
@@ -284,7 +292,7 @@ class RobotEnv(gym.Env):
             ), f"Expected action shape: ({self.DoF+1},) got {action.shape}"
 
         action = np.clip(action, self.action_space.low, self.action_space.high)
-        
+
         pos_action, angle_action, gripper = self._format_action(action)
 
         # clipping + any safety corrections for position

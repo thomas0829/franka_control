@@ -12,7 +12,7 @@ def run_experiment(cfg):
     
     cfg.robot.DoF = 6
     cfg.robot.on_screen_rendering = False
-    
+
     cfg.env.obj_pos_noise = False
 
     env = make_env(

@@ -47,6 +47,7 @@ for camera in multi_camera_wrapper._all_cameras:
                 "ppy": intrinsics[1, 2],
                 "height": rgb.shape[0],
                 "width": rgb.shape[1],
+                "fovy": camera._fovy,
                 "coeffs": camera._intrinsics[sn.replace("/", "_")]["distCoeffs"].tolist(),
             },
             "camera_base_ori": extrinsics_inv[:3, :3].tolist(),
@@ -66,7 +67,6 @@ for camera in multi_camera_wrapper._all_cameras:
         points, colors=colors, crop_min=-np.ones(3)*2, crop_max=np.ones(3)*2
     )
     pcds.append(points_to_pcd(points, colors=colors))
-
 
 import json
 json.dump(calib_dict, open("cameras/calibration/calibration_aruco_real.json", "w"))

@@ -39,6 +39,10 @@ class ZedCamera:
 			camera_fps=15,
 			camera_image_flip=sl.FLIP_MODE.OFF,
 		)
+		# https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view
+		# vertical FOV for a ZED 2 and sl.RESOLUTION.HD720
+		self._fovy = 68
+
 		self._extriniscs = {}
 
 		self.depth = True
@@ -108,7 +112,7 @@ class ZedCamera:
 		)
 
 		self._cam.retrieve_image(self._left_img, sl.VIEW.LEFT)
-		self._cam.retrieve_image(self._right_img, sl.VIEW.RIGHT)
+		# self._cam.retrieve_image(self._right_img, sl.VIEW.RIGHT)
 
 		left_img = deepcopy(self._left_img.get_data())
 		left_img = cv2.cvtColor(left_img, cv2.COLOR_BGR2RGB)
@@ -129,7 +133,7 @@ class ZedCamera:
 
 		if self.depth:
 			self._cam.retrieve_measure(self._left_depth, sl.MEASURE.DEPTH)
-			self._cam.retrieve_measure(self._right_depth, sl.MEASURE.DEPTH_RIGHT)
+			# self._cam.retrieve_measure(self._right_depth, sl.MEASURE.DEPTH_RIGHT)
 
 			left_depth = deepcopy(self._left_depth.get_data())
 

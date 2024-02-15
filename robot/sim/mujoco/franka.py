@@ -124,8 +124,7 @@ class MujocoManipulatorEnv(FrankaBase):
 
         # calibrate cameras
         self.calib_dict = calib_dict
-        if self.calib_dict:
-            self.reset_camera_pose()
+        self.reset_camera_pose()
 
         self.n_dofs = self.model_cfg.num_dofs
         # # no gripper
@@ -203,7 +202,7 @@ class MujocoManipulatorEnv(FrankaBase):
             mujoco.mj_step(self.model, self.data)
 
     def reset_camera_pose(self):
-        if self.calib_dict:
+        if self.calib_dict is not None:
             
             for sn, camera_name in zip(self.calib_dict.keys(), self.camera_names):
                 self.set_camera_intrinsic(
@@ -212,6 +211,7 @@ class MujocoManipulatorEnv(FrankaBase):
                     self.calib_dict[sn]["intrinsic"]["fy"],
                     self.calib_dict[sn]["intrinsic"]["ppx"],
                     self.calib_dict[sn]["intrinsic"]["ppy"],
+                    self.calib_dict[sn]["intrinsic"]["fovy"],
                 )
 
             for sn, camera_name in zip(self.calib_dict.keys(), self.camera_names):
@@ -318,7 +318,7 @@ class MujocoManipulatorEnv(FrankaBase):
 
         return imgs
 
-    def set_camera_intrinsic(self, camera_name, fx, fy, cx, cy):
+    def set_camera_intrinsic(self, camera_name, fx, fy, cx, cy, fovy):
         """
         Set camera intrinsic matrix.
 
@@ -327,9 +327,10 @@ class MujocoManipulatorEnv(FrankaBase):
             K (np.array): 3x3 camera matrix
         """
         cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
-        self.model.cam_fovy[cam_id] = np.degrees(
-            2 * np.arctan(self.img_height / (2 * fy))
-        )
+        # self.model.cam_fovy[cam_id] = np.degrees(
+        #     2 * np.arctan(self.img_height / (2 * fy))
+        # )
+        self.model.cam_fovy[cam_id] = fovy
 
     def get_camera_intrinsic(self, camera_name):
         """

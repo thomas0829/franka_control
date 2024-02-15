@@ -172,12 +172,15 @@ class RobotEnv(gym.Env):
         # robot configuration
         self.camera_resolution = camera_resolution
 
+        # TODO move to RobotBase
         if calibration_file:
             calib_dict = (
                 read_calibration_file(calibration_file)
                 if calibration_file is not None
                 else None
             )
+        else:
+            calib_dict = None
 
         if ip_address is not None:
             from robot.real.franka import FrankaHardware
@@ -202,6 +205,7 @@ class RobotEnv(gym.Env):
 
             self._camera_reader = MultiCameraWrapper(cameras)
 
+            # TODO move to RobotHardware
             if calib_dict is not None:
                 self.camera_intrinsic = {}
                 self.camera_extrinsic = {}
@@ -232,11 +236,12 @@ class RobotEnv(gym.Env):
                 calib_dict=calib_dict,
             )
 
-            self.camera_intrinsic = {}
-            self.camera_extrinsic = {}
-            for cn in self._robot.camera_names:
-                self.camera_intrinsic[cn] = self._robot.get_camera_intrinsic(cn)
-                self.camera_extrinsic[cn] = self._robot.get_camera_extrinsic(cn)
+            # TODO move to MujocoManipulatorEnv
+            # self.camera_intrinsic = {}
+            # self.camera_extrinsic = {}
+            # for cn in self._robot.camera_names:
+            #     self.camera_intrinsic[cn] = self._robot.get_camera_intrinsic(cn)
+            #     self.camera_extrinsic[cn] = self._robot.get_camera_extrinsic(cn)
             self.depth_scale = 1.0
 
             self.sim = True
@@ -552,6 +557,14 @@ class RobotEnv(gym.Env):
     def get_images_and_points(self):
         img_dict = self.get_images()
 
+        # TODO move to MujocoManipulatorEnv
+        if self.sim:
+            self.camera_intrinsic = {}
+            self.camera_extrinsic = {}
+            for cn in self._robot.camera_names:
+                self.camera_intrinsic[cn] = self._robot.get_camera_intrinsic(cn)
+                self.camera_extrinsic[cn] = self._robot.get_camera_extrinsic(cn)
+        
         for sn, img in img_dict.items():
             img_dict[sn]["points"] = depth_to_points(
                 img["depth"],
@@ -563,6 +576,7 @@ class RobotEnv(gym.Env):
         return img_dict
 
     def show_points(self):
+        print("WARNING: mujoco rendering and open3d don't like each other :(")
         img_points = self.get_images_and_points()
         points = []
         for k in img_points.keys():

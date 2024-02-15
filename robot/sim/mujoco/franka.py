@@ -16,12 +16,9 @@ import yaml
 
 # from polymetis.utils.data_dir import get_full_path_to_urdf
 # from polysim.envs import AbstractControlledEnv
-from helpers.transformations import (
-    euler_to_quat,
-    quat_to_euler,
-    rmat_to_euler,
-    rmat_to_quat,
-)
+from helpers.transformations import (euler_to_quat, quat_to_euler,
+                                     rmat_to_euler, rmat_to_quat)
+from helpers.transformations_mujoco import mat2quat
 
 log = logging.getLogger(__name__)
 from torchcontrol.modules.feedback import JointSpacePD
@@ -126,22 +123,9 @@ class MujocoManipulatorEnv(FrankaBase):
         self.frame_skip = int((1 / self.control_hz) / self.model.opt.timestep)
 
         # calibrate cameras
-        if calib_dict:
-            print("Not Implemented Warning: extrinsics not applied correctly")
-            # for sn, camera_name in zip(calib_dict.keys(), self.camera_names):
-            #     self.set_camera_intrinsic(
-            #         camera_name,
-            #         calib_dict[sn]["intrinsic"]["fx"],
-            #         calib_dict[sn]["intrinsic"]["fy"],
-            #         calib_dict[sn]["intrinsic"]["ppx"],
-            #         calib_dict[sn]["intrinsic"]["ppy"],
-            #     )
-            #     mujoco.mj_resetData(self.model, self.data)
-            #     R = np.eye(4)
-            #     R[:3, :3] = np.array(calib_dict[sn]["extrinsic"]["ori"])
-            #     R[:3, 3] = np.array(calib_dict[sn]["extrinsic"]["pos"])
-            #     self.set_camera_extrinsic(camera_name, R)
-            #     mujoco.mj_step(self.model, self.data)
+        self.calib_dict = calib_dict
+        if self.calib_dict:
+            self.reset_camera_pose()
 
         self.n_dofs = self.model_cfg.num_dofs
         # # no gripper
@@ -217,6 +201,29 @@ class MujocoManipulatorEnv(FrankaBase):
 
             mujoco.mj_resetData(self.model, self.data)
             mujoco.mj_step(self.model, self.data)
+
+    def reset_camera_pose(self):
+        if self.calib_dict:
+            
+            for sn, camera_name in zip(self.calib_dict.keys(), self.camera_names):
+                self.set_camera_intrinsic(
+                    camera_name,
+                    self.calib_dict[sn]["intrinsic"]["fx"],
+                    self.calib_dict[sn]["intrinsic"]["fy"],
+                    self.calib_dict[sn]["intrinsic"]["ppx"],
+                    self.calib_dict[sn]["intrinsic"]["ppy"],
+                )
+
+            for sn, camera_name in zip(self.calib_dict.keys(), self.camera_names):
+                    R = np.eye(4)
+                    R[:3, :3] = np.array(self.calib_dict[sn]["extrinsic"]["ori"])
+                    R[:3, 3] = np.array(self.calib_dict[sn]["extrinsic"]["pos"]).reshape(-1)
+                    self.set_camera_extrinsic(camera_name, R)
+            self.img_width = self.calib_dict[sn]["intrinsic"]["width"]
+            self.img_height = self.calib_dict[sn]["intrinsic"]["height"]
+
+            # push changes from model to data | reset mujoco data
+            mujoco.mj_resetData(self.model, self.data)
 
     def get_current_joint_torques(
         self,
@@ -352,8 +359,7 @@ class MujocoManipulatorEnv(FrankaBase):
 
         Args:
             camera_name (str): name of camera
-            pos (np.array): 3x1 position vector
-            ori (np.array): 3x3 orientation matrix
+            R (np.array): 4x4 camera extrinsic matrix
         """
         cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
 
@@ -363,13 +369,9 @@ class MujocoManipulatorEnv(FrankaBase):
                     [[1.0, 0.0, 0.0],
                     [0.0, -1.0, 0.0],
                     [0.0, 0.0, -1.0]])
-        cam_base_ori_out = np.empty((4,1))
-        mujoco.mju_mat2Quat(cam_base_ori_out, (cam_base_ori @ camera_axis_correction).reshape(-1,1))
-        from helpers.transformations_mujoco import mat2quat
-        mat2quat(cam_base_ori @ camera_axis_correction)
-
-        self.data.cam_xpos[cam_id] = cam_base_pos.reshape(-1)
-        self.data.cam_xmat[cam_id] = cam_base_ori_out.reshape(-1)
+        
+        self.model.cam_pos[cam_id] = cam_base_pos
+        self.model.cam_quat[cam_id] = mat2quat(cam_base_ori @ camera_axis_correction).reshape(-1)
 
     def get_camera_extrinsic(self, camera_name):
         """

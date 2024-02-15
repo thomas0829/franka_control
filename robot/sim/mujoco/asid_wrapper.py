@@ -148,7 +148,7 @@ class ASIDWrapper(gym.Wrapper):
         # set obj qpos | mujoco forward
         self.update_obj(obj_pose)
 
-        # reset robot
+        # reset robot |
         obs = self.env.reset()
 
         return self.augment_observations(obs, flatten=self.flatten)

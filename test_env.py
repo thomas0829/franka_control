@@ -12,7 +12,8 @@ from robot.sim.vec_env.asid_vec import make_env, make_vec_env
 def run_experiment(cfg):
     
     cfg.robot.DoF = 2
-    cfg.robot.on_screen_rendering = False
+    cfg.robot.on_screen_rendering = True
+    cfg.robot.gripper = False
 
     cfg.env.obj_pos_noise = False
 
@@ -21,7 +22,7 @@ def run_experiment(cfg):
         env_cfg_dict=hydra_to_dict(cfg.env),
         seed=cfg.seed,
         device_id=0,
-        exp_reward=True,
+        exp_reward=False,
     )
     env.reset()
 
@@ -29,7 +30,8 @@ def run_experiment(cfg):
 
     while True:
         # obs, reward, done, info = env.step(env.action_space.sample())
-        obs, reward, done, info = env.step(np.array([0.3, 0., 1.]))
+        # obs, reward, done, info = env.step(np.array([0.3, 0., 1.]))
+        obs, reward, done, info = env.step(np.array([0., 0.]))
         # time.sleep(0.3)
         # print(env.unwrapped._robot.get_ee_pos(), env.get_obj_pose()[:3], reward)
         env.render()

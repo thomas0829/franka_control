@@ -84,7 +84,8 @@ class RobotEnv(gym.Env):
             self._reset_joint_qpos = np.array(
                 [
                     -0.06315325,
-                    0.33202057,
+                    # 0.33202057,
+                    0.27,
                     -0.0462324,
                     -2.79372462,
                     0.07651035,
@@ -366,7 +367,7 @@ class RobotEnv(gym.Env):
             self.reset_gripper()
         else:
             # default is closed gripper if not self.gripper
-            self._robot.update_gripper(0.0, velocity=False, blocking=True)
+            self._robot.update_gripper(1.0, velocity=False, blocking=True)
         # reset to home pose
         for _ in range(3):
             self._robot.update_joints(

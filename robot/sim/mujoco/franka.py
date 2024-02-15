@@ -703,7 +703,9 @@ class MujocoManipulatorEnv(FrankaBase):
             self.data.ctrl[len(self.franka_joint_ids) :] = 0.0
         else:
             self.data.ctrl[len(self.franka_joint_ids) :] = 255.0
-        return
+        
+        if blocking:
+            mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
 
     def get_gripper_state(self):
         if self._gripper:

@@ -357,24 +357,19 @@ class MujocoManipulatorEnv(FrankaBase):
         """
         cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
 
-        # camera_axis_correction = np.array(
-        #     [
-        #         [1.0, 0.0, 0.0, 0.0],
-        #         [0.0, -1.0, 0.0, 0.0],
-        #         [0.0, 0.0, -1.0, 0.0],
-        #         [0.0, 0.0, 0.0, 1.0],
-        #     ]
-        # )
+        cam_base_pos = R[:3, 3]
+        cam_base_ori = R[:3, :3]
         camera_axis_correction = np.array(
-            [[1.0, 0.0, 0.0],
-            [0.0, -1.0, 0.0],
-            [0.0, 0.0, -1.0]])
-        # R = R @ np.linalg.inv(camera_axis_correction)
+                    [[1.0, 0.0, 0.0],
+                    [0.0, -1.0, 0.0],
+                    [0.0, 0.0, -1.0]])
+        cam_base_ori_out = np.empty((4,1))
+        mujoco.mju_mat2Quat(cam_base_ori_out, (cam_base_ori @ camera_axis_correction).reshape(-1,1))
+        from helpers.transformations_mujoco import mat2quat
+        mat2quat(cam_base_ori @ camera_axis_correction)
 
-        camera_rot = R[:3, :3] @ camera_axis_correction
-        camera_pos = R[:3, 3]
-        self.data.cam_xpos[cam_id] = camera_pos
-        self.data.cam_xmat[cam_id] = camera_rot.reshape(-1)
+        self.data.cam_xpos[cam_id] = cam_base_pos.reshape(-1)
+        self.data.cam_xmat[cam_id] = cam_base_ori_out.reshape(-1)
 
     def get_camera_extrinsic(self, camera_name):
         """

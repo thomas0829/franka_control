@@ -7,8 +7,6 @@ multi_camera_wrapper = MultiCameraWrapper(type='zed', use_threads=False)
 
 num_cameras = multi_camera_wrapper.num_cameras
 
-multi_camera_wrapper.get_aruco_poses()
-
 print(f'Number of cameras: {num_cameras}')
 
 from helpers.pointclouds import *

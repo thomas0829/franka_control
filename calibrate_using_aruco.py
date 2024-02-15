@@ -3,11 +3,9 @@ import cv2
 
 from cameras.multi_camera_wrapper import MultiCameraWrapper
 
-multi_camera_wrapper = MultiCameraWrapper(type="realsense", use_threads=False)
+multi_camera_wrapper = MultiCameraWrapper(type="zed", use_threads=False)
 
 num_cameras = multi_camera_wrapper.num_cameras
-
-multi_camera_wrapper.get_aruco_poses()
 
 print(f"Number of cameras: {num_cameras}")
 
@@ -18,7 +16,7 @@ pcds = []
 calib_dict = []
 for camera in multi_camera_wrapper._all_cameras:
     marker_size = 0.15
-    tvec, rotmat = multi_camera_wrapper._get_aruco_pose(camera, marker_size=marker_size)
+    tvec, rotmat = multi_camera_wrapper._get_aruco_pose(camera, marker_size=marker_size, verbose=True)
 
     extrinsics = np.eye(4)
     extrinsics[:3, :3] = rotmat
@@ -31,6 +29,12 @@ for camera in multi_camera_wrapper._all_cameras:
     sn = camera.read_camera()[0]["serial_number"]
     intrinsics = camera._intrinsics[sn.replace("/", "_")]["cameraMatrix"]
 
+    # camera frame -> aruco frame
+    extrinsics_inv = np.linalg.inv(extrinsics)
+    # aruco frame to center robot frame
+    aruco_offset = np.array([0.0, - 0.675 + (marker_size / 2), 0.0])
+    extrinsics_inv[:3, 3] += aruco_offset
+
     calib_dict.append(
         {
             "camera_serial_number": sn,
@@ -41,23 +45,23 @@ for camera in multi_camera_wrapper._all_cameras:
                 "ppy": intrinsics[1, 2],
                 "height": rgb.shape[0],
                 "width": rgb.shape[1],
-                "coeffs": camera._intrinsics[sn.replace("/", "_")]["distCoeffs"],
+                "coeffs": camera._intrinsics[sn.replace("/", "_")]["distCoeffs"].tolist(),
             },
-            "camera_base_ori": np.linalg.inv(extrinsics)[:3, :3].tolist(),
-            "camera_base_pos": np.linalg.inv(extrinsics)[:3, 3:].tolist(),
+            "camera_base_ori": extrinsics_inv[:3, :3].tolist(),
+            "camera_base_pos": extrinsics_inv[:3, 3:].tolist(),
         }
     )
 
     depth[depth == np.inf] = 1.0  # depth[~(depth==np.inf)].max()
     points = depth_to_points(
-        depth, intrinsics, np.linalg.inv(extrinsics), depth_scale=1000.0
+        depth, intrinsics, extrinsics_inv, depth_scale=1000.0
     )
     points[np.isnan(points)] = 1.0
     points[points == np.inf] = 1.0
 
     colors = rgb.reshape(-1, 3) / 255.0
     points, colors = crop_points(
-        points, colors=colors, crop_min=-np.ones(3), crop_max=np.ones(3)
+        points, colors=colors, crop_min=-np.ones(3)*2, crop_max=np.ones(3)*2
     )
     pcds.append(points_to_pcd(points, colors=colors))
 
@@ -65,11 +69,17 @@ for camera in multi_camera_wrapper._all_cameras:
 import json
 json.dump(calib_dict, open("cameras/calibration/calibration_aruco_real.json", "w"))
 
-# fixed translatation frame from aruco to robot on vention table
-# - table width / 2 + marker size / 2
-tvec = np.array([[-0.675 + marker_size / 2, 0.0, 0.0]])
-zero = tvec @ np.eye(3)
-pcds.append(points_to_pcd(zero, colors=[[0.0, 0.0, 255.0]]))
+x = np.zeros((1,3))
+for d in np.arange(0, 1, 0.1):
+    x[:,0] = d
+    pcds.append(points_to_pcd(x, colors=[[255.0, 0.0, 0.0]]))
+    y = np.zeros((1,3))
+    y[:,1] = d
+    pcds.append(points_to_pcd(y, colors=[[0.0, 255.0, 0.0]]))
+    z = np.zeros((1,3))
+    z[:,2] = d
+    pcds.append(points_to_pcd(z, colors=[[0.0, 0.0, 255.0]]))
+
 
 visualize_pcds(pcds)
 

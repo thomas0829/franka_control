@@ -31,7 +31,7 @@ class ZedCamera:
 	def __init__(self, camera):
 		self._serial_number = str(camera.serial_number)
 		self._current_params = dict(
-			depth_mode=sl.DEPTH_MODE.NEURAL,
+			# depth_mode=sl.DEPTH_MODE.NEURAL,
 			# coordinate_units=sl.UNIT.METER, # force milimeters
 			depth_minimum_distance=0.1,
 			depth_stabilization=False,

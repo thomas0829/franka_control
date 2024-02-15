@@ -12,7 +12,7 @@ from robot.sim.vec_env.asid_vec import make_env, make_vec_env
 def run_experiment(cfg):
     
     cfg.robot.DoF = 2
-    cfg.robot.on_screen_rendering = True
+    cfg.robot.on_screen_rendering = False
     cfg.robot.gripper = False
 
     cfg.env.obj_pos_noise = False
@@ -28,6 +28,9 @@ def run_experiment(cfg):
     env.reset()
 
     # env.set_parameters(np.array([0., 1.]))
+    # env.unwrapped.get_images_and_points()
+    # import joblib
+    # joblib.dump(env.unwrapped.get_images_and_points(), "points_sim")
 
     while True:
         obs, reward, done, info = env.step(env.action_space.sample())

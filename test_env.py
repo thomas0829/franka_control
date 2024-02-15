@@ -1,17 +1,18 @@
 import time
-import torch
+
 import hydra
 import numpy as np
+import torch
 
-from robot.sim.vec_env.asid_vec import make_env, make_vec_env
 from helpers.experiment import hydra_to_dict, set_random_seed, setup_wandb
+from robot.sim.vec_env.asid_vec import make_env, make_vec_env
 
 
 @hydra.main(config_path="configs/", config_name="collect_sim", version_base="1.1")
 def run_experiment(cfg):
     
     cfg.robot.DoF = 2
-    cfg.robot.on_screen_rendering = True
+    cfg.robot.on_screen_rendering = False
 
     cfg.env.obj_pos_noise = False
 

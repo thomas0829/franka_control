@@ -574,8 +574,17 @@ class RobotEnv(gym.Env):
             )
             points.append(points_to_pcd(pts, colors=clr))
 
-        zero = points_to_pcd(np.zeros((1, 3)))
-        points.append(zero)
+        x = np.zeros((1,3))
+        for d in np.arange(0, 1, 0.1):
+            x[:,0] = d
+            points.append(points_to_pcd(x, colors=[[255.0, 0.0, 0.0]]))
+            y = np.zeros((1,3))
+            y[:,1] = d
+            points.append(points_to_pcd(y, colors=[[0.0, 255.0, 0.0]]))
+            z = np.zeros((1,3))
+            z[:,2] = d
+            points.append(points_to_pcd(z, colors=[[0.0, 0.0, 255.0]]))
+        # points.append(zero)
 
         visualize_pcds(points)
 

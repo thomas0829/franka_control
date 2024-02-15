@@ -32,7 +32,7 @@
 
         <!-- Rod -->
         <!-- modeled a cuboid (rod_body) with a cube (rod_com) that can be moved to shift center of mass -->
-        <body name="rod_body" pos="0.5 0.0 0.02" quat="1 0 0 0">
+        <body name="rod_body" pos="0.4 0.3 0.02" quat="1 0 0 0">
             <freejoint name="rod_freejoint" />
             <inertial pos="0 0 0" mass="0.2" diaginertia="1. 1. 1." />
             <body name="rod_com" pos="0 0 0" quat="1 0 0 0">
@@ -55,8 +55,7 @@
     <include file="franka_assets/actuator_position.xml" />
     <!-- <include file="franka_assets/actuator_position.xml" /> -->
 
-    <!-- <keyframe>
-        <key qpos='-0.06315325 0.33202057 -0.0462324 -2.79372462 0.07651035 3.18670704 0.44067877
-    4.56178e-05 4.56178e-05 0.45 0.0 0.02 1 0 0 0'/>
-    </keyframe> -->
+    <keyframe>
+        <key qpos='8.52907066e-01  2.97767267e-01  4.38237010e-02 -2.70994978e+00 -4.81877543e-03  2.89241547e+00  1.67766532e+00  1.66114713e-06 2.00536372e-06  0.35  0.3  0.02 1 0 0 0'/>
+    </keyframe>
 </mujoco>

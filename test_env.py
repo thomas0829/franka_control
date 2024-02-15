@@ -23,15 +23,16 @@ def run_experiment(cfg):
         seed=cfg.seed,
         device_id=0,
         exp_reward=False,
+        verbose=True,
     )
     env.reset()
 
     # env.set_parameters(np.array([0., 1.]))
 
     while True:
-        # obs, reward, done, info = env.step(env.action_space.sample())
+        obs, reward, done, info = env.step(env.action_space.sample())
         # obs, reward, done, info = env.step(np.array([0.3, 0., 1.]))
-        obs, reward, done, info = env.step(np.array([0., 0.]))
+        # obs, reward, done, info = env.step(np.array([0., 0.]))
         # time.sleep(0.3)
         # print(env.unwrapped._robot.get_ee_pos(), env.get_obj_pose()[:3], reward)
         env.render()

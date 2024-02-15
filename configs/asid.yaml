@@ -4,7 +4,7 @@ hydra:
   
 defaults:
   - env: rod
-  - robot: sim_demo
+  - robot: sim_2dof
   - train: explore
   - log: wandb
 
@@ -12,5 +12,5 @@ exp_id: "debug"
 
 seed: 0
 gpu_id: 0
-num_workers: 4
-num_workers_eval: 2
+num_workers: 16
+num_workers_eval: 8

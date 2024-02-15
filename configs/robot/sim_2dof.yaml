@@ -3,7 +3,7 @@ DoF: 2
 gripper: false
 
 # Franka model: 'panda' 'fr3'
-robot_type: "fr3"
+robot_type: "panda"
 
 # randomize arm position on reset
 randomize_ee_on_reset: false

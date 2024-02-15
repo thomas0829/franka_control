@@ -18,6 +18,19 @@ class ASIDWrapper(gym.Wrapper):
     ):
         super().__init__(env)
 
+        if self.env.DoF == 2:
+            self.env._reset_joint_qpos = np.array(
+                [
+                    0.85290707,
+                    0.29776727,
+                    0.0438237,
+                    -2.70994978,
+                    -0.00481878,
+                    2.89241547,
+                    1.67766532,
+                ]
+            )
+
         self.obj_id = obj_id
 
         # Mujoco object ids
@@ -61,8 +74,9 @@ class ASIDWrapper(gym.Wrapper):
 
         # Object position
         self.obj_pose_noise_dict = {
-            "x": {"min": -0.1, "max": 0.1},
-            "y": {"min": -0.2, "max": 0.2},
+            "x": {"min": 0., "max": 0.1},
+            # "x": {"min": -0.1, "max": 0.1},
+            "y": {"min": -0.1, "max": 0.1},
             "yaw": {"min": 0.0, "max": 3.14},
         }
         self.obj_pos_noise = obj_pos_noise
@@ -207,7 +221,7 @@ class ASIDWrapper(gym.Wrapper):
                     f"{self.obj_id}_com",
                 )
                 self.env._robot.model.body_pos[com_body_ids][1] = value
-                
+
             elif key == "friction":
                 for geom_id in self.obj_geom_ids:
                     self.env._robot.model.geom_friction[geom_id][0] = value
@@ -280,7 +294,9 @@ class ASIDWrapper(gym.Wrapper):
         self.env._curr_path_length = full_state["curr_path_length"]
         self.set_data(full_state["robot_data"])
 
-    def create_exp_reward(self, robot_cfg_dict, env_cfg_dict, seed, delta=5e-2, normalization=1e-3):
+    def create_exp_reward(
+        self, robot_cfg_dict, env_cfg_dict, seed, delta=5e-2, normalization=1e-3
+    ):
         robot_cfg_dict["on_screen_rendering"] = False
         env_cfg_dict["obj_pos_noise"] = False
         exp_env = type(self.env)(**robot_cfg_dict)

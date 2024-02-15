@@ -1,6 +1,7 @@
 import time
 
 import gym
+import torch
 import numpy as np
 from gym.spaces import Box, Dict
 
@@ -116,8 +117,10 @@ class RobotEnv(gym.Env):
         self.action_shape = self.action_space.shape
 
         # EE position (x, y, z) + EE rot (roll, pitch, yaw) + gripper width
-        ee_space_low = np.array([0.32, -0.38, 0.12, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.7, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
+        # ee_space_low = np.array([0.32, -0.38, 0.12, -3.14, -3.14, -3.14, 0.00])
+        # ee_space_high = np.array([0.7, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
+        ee_space_low = np.array([0.25, -0.5, 0.12, -3.14, -3.14, -3.14, 0.00])
+        ee_space_high = np.array([0.7, 0.5, 0.8, 3.14, 3.14, 3.14, 0.085])
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:
@@ -669,3 +672,7 @@ class RobotEnv(gym.Env):
         curr_joints = self._robot.get_joint_positions()
         joint_dist = np.linalg.norm(curr_joints - self._reset_joint_qpos)
         return joint_dist < epsilon, joint_dist
+
+    def seed(self, seed):
+        np.random.seed(seed)
+        torch.manual_seed(seed)

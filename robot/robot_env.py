@@ -5,14 +5,10 @@ import numpy as np
 from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file
-from helpers.pointclouds import (
-    compute_camera_extrinsic,
-    compute_camera_intrinsic,
-    crop_points,
-    depth_to_points,
-    points_to_pcd,
-    visualize_pcds,
-)
+from helpers.pointclouds import (compute_camera_extrinsic,
+                                 compute_camera_intrinsic, crop_points,
+                                 depth_to_points, points_to_pcd,
+                                 visualize_pcds)
 from helpers.transformations import add_angles, angle_diff
 
 
@@ -368,6 +364,9 @@ class RobotEnv(gym.Env):
         # ensure robot releases grasp before reset
         if self.gripper:
             self.reset_gripper()
+        else:
+            # default is closed gripper if not self.gripper
+            self._robot.update_gripper(0.0, velocity=False, blocking=True)
         # reset to home pose
         for _ in range(3):
             self._robot.update_joints(
@@ -445,7 +444,8 @@ class RobotEnv(gym.Env):
         if self.gripper:
             gripper = action[-1]
         else:
-            gripper = 0.0
+            # default is closed gripper if not self.gripper
+            gripper = 1.0
         return np.array(delta_pos), np.array(delta_angle), gripper
 
     def _get_valid_pos(self, pos):

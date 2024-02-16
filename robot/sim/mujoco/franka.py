@@ -11,7 +11,6 @@ import mujoco_viewer
 import numpy as np
 import omegaconf
 import torch
-import torchcontrol as toco
 import yaml
 
 # from polymetis.utils.data_dir import get_full_path_to_urdf
@@ -21,8 +20,6 @@ from helpers.transformations import (euler_to_quat, quat_to_euler,
 from helpers.transformations_mujoco import mat2quat
 
 log = logging.getLogger(__name__)
-from torchcontrol.modules.feedback import JointSpacePD
-from torchcontrol.policies import JointImpedanceControl
 
 from robot.controllers.utils import generate_joint_space_min_jerk
 from robot.franka_base import FrankaBase
@@ -157,9 +154,13 @@ class MujocoManipulatorEnv(FrankaBase):
         self.prev_torques_external = np.zeros(self.n_dofs)
 
         # polymetis control: load robot model
-        self.toco_robot_model = toco.models.RobotModelPinocchio(
-            self.robot_description_path, robot_model_cfg["ee_link_name"]
-        )
+        if self.torque_control:
+            import torchcontrol as toco
+            from torchcontrol.modules.feedback import JointSpacePD
+            from torchcontrol.policies import JointImpedanceControl
+            self.toco_robot_model = toco.models.RobotModelPinocchio(
+                self.robot_description_path, robot_model_cfg["ee_link_name"]
+            )
 
         # polymetis control: load robot hardware config
         # polymetis/polymetis/conf/robot_client/franka_hardware.yaml -> replaced by R2D2
@@ -486,31 +487,33 @@ class MujocoManipulatorEnv(FrankaBase):
         return self.policy is not None
 
     def _start_custom_controller(self, q_desired=None):
-        if self.impedance_control:
-            self.policy = JointImpedanceControl(
-                joint_pos_current=(
-                    torch.tensor(self.get_joint_positions())
-                    if q_desired is None
-                    else q_desired
-                ),
-                Kp=1.0  # 0.4
-                * self.gain_scale
-                * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
-                Kd=1.0
-                * self.gain_scale
-                * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
-                robot_model=self.toco_robot_model,
-                ignore_gravity=True,
-            )
-        else:
-            self.policy = JointSpacePD(
-                Kp=1.0
-                * self.gain_scale
-                * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
-                Kd=1.0
-                * self.gain_scale
-                * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
-            )
+        self.policy = None
+        if self.torque_control:
+            if self.impedance_control:
+                self.policy = JointImpedanceControl(
+                    joint_pos_current=(
+                        torch.tensor(self.get_joint_positions())
+                        if q_desired is None
+                        else q_desired
+                    ),
+                    Kp=1.0  # 0.4
+                    * self.gain_scale
+                    * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
+                    Kd=1.0
+                    * self.gain_scale
+                    * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
+                    robot_model=self.toco_robot_model,
+                    ignore_gravity=True,
+                )
+            else:
+                self.policy = JointSpacePD(
+                    Kp=1.0
+                    * self.gain_scale
+                    * torch.tensor(self.metadata["default_Kq"], dtype=torch.float32),
+                    Kd=1.0
+                    * self.gain_scale
+                    * torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32),
+                )
 
         return self.policy
 
@@ -580,14 +583,20 @@ class MujocoManipulatorEnv(FrankaBase):
         if blocking and self.custom_controller:
             if not self.is_running_policy():
                 self._start_custom_controller()
-            time_to_go = self.adaptive_time_to_go(command)
+            if self.torque_control:
+                time_to_go = self.adaptive_time_to_go(command)
+            else:
+                time_to_go = 3.0
             self.move_to_joint_positions(command, time_to_go=time_to_go)
         # kill cartesian impedance
         elif blocking:
             if self.is_running_policy():
                 self._terminate_current_controller()
 
-            time_to_go = self.adaptive_time_to_go(command)
+            if self.torque_control:
+                time_to_go = self.adaptive_time_to_go(command)
+            else:
+                time_to_go = 3.0
             self._robot.move_to_joint_positions(command, time_to_go=time_to_go)
 
             self._robot.start_cartesian_impedance()
@@ -653,42 +662,56 @@ class MujocoManipulatorEnv(FrankaBase):
         # mujoco.mj_step(self.model, self.data)
         # return
 
-        # Use registered controller
-        q_current = torch.tensor(self.get_joint_positions())
+        if self.torque_control:
+            
+            # Use registered controller
+            q_current = torch.tensor(self.get_joint_positions())
 
-        # generate min jerk trajectory
-        dt = 0.1
-        waypoints = generate_joint_space_min_jerk(
-            start=q_current, goal=joint_pos_desired, time_to_go=time_to_go, dt=dt
-        )
-        # reset using min_jerk traj
-        for i in range(len(waypoints)):
-            # run simulation for dt instead of time.sleep(dt)
-            for _ in range(int(dt // self.model.opt.timestep)):
-                self.update_desired_joint_positions(
-                    joint_pos_desired=waypoints[i]["position"],
-                    kp=self.reset_gain_scale
-                    * torch.nn.Parameter(
-                        torch.tensor(self.metadata["default_Kq"], dtype=torch.float32)
-                    ),
-                    kd=self.reset_gain_scale
-                    * torch.nn.Parameter(
-                        torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32)
-                    ),
-                )
-            # time.sleep(dt)
+            # generate min jerk trajectory
+            dt = 0.1
+            waypoints = generate_joint_space_min_jerk(
+                start=q_current, goal=joint_pos_desired, time_to_go=time_to_go, dt=dt
+            )
+            # reset using min_jerk traj
+            for i in range(len(waypoints)):
+                # run simulation for dt instead of time.sleep(dt)
+                for _ in range(int(dt // self.model.opt.timestep)):
+                    self.update_desired_joint_positions(
+                        joint_pos_desired=waypoints[i]["position"],
+                        kp=self.reset_gain_scale
+                        * torch.nn.Parameter(
+                            torch.tensor(self.metadata["default_Kq"], dtype=torch.float32)
+                        ),
+                        kd=self.reset_gain_scale
+                        * torch.nn.Parameter(
+                            torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32)
+                        ),
+                    )
+                # time.sleep(dt)
 
-        # reset back gains to gain-policy
-        self.update_desired_joint_positions(
-            kp=self.gain_scale
-            * torch.nn.Parameter(
-                torch.tensor(self.metadata["default_Kq"], dtype=torch.float32)
-            ),
-            kd=self.gain_scale
-            * torch.nn.Parameter(
-                torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32)
-            ),
-        )
+            # reset back gains to gain-policy
+            self.update_desired_joint_positions(
+                kp=self.gain_scale
+                * torch.nn.Parameter(
+                    torch.tensor(self.metadata["default_Kq"], dtype=torch.float32)
+                ),
+                kd=self.gain_scale
+                * torch.nn.Parameter(
+                    torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32)
+                ),
+            )
+        
+        else:
+            # WARNING: actuator must be general or position
+
+            # set position -> sim only has to be stepped once
+            self.data.qpos[self.franka_joint_ids] = joint_pos_desired
+            mujoco.mj_step(self.model, self.data)
+            
+            # # use position control -> sim has to be skipped multiple times until convergence
+            # self.data.ctrl[: len(self.franka_joint_ids)] = joint_pos_desired
+            # mujoco.mj_step(self.model, self.data, nstep=self.frame_skip * 10)
+
         if self.has_renderer:
             self.render()
 

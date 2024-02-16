@@ -634,18 +634,17 @@ class MujocoManipulatorEnv(FrankaBase):
             udpate_pkt["kd"] = kd if torch.is_tensor(kd) else torch.tensor(kd)
         assert udpate_pkt, "Atleast one parameter needs to be specified for udpate"
 
-        output_pkt = self._update_current_controller(udpate_pkt)
-
-        if output_pkt is not None and self.torque_control:
-            # WARNING: actuator must be motor
-            torques = output_pkt["joint_torques"].detach().numpy()
-            self.apply_joint_torques(torques)
+        if self.torque_control:
+            output_pkt = self._update_current_controller(udpate_pkt)
+            if output_pkt:
+                # WARNING: actuator must be motor
+                torques = output_pkt["joint_torques"].detach().numpy()
+                self.apply_joint_torques(torques)
         elif "joint_pos_desired" in udpate_pkt:
             # WARNING: actuator must be general or position
             self.data.ctrl[: len(self.franka_joint_ids)] = udpate_pkt[
                 "joint_pos_desired"
             ]
-            # mujoco.mj_forward(self.model, self.data)
             mujoco.mj_step(self.model, self.data)
 
     def move_to_joint_positions(self, joint_pos_desired=None, time_to_go=3):
@@ -710,7 +709,7 @@ class MujocoManipulatorEnv(FrankaBase):
 
     def get_gripper_state(self):
         if self._gripper:
-            return np.sum(self.data.qpos[self.franka_finger_joint_ids])
+            return self.data.qpos[self.franka_finger_joint_ids[0]] + self.data.qpos[self.franka_finger_joint_ids[1]]
         else:
             return 0.0
 

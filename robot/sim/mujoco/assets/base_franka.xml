@@ -10,7 +10,9 @@
 
     <visual>
         <global offwidth="2560" offheight="1920" />
-        <quality shadowsize="4096" offsamples="8" />
+        <!-- no shadow -->
+        <quality shadowsize="0" offsamples="8" />
+        <!-- <quality shadowsize="4096" offsamples="8" /> -->
         <map force="0.1" fogend="5" />
     </visual>
 

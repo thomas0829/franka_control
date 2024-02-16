@@ -86,7 +86,8 @@ class ASIDWrapper(gym.Wrapper):
         # Physics parameters
         self.parameter_dict = {
             "inertia": {"type": "uniform", "min": -0.1, "max": 0.1, "value": None},
-            "friction": {"type": "gaussian", "mean": 1.0, "std": 0.5, "value": None},
+            # careful when adjusting friction -> too high values cause the object to penetrate the table and give huge reward signals even if not touched
+            "friction": {"type": "gaussian", "mean": 1.0, "std": 0.1, "value": None},
         }
 
         self.reset_parameters()

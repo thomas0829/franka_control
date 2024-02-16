@@ -2,6 +2,9 @@ load_policy: false
 
 total_timesteps: 2_000_000
 
+fd_delta: 01
+rew_normalization: 0.02
+
 algorithm:
 
   buffer_size: 1_000_000

@@ -5,7 +5,7 @@ from robot.sim.mujoco.asid_wrapper import ASIDWrapper
 
 
 def make_env(
-    robot_cfg_dict, env_cfg_dict, seed=0, device_id=0, exp_reward=False, verbose=False
+    robot_cfg_dict, env_cfg_dict, seed=0, device_id=0, exp_reward=False, delta=0.05, normalization=0.001, verbose=False
 ):
 
     if verbose:
@@ -17,17 +17,18 @@ def make_env(
     )
 
     env = RobotEnv(**robot_cfg_dict, device_id=device_id, verbose=verbose)
-    env = ASIDWrapper(env, **env_cfg_dict)
+    env = ASIDWrapper(env, **env_cfg_dict, verbose=verbose)
 
     if exp_reward:
-        env.create_exp_reward(robot_cfg_dict, env_cfg_dict, seed)
+        env.create_exp_reward(make_env, robot_cfg_dict, env_cfg_dict, seed=seed, device_id=device_id, delta=delta, normalization=normalization)
+    
     env.seed(seed)
 
     return env
 
 
 def make_vec_env(
-    robot_cfg_dict, env_cfg_dict, num_workers, seed, device_id=0, exp_reward=False
+    robot_cfg_dict, env_cfg_dict, num_workers, seed, device_id=0, exp_reward=False, delta=0.05, normalization=0.001, verbose=False
 ):
     from robot.sim.vec_env.vec_wrapper import SubVecEnv
 
@@ -38,8 +39,10 @@ def make_vec_env(
             env_cfg_dict,
             seed=seed + i,
             device_id=device_id,
-            verbose=bool(i == 0),
+            verbose=bool(i == 0) and verbose,
             exp_reward=exp_reward,
+            delta=delta,
+            normalization=normalization
         )
         for i in range(num_workers)
     ]

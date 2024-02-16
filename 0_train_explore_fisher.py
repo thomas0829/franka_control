@@ -148,6 +148,8 @@ def run_experiment(cfg):
         seed=cfg.seed,
         device_id=0,
         exp_reward=True,
+        delta=cfg.train.fd_delta,
+        normalization=cfg.train.rew_normalization,
     )
 
     # algorithm
@@ -176,6 +178,8 @@ def run_experiment(cfg):
         seed=cfg.seed + 100,
         device_id=0,
         exp_reward=True,
+        delta=cfg.train.fd_delta,
+        normalization=cfg.train.rew_normalization,
     )
 
     # set logger

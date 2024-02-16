@@ -15,8 +15,11 @@ class ASIDWrapper(gym.Wrapper):
         obj_pos_noise=True,
         obs_keys=["lowdim_ee", "lowdim_qpos", "obj_pose"],
         flatten=True,
+        verbose=False,
     ):
         super().__init__(env)
+
+        self.verbose = verbose
 
         if self.env.DoF == 2:
             self.env._reset_joint_qpos = np.array(
@@ -227,6 +230,9 @@ class ASIDWrapper(gym.Wrapper):
                 for geom_id in self.obj_geom_ids:
                     self.env._robot.model.geom_friction[geom_id][0] = value
 
+        if self.verbose:
+            print(f"Parameters: {self.get_parameters()} - seed {self.env._seed}")
+
         # update sim
         mujoco.mj_resetData(self.env._robot.model, self.env._robot.data)
         mujoco.mj_setConst(self.env._robot.model, self.env._robot.data)
@@ -267,6 +273,8 @@ class ASIDWrapper(gym.Wrapper):
                     ).item(),
                 ]
             )
+        if self.verbose:
+            print(f"Object pose: {pose} - seed {self.env._seed}")
         self.curr_obj_pose = pose.copy()
 
     def update_obj(self, qpos):
@@ -296,15 +304,18 @@ class ASIDWrapper(gym.Wrapper):
         self.set_data(full_state["robot_data"])
 
     def create_exp_reward(
-        self, robot_cfg_dict, env_cfg_dict, seed, delta=5e-2, normalization=1e-3
+        self, env_func, robot_cfg_dict, env_cfg_dict, seed, device_id=0, delta=5e-2, normalization=1e-3
     ):
         robot_cfg_dict["on_screen_rendering"] = False
         env_cfg_dict["obj_pos_noise"] = False
-        exp_env = type(self.env)(**robot_cfg_dict)
-        exp_env = ASIDWrapper(exp_env, **env_cfg_dict)
-        exp_env.seed(seed)
-        exp_env.reset()
-        # exp_env._robot.set_noiseless()
+
+        exp_env = env_func(robot_cfg_dict, env_cfg_dict, seed=seed, device_id=device_id, exp_reward=False, verbose=False)
+        
+        # exp_env = type(self.env)(**robot_cfg_dict)
+        # exp_env = ASIDWrapper(exp_env, **env_cfg_dict)
+        # exp_env.seed(seed)
+        # exp_env.reset()
+
         from robot.sim.mujoco.asid_reward import ASIDRewardWrapper
 
         self.exp_reward = ASIDRewardWrapper(

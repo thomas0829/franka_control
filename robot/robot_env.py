@@ -281,6 +281,8 @@ class RobotEnv(gym.Env):
             self.observation_shape[k] = env_obs_spaces[k].shape
             self.observation_type[k] = env_obs_spaces[k].dtype
 
+        self._seed = 0
+
     def get_spaces(self):
         return self.observation_space, self.action_space
 
@@ -697,5 +699,6 @@ class RobotEnv(gym.Env):
         return joint_dist < epsilon, joint_dist
 
     def seed(self, seed):
+        self._seed = seed
         np.random.seed(seed)
         torch.manual_seed(seed)

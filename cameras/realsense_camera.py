@@ -45,6 +45,10 @@ class RealSenseCamera:
 		# color_sensor.set_option(rs.option.enable_auto_exposure, False)
 		# color_sensor.set_option(rs.option.exposure, 300)
 
+		# https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view
+		# vertical FOV for a D455 and 1280x800 RGB
+		self._fovy = 65
+
 	def _process_intrinsics(self, params):
 		intrinsics = {}
 		intrinsics["cameraMatrix"] = np.array(

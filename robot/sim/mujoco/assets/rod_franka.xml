@@ -31,28 +31,17 @@
         </body>
 
         <!-- Rod -->
-        <!-- <body name="rod_body" pos="0.5 0.0 0.02" euler="0 0 0.3">
+        <!-- modeled a cuboid (rod_body) with a cube (rod_com) that can be moved to shift center of mass -->
+        <body name="rod_body" pos="0.4 0.3 0.02" quat="1 0 0 0">
             <freejoint name="rod_freejoint" />
-            <inertial pos="0 0 0" mass="1." diaginertia="1. 1. 1." />
-            <geom name="rod_geom_1" mass="0.2" conaffinity="1" contype="1" condim="3"
-                pos="0. 0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="0 0 1 1" />
-            <geom name="rod_geom_2" mass="0.2" conaffinity="1" contype="1" condim="3"
-                pos="0. 0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="0 1 0 1" />
-            <geom name="rod_geom_3" mass="0.2" conaffinity="1" contype="1" condim="3"
-                pos="0. 0.0 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1" />
-            <geom name="rod_geom_4" mass="0.2" conaffinity="1" contype="1" condim="3"
-                pos="0. -0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="0 1 0 1" />
-            <geom name="rod_geom_5" mass="0.2" conaffinity="1" contype="1" condim="3"
-                pos="0. -0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1" />
-        </body> -->
-
-        <body pos="0.5 0.0 0.02" quat="1 0 0 0" name="rod_body">
-        <!-- <body pos="0.5 0.0 0.02" euler="0 0 0.2" name="rod_body"> -->
-            <site name="rod_site" />
-            <freejoint name="rod_freejoint" />
-            <inertial pos="0. 0. 0." mass="0.3" diaginertia="1.0 1.0 1.0" />
-            <geom conaffinity="1" contype="1" condim="3" name="rod_geom_0" size="0.02 0.15 0.02" type="box"
-        rgba="1 0 0 1" />
+            <inertial pos="0 0 0" mass="0.2" diaginertia="1. 1. 1." />
+            <body name="rod_com" pos="0 0 0" quat="1 0 0 0">
+                <inertial pos="0 0 0" mass="0.1" diaginertia="1. 1. 1." />
+                <geom name="rod_geom_com" group="3" conaffinity="1" contype="1" condim="3"
+                    pos="0. 0 0" type="box" size="0.02 0.03 0.02" rgba="0 0 1 1" />
+            </body>
+            <geom conaffinity="1" mass="0.1" contype="1" condim="3" name="rod_geom_0"
+                size="0.02 0.15 0.02" type="box" rgba="1 0 0 1" />
         </body>
 
         <!-- franka's reachable workspace -->
@@ -66,7 +55,7 @@
     <include file="franka_assets/actuator_position.xml" />
     <!-- <include file="franka_assets/actuator_position.xml" /> -->
 
-    <!-- <keyframe>
-        <key qpos='-0.06315325 0.33202057 -0.0462324 -2.79372462 0.07651035 3.18670704 0.44067877 4.56178e-05 4.56178e-05 0.45 0.0 0.02 1 0 0 0'/>
-    </keyframe> -->
+    <keyframe>
+        <key qpos='8.52907066e-01  2.97767267e-01  4.38237010e-02 -2.70994978e+00 -4.81877543e-03  2.89241547e+00  1.67766532e+00  1.66114713e-06 2.00536372e-06  0.35  0.3  0.02 1 0 0 0'/>
+    </keyframe>
 </mujoco>

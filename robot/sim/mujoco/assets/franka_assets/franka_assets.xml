@@ -113,7 +113,7 @@
     <mesh file="finger_0.obj"/>
     <mesh file="finger_1.obj"/>
 
-    <mesh file="vention_table.stl"/>
+    <!-- <mesh file="vention_table.stl"/> -->
 
   </asset>
 </mujocoinclude>

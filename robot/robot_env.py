@@ -1,6 +1,7 @@
 import time
 
 import gym
+import torch
 import numpy as np
 from gym.spaces import Box, Dict
 
@@ -41,7 +42,7 @@ class RobotEnv(gym.Env):
         # camera type to use: 'realsense', 'zed'
         camera_model="realsense",
         camera_resolution=None,  # (128, 128) -> HxW
-        calibration_file="cameras/calibration/calibration.json",
+        calibration_file=None,
         # Mujoco: model name
         model_name="base_franka",
         on_screen_rendering=False,
@@ -84,7 +85,8 @@ class RobotEnv(gym.Env):
             self._reset_joint_qpos = np.array(
                 [
                     -0.06315325,
-                    0.33202057,
+                    # 0.33202057,
+                    0.27,
                     -0.0462324,
                     -2.79372462,
                     0.07651035,
@@ -104,17 +106,21 @@ class RobotEnv(gym.Env):
         action_low, action_high = -0.1, 0.1
         self.action_space = Box(
             np.array(
-                [action_low] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
+                [action_low] * (self.DoF + 1 if self.gripper else self.DoF),
+                dtype=np.float32,
             ),  # dx_low, dy_low, dz_low, dgripper_low
             np.array(
-                [action_high] * (self.DoF + 1 if self.gripper else self.DoF), dtype=np.float32
+                [action_high] * (self.DoF + 1 if self.gripper else self.DoF),
+                dtype=np.float32,
             ),  # dx_high, dy_high, dz_high, dgripper_high
         )
         self.action_shape = self.action_space.shape
 
         # EE position (x, y, z) + EE rot (roll, pitch, yaw) + gripper width
-        ee_space_low = np.array([0.32, -0.38, 0.12, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.7, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
+        # ee_space_low = np.array([0.32, -0.38, 0.12, -3.14, -3.14, -3.14, 0.00])
+        # ee_space_high = np.array([0.7, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
+        ee_space_low = np.array([0.25, -0.5, 0.12, -3.14, -3.14, -3.14, 0.00])
+        ee_space_high = np.array([0.7, 0.5, 0.8, 3.14, 3.14, 3.14, 0.085])
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:
@@ -166,6 +172,16 @@ class RobotEnv(gym.Env):
         # robot configuration
         self.camera_resolution = camera_resolution
 
+        # TODO move to RobotBase
+        if calibration_file:
+            calib_dict = (
+                read_calibration_file(calibration_file)
+                if calibration_file is not None
+                else None
+            )
+        else:
+            calib_dict = None
+
         if ip_address is not None:
             from robot.real.franka import FrankaHardware
 
@@ -189,12 +205,7 @@ class RobotEnv(gym.Env):
 
             self._camera_reader = MultiCameraWrapper(cameras)
 
-            calib_dict = (
-                read_calibration_file(calibration_file)
-                if calibration_file is not None
-                else None
-            )
-
+            # TODO move to RobotHardware
             if calib_dict is not None:
                 self.camera_intrinsic = {}
                 self.camera_extrinsic = {}
@@ -222,13 +233,15 @@ class RobotEnv(gym.Env):
                 control_hz=self.control_hz,
                 has_renderer=on_screen_rendering,
                 has_offscreen_renderer=not on_screen_rendering,
+                calib_dict=calib_dict,
             )
 
-            self.camera_intrinsic = {}
-            self.camera_extrinsic = {}
-            for cn in self._robot.camera_names:
-                self.camera_intrinsic[cn] = self._robot.get_camera_intrinsic(cn)
-                self.camera_extrinsic[cn] = self._robot.get_camera_extrinsic(cn)
+            # TODO move to MujocoManipulatorEnv
+            # self.camera_intrinsic = {}
+            # self.camera_extrinsic = {}
+            # for cn in self._robot.camera_names:
+            #     self.camera_intrinsic[cn] = self._robot.get_camera_intrinsic(cn)
+            #     self.camera_extrinsic[cn] = self._robot.get_camera_extrinsic(cn)
             self.depth_scale = 1.0
 
             self.sim = True
@@ -284,7 +297,7 @@ class RobotEnv(gym.Env):
             ), f"Expected action shape: ({self.DoF+1},) got {action.shape}"
 
         action = np.clip(action, self.action_space.low, self.action_space.high)
-        
+
         pos_action, angle_action, gripper = self._format_action(action)
 
         # clipping + any safety corrections for position
@@ -360,6 +373,9 @@ class RobotEnv(gym.Env):
         # ensure robot releases grasp before reset
         if self.gripper:
             self.reset_gripper()
+        else:
+            # default is closed gripper if not self.gripper
+            self._robot.update_gripper(1.0, velocity=False, blocking=True)
         # reset to home pose
         for _ in range(3):
             self._robot.update_joints(
@@ -437,7 +453,8 @@ class RobotEnv(gym.Env):
         if self.gripper:
             gripper = action[-1]
         else:
-            gripper = 0.0
+            # default is closed gripper if not self.gripper
+            gripper = 1.0
         return np.array(delta_pos), np.array(delta_angle), gripper
 
     def _get_valid_pos(self, pos):
@@ -540,6 +557,14 @@ class RobotEnv(gym.Env):
     def get_images_and_points(self):
         img_dict = self.get_images()
 
+        # TODO move to MujocoManipulatorEnv
+        if self.sim:
+            self.camera_intrinsic = {}
+            self.camera_extrinsic = {}
+            for cn in self._robot.camera_names:
+                self.camera_intrinsic[cn] = self._robot.get_camera_intrinsic(cn)
+                self.camera_extrinsic[cn] = self._robot.get_camera_extrinsic(cn)
+        
         for sn, img in img_dict.items():
             img_dict[sn]["points"] = depth_to_points(
                 img["depth"],
@@ -551,6 +576,7 @@ class RobotEnv(gym.Env):
         return img_dict
 
     def show_points(self):
+        print("WARNING: mujoco rendering and open3d don't like each other :(")
         img_points = self.get_images_and_points()
         points = []
         for k in img_points.keys():
@@ -562,8 +588,17 @@ class RobotEnv(gym.Env):
             )
             points.append(points_to_pcd(pts, colors=clr))
 
-        zero = points_to_pcd(np.zeros((1, 3)))
-        points.append(zero)
+        x = np.zeros((1,3))
+        for d in np.arange(0, 1, 0.1):
+            x[:,0] = d
+            points.append(points_to_pcd(x, colors=[[255.0, 0.0, 0.0]]))
+            y = np.zeros((1,3))
+            y[:,1] = d
+            points.append(points_to_pcd(y, colors=[[0.0, 255.0, 0.0]]))
+            z = np.zeros((1,3))
+            z[:,2] = d
+            points.append(points_to_pcd(z, colors=[[0.0, 0.0, 255.0]]))
+        # points.append(zero)
 
         visualize_pcds(points)
 
@@ -660,3 +695,7 @@ class RobotEnv(gym.Env):
         curr_joints = self._robot.get_joint_positions()
         joint_dist = np.linalg.norm(curr_joints - self._reset_joint_qpos)
         return joint_dist < epsilon, joint_dist
+
+    def seed(self, seed):
+        np.random.seed(seed)
+        torch.manual_seed(seed)

@@ -17,8 +17,12 @@ def make_env(
     )
 
     env = RobotEnv(**robot_cfg_dict, device_id=device_id, verbose=verbose)
-    env = ASIDWrapper(env, **env_cfg_dict)
-
+    if robot_cfg_dict["ip_address"] is None:
+        env = ASIDWrapper(env, **env_cfg_dict)
+    else:
+        # real world obj tracker wrapper
+        pass
+    
     if exp_reward:
         env.create_exp_reward(robot_cfg_dict, env_cfg_dict, seed)
     env.seed(seed)

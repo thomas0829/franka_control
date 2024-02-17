@@ -47,9 +47,10 @@ class FrankaHardware(FrankaBase):
     def launch_robot(self, ip_address, gripper=True):
         self._robot = RobotInterface(ip_address=ip_address)
         self._gripper = None
-        if gripper:
-            self._gripper = GripperInterface(ip_address=ip_address)
-            self._max_gripper_width = self._gripper.metadata.max_width
+        # if gripper:
+        # TODO deal w/ no gripperin real
+        self._gripper = GripperInterface(ip_address=ip_address)
+        self._max_gripper_width = self._gripper.metadata.max_width
 
     def _start_custom_controller(self):
         

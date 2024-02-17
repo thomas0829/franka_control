@@ -36,9 +36,9 @@ class ZedCamera:
 			# depth_mode=sl.DEPTH_MODE.NEURAL,
 			# coordinate_units=sl.UNIT.METER, # force milimeters
 			depth_minimum_distance=0.1,
-			depth_stabilization=False,
+			# depth_stabilization=False,
 			camera_resolution=sl.RESOLUTION.HD720,
-			camera_fps=15,
+			camera_fps=30,
 			camera_image_flip=sl.FLIP_MODE.OFF,
 		)
 		# https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view
@@ -70,7 +70,7 @@ class ZedCamera:
 		sl_params = sl.InitParameters(**self._current_params)
 		sl_params.set_from_serial_number(int(self._serial_number))
 		status = self._cam.open(sl_params)
-		self._cam.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE, 50)
+		# self._cam.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE, 50)
 		if status != sl.ERROR_CODE.SUCCESS:
 			raise RuntimeError("Camera Failed To Open")
 
@@ -114,43 +114,45 @@ class ZedCamera:
 		)
 
 		self._cam.retrieve_image(self._left_img, sl.VIEW.LEFT)
+
+		left_img = deepcopy(self._left_img.get_data())
+		left_img = cv2.cvtColor(left_img, cv2.COLOR_BGR2RGB)
+
+		dict_1 = {
+			"array": left_img,
+			"shape": left_img.shape,
+			"type": "rgb",
+			"read_time": received_time,
+			"serial_number": self._serial_number + "/left",
+		}
+
 		# self._cam.retrieve_image(self._right_img, sl.VIEW.RIGHT)
 
-		# left_img = deepcopy(self._left_img.get_data())
-		# left_img = cv2.cvtColor(left_img, cv2.COLOR_BGR2RGB)
+		# right_img = deepcopy(self._right_img.get_data())
+		# right_img = cv2.cvtColor(right_img, cv2.COLOR_BGR2RGB)
 
-		# dict_1 = {
-		# 	"array": left_img,
-		# 	"shape": left_img.shape,
-		# 	"type": "rgb",
-		# 	"read_time": received_time,
-		# 	"serial_number": self._serial_number + "/left",
-		# }
-
-		right_img = deepcopy(self._right_img.get_data())
-		right_img = cv2.cvtColor(right_img, cv2.COLOR_BGR2RGB)
-
-		dict_1 = {'array': right_img,  'shape': right_img.shape, 'type': 'rgb',
-			'read_time': received_time, 'serial_number': self._serial_number + '/right'}
+		# dict_1 = {'array': right_img,  'shape': right_img.shape, 'type': 'rgb',
+		# 	'read_time': received_time, 'serial_number': self._serial_number + '/right'}
 
 		if self.depth:
-			# self._cam.retrieve_measure(self._left_depth, sl.MEASURE.DEPTH)
-			self._cam.retrieve_measure(self._right_depth, sl.MEASURE.DEPTH_RIGHT)
+			self._cam.retrieve_measure(self._left_depth, sl.MEASURE.DEPTH)
 
-			# left_depth = deepcopy(self._left_depth.get_data())
+			left_depth = deepcopy(self._left_depth.get_data())
 
-			# dict_2 = {
-			# 	"array": left_depth,
-			# 	"shape": left_depth.shape,
-			# 	"type": "rgb",
-			# 	"read_time": received_time,
-			# 	"serial_number": self._serial_number + "/left",
-			# }
+			dict_2 = {
+				"array": left_depth,
+				"shape": left_depth.shape,
+				"type": "depth",
+				"read_time": received_time,
+				"serial_number": self._serial_number + "/left",
+			}
 
-			right_depth = deepcopy(self._right_depth.get_data())
+			# self._cam.retrieve_measure(self._right_depth, sl.MEASURE.DEPTH_RIGHT)
+			
+			# right_depth = deepcopy(self._right_depth.get_data())
 
-			dict_2 = {'array': right_depth,  'shape': right_depth.shape, 'type': 'rgb',
-				'read_time': received_time, 'serial_number': self._serial_number + '/right'}
+			# dict_2 = {'array': right_depth,  'shape': right_depth.shape, 'type': 'rgb',
+			# 	'read_time': received_time, 'serial_number': self._serial_number + '/right'}
 
 		# if self.pointcloud:
 		# 	self._cam.retrieve_measure(self._left_pointcloud, sl.MEASURE.XYZRGBA)

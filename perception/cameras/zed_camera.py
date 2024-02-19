@@ -143,7 +143,7 @@ class ZedCamera:
         if self.depth:
             self._cam.retrieve_measure(self._left_depth, sl.MEASURE.DEPTH)
 
-            left_depth = deepcopy(self._left_depth.get_data())
+            left_depth = deepcopy(self._left_depth.get_data())[...,None]
 
             if self.crop:
                 left_depth = left_depth[:, 355:-205]

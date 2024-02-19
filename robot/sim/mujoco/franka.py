@@ -50,7 +50,7 @@ class MujocoManipulatorEnv(FrankaBase):
     def __init__(
         self,
         # robot_model_cfg: DictConfig,
-        config_name: str = "franka_panda_with_hand",
+        config_name: str = "robot/real/config/franka_panda_with_hand",
         model_name: str = "base_franka",
         use_grav_comp: bool = False,
         gravity: float = 9.81,

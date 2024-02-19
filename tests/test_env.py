@@ -8,7 +8,7 @@ from asid.wrapper.sim.asid_vec import make_env, make_vec_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
 
-@hydra.main(config_path="configs/", config_name="asid", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="asid", version_base="1.1")
 def run_experiment(cfg):
 
     cfg.robot.DoF = 6

@@ -262,7 +262,7 @@ class ASIDWrapper(gym.Wrapper):
                 self.obj_pose_noise_dict["y"]["min"],
                 self.obj_pose_noise_dict["y"]["max"],
             )
-            pose[3:7] = euler2quat(
+            pose[3:7] = euler_to_quat_mujoco(
                 [
                     0.0,
                     0.0,

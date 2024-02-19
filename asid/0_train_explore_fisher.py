@@ -123,7 +123,7 @@ def evaluate(policy, eval_envs, logger, tag="eval"):
     logger.dump(step=0)
 
 
-@hydra.main(config_path="configs/", config_name="asid", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="asid", version_base="1.1")
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(

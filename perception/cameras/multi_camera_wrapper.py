@@ -191,6 +191,10 @@ class MultiCameraWrapper:
             #             frame, dictionary=dictionary, parameters=parameters
             #         )
 
+            if len(corners) == 0:
+                print("WARNING: no aruco tag detected!")
+                return None, None
+            
             if ids is not None:
 
                 # check first marker (assuming there only is one)
@@ -226,9 +230,5 @@ class MultiCameraWrapper:
 
                 # rodrigues rotation to matrix
                 rotation_matrix, _ = cv2.Rodrigues(rvec[0])
-
-            else:
-                print("WARNING: no aruco tag detected!")
-                return None, None
 
         return tvec[0], rotation_matrix

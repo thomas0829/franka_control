@@ -36,13 +36,13 @@ class RealSenseCamera:
         else:
             self._config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 
-        cfg = self._pipeline.start(config)
+        cfg = self._pipeline.start(self._config)
         self._align = rs.align(rs.stream.color)
 
         profile = cfg.get_stream(rs.stream.color)
         intr = profile.as_video_stream_profile().get_intrinsics()
         self._intrinsics = {
-            self._serial_number + "_rgb": self._process_intrinsics(intr),
+            self._serial_number: self._process_intrinsics(intr),
         }
 
         # color_sensor = device.query_sensors()[1]
@@ -95,14 +95,14 @@ class RealSenseCamera:
             "shape": color_image.shape,
             "type": "rgb",
             "read_time": read_time,
-            "serial_number": self._serial_number + "/rgb",
+            "serial_number": self._serial_number,
         }
         dict_2 = {
             "array": depth_image,
             "shape": depth_image.shape,
             "type": "depth",
             "read_time": read_time,
-            "serial_number": self._serial_number + "/depth",
+            "serial_number": self._serial_number,
         }
 
         return [dict_1, dict_2]

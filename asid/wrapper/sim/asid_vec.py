@@ -9,7 +9,8 @@ def make_env(
     env_cfg_dict,
     seed=0,
     device_id=0,
-    exp_reward=False,
+    asid_wrapper=False,
+    asid_reward=False,
     delta=0.05,
     normalization=0.001,
     verbose=False,
@@ -24,18 +25,20 @@ def make_env(
     )
 
     env = RobotEnv(**robot_cfg_dict, device_id=device_id, verbose=verbose)
-    env = ASIDWrapper(env, **env_cfg_dict, verbose=verbose)
+    
+    if asid_wrapper:
+        env = ASIDWrapper(env, **env_cfg_dict, verbose=verbose)
 
-    if exp_reward:
-        env.create_exp_reward(
-            make_env,
-            robot_cfg_dict,
-            env_cfg_dict,
-            seed=seed,
-            device_id=device_id,
-            delta=delta,
-            normalization=normalization,
-        )
+        if asid_reward:
+            env.create_exp_reward(
+                make_env,
+                robot_cfg_dict,
+                env_cfg_dict,
+                seed=seed,
+                device_id=device_id,
+                delta=delta,
+                normalization=normalization,
+            )
 
     env.seed(seed)
 
@@ -48,7 +51,8 @@ def make_vec_env(
     num_workers,
     seed,
     device_id=0,
-    exp_reward=False,
+    asid_wrapper=True,
+    asid_reward=True,
     delta=0.05,
     normalization=0.001,
     verbose=False,
@@ -63,7 +67,8 @@ def make_vec_env(
             seed=seed + i,
             device_id=device_id,
             verbose=bool(i == 0) and verbose,
-            exp_reward=exp_reward,
+            asid_wrapper=asid_wrapper,
+            asid_reward=asid_reward,
             delta=delta,
             normalization=normalization,
         )

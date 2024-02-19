@@ -3,12 +3,11 @@ hydra:
     chdir: false
   
 defaults:
-  - log: wandb
-  - robot: sim
-
-exp_id: "debug"
+  - log: stdout
+  - robot: sim_2_dof
 
 seed: 0
-gpu_id: -1
-num_workers: 2
-num_workers_eval: 2
+gpu_id: 0
+
+exp_id: "default"
+

@@ -321,14 +321,10 @@ class ASIDWrapper(gym.Wrapper):
             env_cfg_dict,
             seed=seed,
             device_id=device_id,
-            exp_reward=False,
+            asid_wrapper=True,
+            asid_reward=False,
             verbose=False,
         )
-
-        # exp_env = type(self.env)(**robot_cfg_dict)
-        # exp_env = ASIDWrapper(exp_env, **env_cfg_dict)
-        # exp_env.seed(seed)
-        # exp_env.reset()
 
         from asid.wrapper.sim.asid_reward import ASIDRewardWrapper
 

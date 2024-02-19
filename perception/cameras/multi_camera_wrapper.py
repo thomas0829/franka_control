@@ -3,7 +3,7 @@ import time
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from cameras.camera_thread import CameraThread
+from perception.cameras.camera_thread import CameraThread
 
 
 class MultiCameraWrapper:
@@ -52,11 +52,11 @@ class MultiCameraWrapper:
             self._all_cameras.extend(self.specific_cameras)
         else:
             if self.type == "realsense":
-                from cameras.realsense_camera import gather_realsense_cameras
+                from perception.cameras.realsense_camera import gather_realsense_cameras
 
                 self._all_cameras.extend(gather_realsense_cameras())
             elif self.type == "zed":
-                from cameras.zed_camera import gather_zed_cameras
+                from perception.cameras.zed_camera import gather_zed_cameras
 
                 # time.sleep(1)
                 self._all_cameras.extend(gather_zed_cameras())

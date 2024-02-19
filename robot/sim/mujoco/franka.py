@@ -435,7 +435,7 @@ class MujocoManipulatorEnv(FrankaBase):
         return self.model.opt.timestep * self.frame_skip
 
     def get_ee_pose(self):
-        return self.get_ee_pos(), self.get_ee_angle()
+        return np.concatenate((self.get_ee_pos(), self.get_ee_angle()))
 
     def get_ee_pos(self):
         ee_pos = self.data.site_xpos[self.ee_site_id].copy()

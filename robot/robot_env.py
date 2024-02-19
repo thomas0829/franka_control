@@ -6,10 +6,15 @@ import numpy as np
 import torch
 from gym.spaces import Box, Dict
 
-from utils.pointclouds import (compute_camera_extrinsic,
-                               compute_camera_intrinsic, crop_points,
-                               depth_to_points, points_to_pcd,
-                               read_calibration_file, visualize_pcds)
+from utils.pointclouds import (
+    compute_camera_extrinsic,
+    compute_camera_intrinsic,
+    crop_points,
+    depth_to_points,
+    points_to_pcd,
+    read_calibration_file,
+    visualize_pcds,
+)
 from utils.transformations import add_angles, angle_diff
 
 
@@ -193,8 +198,7 @@ class RobotEnv(gym.Env):
             )
 
             if camera_model == "realsense":
-                from perception.cameras.realsense_camera import \
-                    gather_realsense_cameras
+                from perception.cameras.realsense_camera import gather_realsense_cameras
 
                 cameras = gather_realsense_cameras(hardware_reset=False)
             elif camera_model == "zed":
@@ -202,8 +206,10 @@ class RobotEnv(gym.Env):
 
                 cameras = gather_zed_cameras()
 
-            from perception.cameras.multi_camera_wrapper import \
-                MultiCameraWrapper
+            else:
+                cameras = []
+
+            from perception.cameras.multi_camera_wrapper import MultiCameraWrapper
 
             self._camera_reader = MultiCameraWrapper(cameras)
 

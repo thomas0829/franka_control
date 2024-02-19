@@ -1,5 +1,6 @@
 from functools import partial
 
+from robot.sim.mujoco.obj_wrapper import ObjWrapper
 from asid.wrapper.sim.asid_wrapper import ASIDWrapper
 from robot.robot_env import RobotEnv
 
@@ -26,8 +27,9 @@ def make_env(
 
     env = RobotEnv(**robot_cfg_dict, device_id=device_id, verbose=verbose)
     
+    env = ObjWrapper(env, **env_cfg_dict, verbose=verbose)
     if asid_wrapper:
-        env = ASIDWrapper(env, **env_cfg_dict, verbose=verbose)
+        env = ASIDWrapper(env, verbose=verbose)
 
         if asid_reward:
             env.create_exp_reward(

@@ -67,7 +67,7 @@ class RobotEnv(gym.Env):
 
         self._episode_count = 0
         self._max_path_length = max_path_length
-        self._curr_path_length = 0
+        self.curr_path_length = 0
 
         # resetting configuration
         self._randomize_ee_on_reset = randomize_ee_on_reset
@@ -340,11 +340,11 @@ class RobotEnv(gym.Env):
             time.sleep(sleep_left)
         obs = self.get_observation()
 
-        self._curr_path_length += 1
+        self.curr_path_length += 1
         done = False
         if (
             self._max_path_length is not None
-            and self._curr_path_length >= self._max_path_length
+            and self.curr_path_length >= self._max_path_length
         ):
             done = True
         return obs, 0.0, done, {}
@@ -431,7 +431,7 @@ class RobotEnv(gym.Env):
             if user_input in ["s", "S"]:
                 time.sleep(5)
 
-        self._curr_path_length = 0
+        self.curr_path_length = 0
         self._episode_count += 1
 
         return self.get_observation()

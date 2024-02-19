@@ -1,17 +1,17 @@
-import os
-import joblib
-import imageio
 import argparse
+import os
+
+import imageio
+import joblib
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
-
+from training.dataset import DictDataset
 from training.policies import GaussianPolicy
 
-from torch.utils.data import DataLoader
-from training.dataset import DictDataset
 
 def train_policy(
     policy,
@@ -83,9 +83,18 @@ if __name__ == "__main__":
     parser.add_argument("--save_dir", type=str, default="data")
     # hardware
     parser.add_argument("--dof", type=int, default=6, choices=[3, 4, 6])
-    parser.add_argument("--robot_type", type=str, default="panda", choices=["panda", "fr3"])
-    parser.add_argument("--ip_address", type=str, default="localhost", choices=[None, "localhost", "172.16.0.1"])
-    parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
+    parser.add_argument(
+        "--robot_type", type=str, default="panda", choices=["panda", "fr3"]
+    )
+    parser.add_argument(
+        "--ip_address",
+        type=str,
+        default="localhost",
+        choices=[None, "localhost", "172.16.0.1"],
+    )
+    parser.add_argument(
+        "--camera_model", type=str, default="realsense", choices=["realsense", "zed"]
+    )
     # trajectories
     parser.add_argument("--mode", type=str, default="train", choices=["train", "test"])
     parser.add_argument(
@@ -101,37 +110,46 @@ if __name__ == "__main__":
 
     assert args.exp is not None, "Specify --exp"
 
-    device = torch.device(("cuda:" + str(args.gpu_id)) if args.gpu_id >= 0. and torch.cuda.is_available() else "cpu")
+    device = torch.device(
+        ("cuda:" + str(args.gpu_id))
+        if args.gpu_id >= 0.0 and torch.cuda.is_available()
+        else "cpu"
+    )
 
     from os import listdir
     from os.path import isfile, join
-    
+
     # get all filenames
     path = os.path.join(args.save_dir, args.exp)
-    filenames = [f for f in listdir(path) if isfile(join(path, f)) and f.split('_')[0] == "traj" and f.split('.')[-1] == "gz"]
+    filenames = [
+        f
+        for f in listdir(path)
+        if isfile(join(path, f))
+        and f.split("_")[0] == "traj"
+        and f.split(".")[-1] == "gz"
+    ]
 
     # load single sample
-    obs_keys = ['lowdim_ee', 'lowdim_qpos', '207322251049_rgb']
+    obs_keys = ["lowdim_ee", "lowdim_qpos", "207322251049_rgb"]
     obs_dict = {}
     acts = []
     obs, act = joblib.load(os.path.join(path, filenames[0]))
     for k in obs_keys:
         obs_dict[k] = [obs[k]]
-    acts.append(act) 
+    acts.append(act)
 
     # setup obs and act space
     state_obs_shape = None
     img_obs_shape = None
     if args.modality == "state" or args.modality == "all":
         state_obs_shape = (
-            obs_dict["lowdim_ee"][0].shape[1]
-            + obs_dict["lowdim_qpos"][0].shape[1],
-        ) 
+            obs_dict["lowdim_ee"][0].shape[1] + obs_dict["lowdim_qpos"][0].shape[1],
+        )
     if args.modality == "images" or args.modality == "all":
-        img_shape = [0, 480, 480, 3] # obs_dict["207322251049_rgb"][0].shape
+        img_shape = [0, 480, 480, 3]  # obs_dict["207322251049_rgb"][0].shape
         img_obs_shape = (img_shape[3], img_shape[1], img_shape[2])
     act_shape = (acts[0].shape[1],)
-    
+
     policy = GaussianPolicy(
         act_shape,
         state_obs_shape=state_obs_shape,
@@ -148,22 +166,18 @@ if __name__ == "__main__":
             obs, act = joblib.load(os.path.join(path, filename))
             for k in obs_keys:
                 obs_dict[k].append(obs[k])
-            acts.append(act) 
+            acts.append(act)
 
         for k in obs_keys:
             obs_dict[k] = np.concatenate(obs_dict[k], axis=0)
         acts = np.concatenate(acts, axis=0)
 
         # crop images
-        obs_dict["rgb"] = obs_dict.pop('207322251049_rgb')[:,:,50:530]
+        obs_dict["rgb"] = obs_dict.pop("207322251049_rgb")[:, :, 50:530]
 
         # push in dataloader
         dataset = DictDataset(obs_dict, acts, device=device)
-        dataloader = DataLoader(
-            dataset,
-            batch_size=args.batch_size,
-            shuffle=True
-        )
+        dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
         policy = train_policy(
             policy,
@@ -179,7 +193,11 @@ if __name__ == "__main__":
         )
 
     elif args.mode == "test":
-        policy.load_state_dict(torch.load(os.path.join(args.save_dir, args.exp, "policy.pt"), map_location=device))
+        policy.load_state_dict(
+            torch.load(
+                os.path.join(args.save_dir, args.exp, "policy.pt"), map_location=device
+            )
+        )
         policy = policy.to(device)
 
         from robot.robot_env import RobotEnv

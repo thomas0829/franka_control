@@ -1,7 +1,8 @@
+from typing import Dict
+
 import torch
 import torchcontrol as toco
 
-from typing import Dict
 
 class JointPDPolicy(toco.PolicyModule):
     """

@@ -1,3 +1,4 @@
+import json
 import time
 
 import gym
@@ -5,12 +6,11 @@ import numpy as np
 import torch
 from gym.spaces import Box, Dict
 
-from cameras.calibration.utils import read_calibration_file
-from helpers.pointclouds import (compute_camera_extrinsic,
-                                 compute_camera_intrinsic, crop_points,
-                                 depth_to_points, points_to_pcd,
-                                 visualize_pcds)
-from helpers.transformations import add_angles, angle_diff
+from utils.pointclouds import (compute_camera_extrinsic,
+                               compute_camera_intrinsic, crop_points,
+                               depth_to_points, points_to_pcd,
+                               read_calibration_file, visualize_pcds)
+from utils.transformations import add_angles, angle_diff
 
 
 class RobotEnv(gym.Env):
@@ -193,15 +193,17 @@ class RobotEnv(gym.Env):
             )
 
             if camera_model == "realsense":
-                from cameras.realsense_camera import gather_realsense_cameras
+                from perception.cameras.realsense_camera import \
+                    gather_realsense_cameras
 
                 cameras = gather_realsense_cameras(hardware_reset=False)
             elif camera_model == "zed":
-                from cameras.zed_camera import gather_zed_cameras
+                from perception.cameras.zed_camera import gather_zed_cameras
 
                 cameras = gather_zed_cameras()
 
-            from cameras.multi_camera_wrapper import MultiCameraWrapper
+            from perception.cameras.multi_camera_wrapper import \
+                MultiCameraWrapper
 
             self._camera_reader = MultiCameraWrapper(cameras)
 
@@ -566,7 +568,7 @@ class RobotEnv(gym.Env):
             for cn in self._robot.camera_names:
                 self.camera_intrinsic[cn] = self._robot.get_camera_intrinsic(cn)
                 self.camera_extrinsic[cn] = self._robot.get_camera_extrinsic(cn)
-        
+
         for sn, img in img_dict.items():
             img_dict[sn]["points"] = depth_to_points(
                 img["depth"],
@@ -590,15 +592,15 @@ class RobotEnv(gym.Env):
             )
             points.append(points_to_pcd(pts, colors=clr))
 
-        x = np.zeros((1,3))
+        x = np.zeros((1, 3))
         for d in np.arange(0, 1, 0.1):
-            x[:,0] = d
+            x[:, 0] = d
             points.append(points_to_pcd(x, colors=[[255.0, 0.0, 0.0]]))
-            y = np.zeros((1,3))
-            y[:,1] = d
+            y = np.zeros((1, 3))
+            y[:, 1] = d
             points.append(points_to_pcd(y, colors=[[0.0, 255.0, 0.0]]))
-            z = np.zeros((1,3))
-            z[:,2] = d
+            z = np.zeros((1, 3))
+            z[:, 2] = d
             points.append(points_to_pcd(z, colors=[[0.0, 0.0, 255.0]]))
         # points.append(zero)
 

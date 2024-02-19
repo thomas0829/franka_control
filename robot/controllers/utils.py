@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def _min_jerk_spaces(N: int, T: float):
     """
     Generates a 1-dim minimum jerk trajectory from 0 to 1 in N steps & T seconds.
@@ -55,4 +56,3 @@ def generate_joint_space_min_jerk(start, goal, time_to_go: float, dt: float):
     ]
 
     return waypoints
-

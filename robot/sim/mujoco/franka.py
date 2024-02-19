@@ -15,9 +15,13 @@ import yaml
 
 # from polymetis.utils.data_dir import get_full_path_to_urdf
 # from polysim.envs import AbstractControlledEnv
-from helpers.transformations import (euler_to_quat, quat_to_euler,
-                                     rmat_to_euler, rmat_to_quat)
-from helpers.transformations_mujoco import mat2quat
+from utils.transformations import (
+    euler_to_quat,
+    quat_to_euler,
+    rmat_to_euler,
+    rmat_to_quat,
+)
+from utils.transformations_mujoco import mat_to_quat_mujoco
 
 log = logging.getLogger(__name__)
 
@@ -158,6 +162,7 @@ class MujocoManipulatorEnv(FrankaBase):
             import torchcontrol as toco
             from torchcontrol.modules.feedback import JointSpacePD
             from torchcontrol.policies import JointImpedanceControl
+
             self.toco_robot_model = toco.models.RobotModelPinocchio(
                 self.robot_description_path, robot_model_cfg["ee_link_name"]
             )
@@ -204,7 +209,7 @@ class MujocoManipulatorEnv(FrankaBase):
 
     def reset_camera_pose(self):
         if self.calib_dict is not None:
-            
+
             for sn, camera_name in zip(self.calib_dict.keys(), self.camera_names):
                 self.set_camera_intrinsic(
                     camera_name,
@@ -216,10 +221,10 @@ class MujocoManipulatorEnv(FrankaBase):
                 )
 
             for sn, camera_name in zip(self.calib_dict.keys(), self.camera_names):
-                    R = np.eye(4)
-                    R[:3, :3] = np.array(self.calib_dict[sn]["extrinsic"]["ori"])
-                    R[:3, 3] = np.array(self.calib_dict[sn]["extrinsic"]["pos"]).reshape(-1)
-                    self.set_camera_extrinsic(camera_name, R)
+                R = np.eye(4)
+                R[:3, :3] = np.array(self.calib_dict[sn]["extrinsic"]["ori"])
+                R[:3, 3] = np.array(self.calib_dict[sn]["extrinsic"]["pos"]).reshape(-1)
+                self.set_camera_extrinsic(camera_name, R)
             self.img_width = self.calib_dict[sn]["intrinsic"]["width"]
             self.img_height = self.calib_dict[sn]["intrinsic"]["height"]
 
@@ -368,12 +373,13 @@ class MujocoManipulatorEnv(FrankaBase):
         cam_base_pos = R[:3, 3]
         cam_base_ori = R[:3, :3]
         camera_axis_correction = np.array(
-                    [[1.0, 0.0, 0.0],
-                    [0.0, -1.0, 0.0],
-                    [0.0, 0.0, -1.0]])
-        
+            [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]]
+        )
+
         self.model.cam_pos[cam_id] = cam_base_pos
-        self.model.cam_quat[cam_id] = mat2quat(cam_base_ori @ camera_axis_correction).reshape(-1)
+        self.model.cam_quat[cam_id] = mat_to_quat_mujoco(
+            cam_base_ori @ camera_axis_correction
+        ).reshape(-1)
 
     def get_camera_extrinsic(self, camera_name):
         """
@@ -663,7 +669,7 @@ class MujocoManipulatorEnv(FrankaBase):
         # return
 
         if self.torque_control:
-            
+
             # Use registered controller
             q_current = torch.tensor(self.get_joint_positions())
 
@@ -680,11 +686,15 @@ class MujocoManipulatorEnv(FrankaBase):
                         joint_pos_desired=waypoints[i]["position"],
                         kp=self.reset_gain_scale
                         * torch.nn.Parameter(
-                            torch.tensor(self.metadata["default_Kq"], dtype=torch.float32)
+                            torch.tensor(
+                                self.metadata["default_Kq"], dtype=torch.float32
+                            )
                         ),
                         kd=self.reset_gain_scale
                         * torch.nn.Parameter(
-                            torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32)
+                            torch.tensor(
+                                self.metadata["default_Kqd"], dtype=torch.float32
+                            )
                         ),
                     )
                 # time.sleep(dt)
@@ -700,14 +710,14 @@ class MujocoManipulatorEnv(FrankaBase):
                     torch.tensor(self.metadata["default_Kqd"], dtype=torch.float32)
                 ),
             )
-        
+
         else:
             # WARNING: actuator must be general or position
 
             # set position -> sim only has to be stepped once
             self.data.qpos[self.franka_joint_ids] = joint_pos_desired
             mujoco.mj_step(self.model, self.data)
-            
+
             # # use position control -> sim has to be skipped multiple times until convergence
             # self.data.ctrl[: len(self.franka_joint_ids)] = joint_pos_desired
             # mujoco.mj_step(self.model, self.data, nstep=self.frame_skip * 10)
@@ -726,13 +736,16 @@ class MujocoManipulatorEnv(FrankaBase):
             self.data.ctrl[len(self.franka_joint_ids) :] = 0.0
         else:
             self.data.ctrl[len(self.franka_joint_ids) :] = 255.0
-        
+
         if blocking:
             mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
 
     def get_gripper_state(self):
         if self._gripper:
-            return self.data.qpos[self.franka_finger_joint_ids[0]] + self.data.qpos[self.franka_finger_joint_ids[1]]
+            return (
+                self.data.qpos[self.franka_finger_joint_ids[0]]
+                + self.data.qpos[self.franka_finger_joint_ids[1]]
+            )
         else:
             return 0.0
 

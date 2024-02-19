@@ -1,9 +1,10 @@
+from typing import Dict
+
 import torch
 import torchcontrol as toco
 from torchcontrol.utils import to_tensor
-from torchcontrol.utils.tensor_utils import to_tensor, diagonalize_gain
+from torchcontrol.utils.tensor_utils import diagonalize_gain, to_tensor
 
-from typing import Dict
 
 class MixedCartesianImpedanceControl(toco.PolicyModule):
     """
@@ -44,7 +45,7 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
             self.robot_model, ignore_gravity=ignore_gravity
         )
         self.pose_pd = toco.modules.feedback.CartesianSpacePDFast(Kp, Kd)
-        
+
         self.joint_pd = toco.modules.feedback.JointSpacePD(self.kp, self.kd)
 
         # Reference pose
@@ -73,7 +74,7 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
             A dictionary containing the controller output
         """
         if self.ctrl_mode.data == 1:
-            
+
             joint_pos_current = state_dict["joint_positions"]
             joint_vel_current = state_dict["joint_velocities"]
 
@@ -98,7 +99,9 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
             torque_feedback = jacobian.T @ wrench_feedback
 
             torque_feedforward = self.invdyn(
-                joint_pos_current, joint_vel_current, torch.zeros_like(joint_pos_current)
+                joint_pos_current,
+                joint_vel_current,
+                torch.zeros_like(joint_pos_current),
             )  # coriolis
 
             torque_out = torque_feedback + torque_feedforward
@@ -106,7 +109,7 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
             print(torque_out)
             return {"joint_torques": torque_out}
         else:
-            
+
             # PD impedance control
 
             # State extraction
@@ -125,7 +128,9 @@ class MixedCartesianImpedanceControl(toco.PolicyModule):
                 self.joint_vel_desired,
             )
             torque_feedforward = self.invdyn(
-                joint_pos_current, joint_vel_current, torch.zeros_like(joint_pos_current)
+                joint_pos_current,
+                joint_vel_current,
+                torch.zeros_like(joint_pos_current),
             )  # coriolis
             torque_out = torque_feedback + torque_feedforward
 

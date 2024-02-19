@@ -9,9 +9,9 @@ import numpy as np
 import torch
 from stable_baselines3.common.callbacks import BaseCallback
 
-from helpers.logger import Video, configure_logger
-from robot.sim.vec_env.asid_vec import make_vec_env
+from asid.wrapper.asid_vec import make_vec_env
 from robot.sim.vec_env.vec_wrapper import SubVecEnv
+from utils.logger import Video, configure_logger
 
 
 class LoggerCallback(BaseCallback):
@@ -19,7 +19,9 @@ class LoggerCallback(BaseCallback):
     A custom callback that derives from BaseCallback.
     """
 
-    def __init__(self, cfg, eval_interval, save_dir, save_interval, seed=0, gpu_id=0, verbose=0):
+    def __init__(
+        self, cfg, eval_interval, save_dir, save_interval, seed=0, gpu_id=0, verbose=0
+    ):
         super(LoggerCallback, self).__init__(verbose)
 
         self.eval_interval = eval_interval
@@ -43,9 +45,9 @@ class LoggerCallback(BaseCallback):
         This method will be called by the model after each call to `env.step()`.
         """
         self.reward_sum += np.mean(self.locals["rewards"])
-        
-        if np.mod(self.n_calls,20) == 0:
-            self.logger.record('return',self.reward_sum)
+
+        if np.mod(self.n_calls, 20) == 0:
+            self.logger.record("return", self.reward_sum)
             self.reward_sum = 0
 
         if (self.n_calls - 1) % self.eval_interval == 0:
@@ -53,7 +55,7 @@ class LoggerCallback(BaseCallback):
             self.compute_dev()
 
         if (self.n_calls - 1) % self.save_interval == 0:
-            self.model.save(self.save_dir + '_step_' + str(self.n_calls))
+            self.model.save(self.save_dir + "_step_" + str(self.n_calls))
 
     def compute_dev(self):
         total_reward = 0
@@ -64,14 +66,15 @@ class LoggerCallback(BaseCallback):
             init_obs_pos.append(copy.deepcopy(obs[i][2:4]))
         dones = False
         while not np.all(dones):
-            actions, _state = self.locals['self'].predict(obs)
+            actions, _state = self.locals["self"].predict(obs)
             next_obs, rewards, dones, infos = self.p_envs.step(actions)
             obs = next_obs
             total_reward += np.sum(rewards)
             for i in range(self.num_env):
-                all_dev[i] += np.linalg.norm(init_obs_pos[i] - obs[i][2:4])**2
+                all_dev[i] += np.linalg.norm(init_obs_pos[i] - obs[i][2:4]) ** 2
         self.logger.record("current_policy_value", total_reward / self.num_env)
         self.logger.record("total_obj_dev", np.mean(all_dev))
+
 
 def evaluate(policy, eval_envs, logger, tag="eval"):
 
@@ -113,6 +116,7 @@ def evaluate(policy, eval_envs, logger, tag="eval"):
             exclude=["stdout"],
         )
     logger.dump(step=0)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -175,8 +179,9 @@ if __name__ == "__main__":
         device_id=args.gpu_id,
         exp_reward=True,
     )
-    
-    from helpers.experiment import setup_wandb
+
+    from utils.experiment import setup_wandb
+
     setup_wandb(cfg, name=args.exp, entity="memmelma", project="asid_re")
 
     logdir = "logdir"
@@ -185,7 +190,10 @@ if __name__ == "__main__":
 
     import stable_baselines3 as sb3
     from stable_baselines3 import SAC
-    act_noise = sb3.common.noise.NormalActionNoise(np.zeros(args.dof),np.ones(args.dof),decay=0.9999993)
+
+    act_noise = sb3.common.noise.NormalActionNoise(
+        np.zeros(args.dof), np.ones(args.dof), decay=0.9999993
+    )
     act_noise = sb3.common.noise.VectorizedActionNoise(act_noise, num_workers)
 
     model = SAC(
@@ -196,17 +204,17 @@ if __name__ == "__main__":
         ent_coef=0.0001,
         train_freq=1,
         gradient_steps=1,
-        action_noise=act_noise
+        action_noise=act_noise,
     )
-    
+
     eval_interval = 1
     save_interval = 100
-    callback = LoggerCallback(cfg, eval_interval=eval_interval, save_dir=ckptdir, save_interval=save_interval)
+    callback = LoggerCallback(
+        cfg, eval_interval=eval_interval, save_dir=ckptdir, save_interval=save_interval
+    )
 
     # train
     # if not cfg.train.load_policy:
-    model.learn(
-        total_timesteps=1e6, callback=callback, progress_bar=True
-    )
+    model.learn(total_timesteps=1e6, callback=callback, progress_bar=True)
     model.save(ckptdir)
     env.close()

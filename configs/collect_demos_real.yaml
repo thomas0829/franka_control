@@ -3,7 +3,7 @@ hydra:
     chdir: false
   
 defaults:
-  - log: wandb
+  - log: stdout
   - robot: real_6_dof
 
 seed: 0

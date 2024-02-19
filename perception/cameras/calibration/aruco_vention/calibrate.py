@@ -1,4 +1,5 @@
-import cv2
+import json
+from datetime import datetime
 from perception.cameras.multi_camera_wrapper import MultiCameraWrapper
 
 multi_camera_wrapper = MultiCameraWrapper(type="zed", use_threads=False)
@@ -79,9 +80,6 @@ for camera in multi_camera_wrapper._all_cameras:
     colors = rgb.reshape(-1, 3) / 255.0
     points, colors = crop_points(points, colors=colors)
     pcds.append(points_to_pcd(points, colors=colors))
-
-import json
-from datetime import datetime
 
 current_time_date = datetime.now().strftime("%y_%m_%d_%H_%M_%S")
 json.dump(

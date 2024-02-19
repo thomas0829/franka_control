@@ -1,8 +1,8 @@
 import time
 
 import gym
-import torch
 import numpy as np
+import torch
 from gym.spaces import Box, Dict
 
 from cameras.calibration.utils import read_calibration_file

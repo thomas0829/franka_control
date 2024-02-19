@@ -1,9 +1,11 @@
 import time
-import cv2
 
-import numpy as np
+import cv2
 import matplotlib.pyplot as plt
+import numpy as np
+
 from cameras.camera_thread import CameraThread
+
 
 class MultiCameraWrapper:
 
@@ -48,6 +50,7 @@ class MultiCameraWrapper:
                 self._all_cameras.extend(gather_realsense_cameras())
             elif self.type == 'zed':
                 from cameras.zed_camera import gather_zed_cameras
+
                 # time.sleep(1)
                 self._all_cameras.extend(gather_zed_cameras())
             else: 

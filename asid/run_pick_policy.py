@@ -2,7 +2,7 @@ import argparse
 import datetime
 import os
 import time
-
+import hydra
 import imageio
 import joblib
 import numpy as np
@@ -13,51 +13,24 @@ from robot.robot_env import RobotEnv
 from utils.pointclouds import crop_points
 from utils.transformations import euler_to_rmat, quat_to_euler
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+from asid.wrapper.asid_vec import make_env, make_vec_env
+from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
-    # experiment
-    parser.add_argument("--exp", type=str)
-    parser.add_argument("--save_dir", type=str, default="data")
 
-    # hardware
-    parser.add_argument("--dof", type=int, default=4, choices=[2, 3, 4, 6])
-    parser.add_argument(
-        "--robot_type", type=str, default="panda", choices=["panda", "fr3"]
-    )
-    parser.add_argument(
-        "--ip_address",
-        type=str,
-        default="localhost",
-        choices=[None, "localhost", "172.16.0.1"],
-    )
-    parser.add_argument(
-        "--camera_model", type=str, default="realsense", choices=["realsense", "zed"]
-    )
+@hydra.main(
+    config_path="configs/", config_name="collect_rod_real", version_base="1.1"
+)
+def run_experiment(cfg):
 
-    # training
-    parser.add_argument("--max_episode_length", type=int, default=20)
-    parser.add_argument("--gpu_id", type=int, default=0)
+    cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_19_12_42_25.json"
+    cfg.robot.camera_model = "realsense"
 
-    args = parser.parse_args()
-
-    args.exp = "test"
-    assert args.exp is not None, "Specify --exp"
-    device = torch.device(
-        ("cuda:" + str(args.gpu_id))
-        if args.gpu_id >= 0.0 and torch.cuda.is_available()
-        else "cpu"
-    )
-
-    control_hz = 10
-    env = RobotEnv(
-        control_hz=control_hz,
-        DoF=args.dof,
-        robot_type=args.robot_type,
-        gripper=True,
-        ip_address=args.ip_address,
-        camera_model=args.camera_model,
-        max_path_length=args.max_episode_length,
+    env = make_env(
+        robot_cfg_dict=hydra_to_dict(cfg.robot),
+        env_cfg_dict=hydra_to_dict(cfg.env),
+        seed=cfg.seed,
+        device_id=0,
+        verbose=False,
     )
 
     tracker = ColorTracker(outlier_removal=False)
@@ -74,22 +47,22 @@ if __name__ == "__main__":
     # )
     # target_pose[3:] = torch.tensor(env._default_angle)
     # target_pose[2] = 0.23
-    # env._robot.update_pose(target_pose, blocking=True)
+    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
 
     # # MOVE DOWN
     # target_pose[2] = 0.20
-    # env._robot.update_pose(target_pose, blocking=True)
+    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
 
     # # MOVE DOWN
     # target_pose[2] = 0.19
-    # env._robot.update_pose(target_pose, blocking=True)
+    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
 
     # # GRASP
-    # env._robot.update_gripper(1.0, velocity=False, blocking=True)
+    # env.unwrapped._robot.update_gripper(1.0, velocity=False, blocking=True)
 
     # # MOVE UP
     # target_pose[2] = 0.3
-    # env._robot.update_pose(target_pose, blocking=True)
+    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
 
     imgs = []
     actions = np.ones(env.action_shape)
@@ -110,13 +83,13 @@ if __name__ == "__main__":
             cropped_points,
             lowpass_filter=False,
             cutoff_freq=1,
-            control_hz=control_hz,
+            control_hz=cfg.robot.control_hz,
             show=False,
         )
         time.sleep(0.1)
 
     rod_angle = quat_to_euler(rod_pose[3:]).copy()
-    print(env._robot.get_ee_angle(), rod_angle)
+    print(env.unwrapped._robot.get_ee_angle(), rod_angle)
 
     # MOVE ABOVE ROD
     target_pose = rod_pose.copy()
@@ -126,7 +99,7 @@ if __name__ == "__main__":
     target_pose[3:6] = rod_angle
     target_pose[5] += np.pi / 4
     # overwrite x,y angle w/ gripper default
-    target_pose[3:5] = env._default_angle[:2]
+    target_pose[3:5] = env.unwrapped._default_angle[:2]
     # set dummy gripper
     target_pose[-1] = 0
 
@@ -145,26 +118,26 @@ if __name__ == "__main__":
     # overwrite x,y
     target_pose[:2] = rod_pos_new[:2]
 
-    env._robot.update_pose(target_pose, blocking=True)
+    env.unwrapped._robot.update_pose(target_pose, blocking=True)
     imgs.append(env.render())
 
     # MOVE DOWN ABOVE
     target_pose[2] = 0.17
-    env._robot.update_pose(target_pose, blocking=True)
+    env.unwrapped._robot.update_pose(target_pose, blocking=True)
     imgs.append(env.render())
 
     # MOVE DOWN
     target_pose[2] = 0.12
-    env._robot.update_pose(target_pose, blocking=True)
+    env.unwrapped._robot.update_pose(target_pose, blocking=True)
     imgs.append(env.render())
 
     # PICK
-    env._robot.update_gripper(1.0, velocity=False, blocking=True)
+    env.unwrapped._robot.update_gripper(1.0, velocity=False, blocking=True)
     imgs.append(env.render())
 
     # MOVE UP
     target_pose[2] = 0.3
-    env._robot.update_pose(target_pose, blocking=True)
+    env.unwrapped._robot.update_pose(target_pose, blocking=True)
     imgs.append(env.render())
 
     # MOVE TO YELLOW BLOCK
@@ -173,23 +146,27 @@ if __name__ == "__main__":
         # [0.28867856, -0.40134683, 0.11756707, 3.13773595, 0.0078624, -0.70369389]
     )
     target_pose[2] = 0.3
-    env._robot.update_pose(target_pose, blocking=True)
+    env.unwrapped._robot.update_pose(target_pose, blocking=True)
     imgs.append(env.render())
 
     # MOVE DOWN + yellow block height + margin
     target_pose[2] = 0.12 + 0.05 + 0.02
-    env._robot.update_pose(target_pose, blocking=True)
+    env.unwrapped._robot.update_pose(target_pose, blocking=True)
     imgs.append(env.render())
 
     # DROP
-    env._robot.update_gripper(0.0, velocity=False, blocking=True)
+    env.unwrapped._robot.update_gripper(0.0, velocity=False, blocking=True)
     imgs.append(env.render())
 
     # MOVE UP
     target_pose[2] = 0.3
-    env._robot.update_pose(target_pose, blocking=True)
+    env.unwrapped._robot.update_pose(target_pose, blocking=True)
     imgs.append(env.render())
 
     env.reset()
 
     imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
+
+
+if __name__ == "__main__":
+    run_experiment()

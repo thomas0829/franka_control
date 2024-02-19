@@ -5,7 +5,7 @@ import imageio
 import numpy as np
 import torch
 
-from asid.wrapper.sim.asid_vec import make_env
+from asid.wrapper.asid_vec import make_env
 from utils.experiment import hydra_to_dict, set_random_seed
 from utils.transformations_mujoco import quat_to_euler_mujoco
 

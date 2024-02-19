@@ -1,8 +1,7 @@
 from functools import partial
 
-from robot.sim.mujoco.obj_wrapper import ObjWrapper
-from asid.wrapper.sim.asid_wrapper import ASIDWrapper
 from robot.robot_env import RobotEnv
+from asid.wrapper.asid_wrapper import ASIDWrapper
 
 
 def make_env(
@@ -27,7 +26,13 @@ def make_env(
 
     env = RobotEnv(**robot_cfg_dict, device_id=device_id, verbose=verbose)
     
-    env = ObjWrapper(env, **env_cfg_dict, verbose=verbose)
+    if robot_cfg_dict["ip_address"] is None:
+        from robot.sim.mujoco.obj_wrapper import ObjWrapper
+        env = ObjWrapper(env, **env_cfg_dict, verbose=verbose)
+    else:
+        from robot.real.obj_tracker_wrapper import ObjectTrackerWrapper
+        env = ObjectTrackerWrapper(env, **env_cfg_dict, verbose=verbose)
+
     if asid_wrapper:
         env = ASIDWrapper(env, verbose=verbose)
 

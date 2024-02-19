@@ -5,7 +5,7 @@ from perception.trackers.color_tracker import ColorTracker
 from utils.pointclouds import crop_points
 
 
-class ASIDWrapper(gym.Wrapper):
+class ObjectTrackerWrapper(gym.Wrapper):
     def __init__(
         self,
         env,
@@ -17,10 +17,12 @@ class ASIDWrapper(gym.Wrapper):
         crop_max=[0.5, 0.4, 0.5],
         filter=False,
         cutoff_freq=1,
-        verbose_track=False,
+        verbose=False,
+        **kwargs
     ):
         super().__init__(env)
 
+        print(f"WARNING: ObjectTrackerWrapper doesn't take {kwargs}!")
         self.obj_id = obj_id
 
         # Tracking
@@ -28,7 +30,7 @@ class ASIDWrapper(gym.Wrapper):
         self.crop_max = crop_max
         self.tracker = ColorTracker(outlier_removal=True)
         self.color_track = color_track
-        self.verbose_track = verbose_track
+        self.verbose = verbose
         self.filter = filter
         self.cutoff_freq = cutoff_freq
 
@@ -46,11 +48,17 @@ class ASIDWrapper(gym.Wrapper):
         return obs
 
     def step(self, action):
+
         obs, reward, done, info = self.env.step(action)
+        
         return self.augment_observations(obs), reward, done, info
 
     def reset(self, *args, **kwargs):
+        
+        # reset tracker history
         self.tracker.reset()
+
+        # reset robot |
         obs = self.env.reset()
 
         return self.augment_observations(obs)
@@ -65,7 +73,7 @@ class ASIDWrapper(gym.Wrapper):
 
         # track points
         tracked_points = self.tracker.track_multiview(
-            rgbs, points, color=self.color_track, show=self.verbose_track
+            rgbs, points, color=self.color_track, show=self.verbose
         )
         # crop to workspace
         cropped_points = crop_points(
@@ -80,9 +88,9 @@ class ASIDWrapper(gym.Wrapper):
                     lowpass_filter=True,
                     cutoff_freq=self.cutoff_freq,
                     control_hz=self.env.control_hz,
-                    show=self.verbose_track,
+                    show=self.verbose,
                 )
             else:
                 return self.tracker.get_rod_pose(
-                    cropped_points, lowpass_filter=False, show=self.verbose_track
+                    cropped_points, lowpass_filter=False, show=self.verbose
                 )

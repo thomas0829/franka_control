@@ -12,5 +12,5 @@ exp_id: "debug"
 
 seed: 0
 gpu_id: 0
-num_workers: 16
+num_workers: 32
 num_workers_eval: 8

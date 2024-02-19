@@ -1,4 +1,4 @@
-name: polymetis
+name: asid
 channels:
   - pytorch
   - fair-robotics
@@ -6,6 +6,8 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - pytorch=1.13.1=py3.8_cuda11.7_cudnn8.5.0_0
+  - pytorch-cuda=11.7=h778d358_5
   - polymetis
   - librealsense=2.50.0
   - scipy=1.7.3
@@ -25,3 +27,8 @@ dependencies:
     - mujoco-python-viewer
     - hydra-core==1.3.2
     - wandb
+    - tqdm
+    - rich
+    - shimmy>=0.2.1
+    - moviepy
+    - imageio

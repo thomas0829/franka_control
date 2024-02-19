@@ -10,59 +10,32 @@ import numpy as np
 from tqdm import tqdm
 
 from asid.mp_env import collect_demo_pick_up
-from robot.rlds_wrapper import (convert_rlds_to_np, load_rlds_dataset,
-                                wrap_env_in_rlds_logger)
+from robot.rlds_wrapper import (
+    convert_rlds_to_np,
+    load_rlds_dataset,
+    wrap_env_in_rlds_logger,
+)
 from robot.robot_env import RobotEnv
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
 
-@hydra.main(config_path="configs/", config_name="collect_sim", version_base="1.1")
+@hydra.main(
+    config_path="../configs/", config_name="explore_rod_sim", version_base="1.1"
+)
 def run_experiment(cfg):
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--exp", type=str)
-    # parser.add_argument("--logdir", type=str, default="data")
-    # # hardware
-    # parser.add_argument("--dof", type=int, default=6, choices=[3, 4, 6])
-    # parser.add_argument(
-    #     "--robot_type", type=str, default="panda", choices=["panda", "fr3"]
-    # )
-    # parser.add_argument(
-    #     "--ip_address",
-    #     type=str,
-    #     default=None,
-    #     choices=[None, "localhost", "172.16.0.1"],
-    # )
-    # parser.add_argument(
-    #     "--camera_model", type=str, default="realsense", choices=["realsense", "zed"]
-    # )
-    # # trajectories
-    # parser.add_argument("--episodes", type=int, default=10)
-    # parser.add_argument("--max_episode_length", type=int, default=1000)
-
-    # args = parser.parse_args()
-
-    assert cfg.exp_id is not None, "Specify --exp_id"
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "sim")
     os.makedirs(logdir, exist_ok=True)
 
-    from robot.sim.vec_env.asid_vec import make_env, make_vec_env
+    from asid.wrapper.asid_vec import make_env, make_vec_env
 
+    cfg.env.flatten = False
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
         seed=cfg.seed,
         device_id=0,
     )
-
-    # env = RobotEnv(
-    #     control_hz=10,
-    #     DoF=args.dof,
-    #     robot_type=args.robot_type,
-    #     ip_address=args.ip_address,
-    #     camera_model=args.camera_model,
-    #     max_path_length=args.max_episode_length,
-    # )
 
     with wrap_env_in_rlds_logger(
         env, cfg.exp_id, logdir, max_episodes_per_shard=1

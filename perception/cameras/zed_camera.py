@@ -132,18 +132,23 @@ class ZedCamera:
             "serial_number": self._serial_number + "/left",
         }
 
-        # self._cam.retrieve_image(self._right_img, sl.VIEW.RIGHT)
+        self._cam.retrieve_image(self._right_img, sl.VIEW.RIGHT)
 
-        # right_img = deepcopy(self._right_img.get_data())
-        # right_img = cv2.cvtColor(right_img, cv2.COLOR_BGR2RGB)
+        right_img = deepcopy(self._right_img.get_data())
+        right_img = cv2.cvtColor(right_img, cv2.COLOR_BGR2RGB)
 
-        # dict_1 = {'array': right_img,  'shape': right_img.shape, 'type': 'rgb',
-        # 	'read_time': received_time, 'serial_number': self._serial_number + '/right'}
+        dict_1_right = {
+            "array": right_img,
+            "shape": right_img.shape,
+            "type": "rgb",
+            "read_time": received_time,
+            "serial_number": self._serial_number + "/right",
+        }
 
         if self.depth:
             self._cam.retrieve_measure(self._left_depth, sl.MEASURE.DEPTH)
 
-            left_depth = deepcopy(self._left_depth.get_data())[...,None]
+            left_depth = deepcopy(self._left_depth.get_data())[..., None]
 
             if self.crop:
                 left_depth = left_depth[:, 355:-205]
@@ -180,7 +185,7 @@ class ZedCamera:
         # 	# dict_3 = {'array': right_pointcloud, 'shape': right_pointcloud.shape, 'type': 'pointcloud',
         # 	# 'read_time': received_time, 'serial_number': self._serial_number + '/right'}
 
-        return [dict_1, dict_2]
+        return [dict_1, dict_1_right, dict_2]
 
     def disable_camera(self):
         if hasattr(self, "_cam"):

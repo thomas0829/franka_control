@@ -82,10 +82,10 @@ class MultiCameraWrapper:
                 curr_feed = camera.read_camera()
                 if curr_feed is not None:
                     all_frames.extend(curr_feed)
-            if len(all_frames) != self.num_cameras * 2:
-                raise RuntimeError(
-                    f"Number of cameras changed, expected {self.num_cameras}, got {len(all_frames)//2}"
-                )
+            # if len(all_frames) != self.num_cameras * 2:
+            #     raise RuntimeError(
+            #         f"Number of cameras changed, expected {self.num_cameras}, got {len(all_frames)//2}"
+            #     )
             return all_frames
 
         except RuntimeError as e:

@@ -11,14 +11,13 @@ class ASIDWrapper(gym.Wrapper):
     def __init__(
         self,
         env,
-        obj_id="rod",
-        obj_pos_noise=True,
-        obs_keys=["lowdim_ee", "lowdim_qpos", "obj_pose"],
-        flatten=True,
         verbose=False,
     ):
-        super().__init__(env)
+        super(ASIDWrapper, self).__init__(env)
 
+        from robot.sim.mujoco.obj_wrapper import ObjWrapper
+
+        assert type(env) is ObjWrapper, "Environment must be wrapped in ObjWrapper!"
         self.verbose = verbose
 
         if self.env.DoF == 2:
@@ -34,18 +33,9 @@ class ASIDWrapper(gym.Wrapper):
                 ]
             )
 
-        self.obj_id = obj_id
-
         # Mujoco object ids
-        self.obj_body_id = mujoco.mj_name2id(
-            self.env._robot.model, mujoco.mjtObj.mjOBJ_BODY, f"{self.obj_id}_body"
-        )
-        self.obj_joint_id = mujoco.mj_name2id(
-            self.env._robot.model, mujoco.mjtObj.mjOBJ_JOINT, f"{self.obj_id}_freejoint"
-        )
-
         self.obj_geom_ids = mujoco.mj_name2id(
-            self.env._robot.model,
+            self.env.unwrapped._robot.model,
             mujoco.mjtObj.mjOBJ_GEOM,
             f"{self.obj_id}_geom",
         )
@@ -54,7 +44,7 @@ class ASIDWrapper(gym.Wrapper):
             self.obj_geom_ids = []
             for i in range(5):
                 obj_geom_id = mujoco.mj_name2id(
-                    self.env._robot.model,
+                    self.env.unwrapped._robot.model,
                     mujoco.mjtObj.mjOBJ_GEOM,
                     f"{self.obj_id}_geom_{i}",
                 )
@@ -64,27 +54,10 @@ class ASIDWrapper(gym.Wrapper):
 
         if -1 in self.obj_geom_ids:
             self.obj_geom_ids = mujoco.mj_name2id(
-                self.env._robot.model,
+                self.env.unwrapped._robot.model,
                 mujoco.mjtObj.mjOBJ_GEOM,
                 f"{self.obj_id}_geom",
             )
-
-        # assert (
-        #     self.obj_body_id != -1
-        #     and self.obj_joint_id != -1
-        #     and -1 not in self.obj_geom_ids
-        # ), f"Object not found. Make sure RobotEnv(model_name) is passed!"
-
-        # Object position
-        self.obj_pose_noise_dict = {
-            "x": {"min": 0.0, "max": 0.1},
-            # "x": {"min": -0.1, "max": 0.1},
-            "y": {"min": -0.1, "max": 0.1},
-            "yaw": {"min": 0.0, "max": 3.14},
-        }
-        self.obj_pos_noise = obj_pos_noise
-        self.init_obj_pose = self.get_obj_pose()
-        self.curr_obj_pose = None
 
         # Physics parameters
         self.parameter_dict = {
@@ -103,40 +76,6 @@ class ASIDWrapper(gym.Wrapper):
         self.reward_first = True
         self.exp_reward = None
 
-        # Observations
-        self.obs_keys = obs_keys
-        # obs space dict to array
-        for k in copy.deepcopy(self.env.observation_space.keys()):
-            if k not in self.obs_keys:
-                del self.env.observation_space.spaces[k]
-
-        self.flatten = flatten
-        obj_pose_low = -np.inf * np.ones(7)
-        obj_pose_high = np.inf * np.ones(7)
-        if self.flatten:
-            low = np.concatenate([v.low for v in self.env.observation_space.values()])
-            high = np.concatenate([v.high for v in self.env.observation_space.values()])
-            # add obj pose
-            low = np.concatenate([low, obj_pose_low])
-            high = np.concatenate([high, obj_pose_high])
-            # overwrite observation_space
-            self.observation_space = gym.spaces.Box(low=low, high=high, shape=low.shape)
-        else:
-            self.observation_space["obj_pose"] = gym.spaces.Box(
-                low=obj_pose_low, high=obj_pose_high
-            )
-
-    def augment_observations(self, obs, flatten=True):
-        obs["obj_pose"] = self.get_obj_pose()
-
-        if flatten:
-            tmp = []
-            for k in self.obs_keys:
-                tmp.append(obs[k])
-            obs = np.concatenate(tmp)
-
-        return obs
-
     def step(self, action):
 
         self.last_action = action
@@ -149,27 +88,16 @@ class ASIDWrapper(gym.Wrapper):
         if not self.reward_first:
             reward = self.compute_reward(action)
 
-        return self.augment_observations(obs, flatten=self.flatten), reward, done, info
+        return obs, reward, done, info
 
     def reset(self, *args, **kwargs):
 
         # randomize obj parameters | mujoco reset data
         self.resample_parameters()
 
-        # randomize obj position |
-        self.resample_obj_pose()
-
-        if self.curr_obj_pose is None:
-            obj_pose = self.init_obj_pose.copy()
-        else:
-            obj_pose = self.curr_obj_pose.copy()
-        # set obj qpos | mujoco forward
-        self.update_obj(obj_pose)
-
-        # reset robot |
         obs = self.env.reset()
 
-        return self.augment_observations(obs, flatten=self.flatten)
+        return obs
 
     def set_parameters(self, parameters):
         assert parameters.shape == self.get_parameters().shape
@@ -197,9 +125,6 @@ class ASIDWrapper(gym.Wrapper):
     def reset_parameters(self):
         self.params_set = False
 
-    # def reset_task(self, task=None):
-    #     self.resample_parameters()
-
     def resample_parameters(self):
         for key in self.parameter_dict:
             # sample new parameter value
@@ -220,87 +145,48 @@ class ASIDWrapper(gym.Wrapper):
             # set new parameter value
             if key == "inertia":
                 com_body_ids = mujoco.mj_name2id(
-                    self.env._robot.model,
+                    self.env.unwrapped._robot.model,
                     mujoco.mjtObj.mjOBJ_BODY,
                     f"{self.obj_id}_com",
                 )
-                self.env._robot.model.body_pos[com_body_ids][1] = value
+                self.env.unwrapped._robot.model.body_pos[com_body_ids][1] = value
 
             elif key == "friction":
                 for geom_id in self.obj_geom_ids:
-                    self.env._robot.model.geom_friction[geom_id][0] = value
+                    self.env.unwrapped._robot.model.geom_friction[geom_id][0] = value
 
         if self.verbose:
-            print(f"Parameters: {self.get_parameters()} - seed {self.env._seed}")
+            print(
+                f"Parameters: {self.get_parameters()} - seed {self.env.unwrapped._seed}"
+            )
 
         # update sim
-        mujoco.mj_resetData(self.env._robot.model, self.env._robot.data)
-        mujoco.mj_setConst(self.env._robot.model, self.env._robot.data)
-
-    def get_obj_pose(self):
-        obj_pos = self.env._robot.data.qpos[
-            self.obj_joint_id : self.obj_joint_id + 3
-        ].copy()
-        obj_quat = self.env._robot.data.qpos[
-            self.obj_joint_id + 3 : self.obj_joint_id + 7
-        ].copy()
-        return np.concatenate((obj_pos, obj_quat))
-
-    def set_obj_pose(self, obj_pose):
-        self.obj_pos_noise = False
-        self.init_obj_pose = obj_pose.copy()
-        self.update_obj(obj_pose)
-
-    def resample_obj_pose(self):
-        pose = self.init_obj_pose.copy()
-        if self.obj_pos_noise:
-            pose[0] += np.random.uniform(
-                self.obj_pose_noise_dict["x"]["min"],
-                self.obj_pose_noise_dict["x"]["max"],
-            )
-            pose[1] += np.random.uniform(
-                self.obj_pose_noise_dict["y"]["min"],
-                self.obj_pose_noise_dict["y"]["max"],
-            )
-            pose[3:7] = euler_to_quat_mujoco(
-                [
-                    0.0,
-                    0.0,
-                    np.random.uniform(
-                        self.obj_pose_noise_dict["yaw"]["min"],
-                        self.obj_pose_noise_dict["yaw"]["max"],
-                        size=1,
-                    ).item(),
-                ]
-            )
-        if self.verbose:
-            print(f"Object pose: {pose} - seed {self.env._seed}")
-        self.curr_obj_pose = pose.copy()
-
-    def update_obj(self, qpos):
-        self.env._robot.data.qpos[self.obj_joint_id : self.obj_joint_id + 3] = qpos[:3]
-        self.env._robot.data.qpos[self.obj_joint_id + 3 : self.obj_joint_id + 7] = qpos[
-            3:
-        ]
-        mujoco.mj_forward(self.env._robot.model, self.env._robot.data)
+        mujoco.mj_resetData(
+            self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
+        )
+        mujoco.mj_setConst(
+            self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
+        )
 
     def set_data(self, new_data):
-        self.env._robot.data = new_data
-        mujoco.mj_forward(self.env._robot.model, self.env._robot.data)
+        self.env.unwrapped._robot.data = new_data
+        mujoco.mj_forward(
+            self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
+        )
 
     def get_data(self):
-        return copy.deepcopy(self.env._robot.data)
+        return copy.deepcopy(self.env.unwrapped._robot.data)
 
     def get_full_state(self):
         full_state = {}
         full_state["last_action"] = self.last_action.copy()
-        full_state["curr_path_length"] = copy.copy(self.env._curr_path_length)
+        full_state["curr_path_length"] = copy.copy(self.env.curr_path_length)
         full_state["robot_data"] = self.get_data()
         return full_state
 
     def set_full_state(self, full_state):
         self.last_action = full_state["last_action"]
-        self.env._curr_path_length = full_state["curr_path_length"]
+        self.env.curr_path_length = full_state["curr_path_length"]
         self.set_data(full_state["robot_data"])
 
     def create_exp_reward(

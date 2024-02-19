@@ -12,12 +12,13 @@ from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 def run_experiment(cfg):
 
     cfg.robot.DoF = 6
-    cfg.robot.on_screen_rendering = False
+    cfg.robot.on_screen_rendering = True
     cfg.robot.gripper = False
     # cfg.robot.ip_address = "172.16.0.1"
     # cfg.robot.camera_model = "zed"
 
     # cfg.env.obj_pos_noise = False
+    cfg.env.flatten = True
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),

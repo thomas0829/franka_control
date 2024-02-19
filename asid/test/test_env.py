@@ -4,7 +4,7 @@ import hydra
 import numpy as np
 import torch
 
-from asid.wrapper.sim.asid_vec import make_env, make_vec_env
+from asid.wrapper.asid_vec import make_env, make_vec_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
 

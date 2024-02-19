@@ -1,0 +1,13 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - env: rod
+  - robot: real_6_dof
+  - log: wandb
+
+exp_id: "collect_rod_real"
+
+seed: 0
+gpu_id: 0

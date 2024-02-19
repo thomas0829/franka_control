@@ -78,11 +78,9 @@ class ObjWrapper(gym.Wrapper):
 
     def step(self, action):
 
-        self.last_action = action
+        obs, reward, done, info = self.env.step(action)
 
-        obs, _, done, info = self.env.step(action)
-
-        return self.augment_observations(obs, flatten=self.flatten), 0.0, done, info
+        return self.augment_observations(obs, flatten=self.flatten), reward, done, info
 
     def reset(self, *args, **kwargs):
 

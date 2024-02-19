@@ -20,8 +20,8 @@ from robot.sim.vec_env.vec_env import make_env
 )
 def run_experiment(cfg):
 
-    cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_19_12_42_25.json"
-    cfg.robot.camera_model = "realsense"
+    # cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_19_12_42_25.json"
+    # cfg.robot.camera_model = "realsense"
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         seed=cfg.seed,

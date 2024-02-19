@@ -10,7 +10,7 @@ import torch
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback
 
-from asid.wrapper.sim.asid_vec import make_env, make_vec_env
+from asid.wrapper.asid_vec import make_env, make_vec_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.logger import Video, configure_logger
 from utils.system import get_device, set_gpu_mode

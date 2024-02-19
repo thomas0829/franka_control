@@ -1,25 +1,35 @@
-import imageio
 import argparse
-import torch
-import numpy as np
+
+import imageio
 import joblib
+import numpy as np
+import torch
 
 from robot.robot_env import RobotEnv
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    
+
     # experiment
     parser.add_argument("--exp", type=str)
     parser.add_argument("--save_dir", type=str, default="data")
-    
+
     # hardware
     parser.add_argument("--dof", type=int, default=6, choices=[3, 4, 6])
-    parser.add_argument("--robot_type", type=str, default="panda", choices=["panda", "fr3"])
-    parser.add_argument("--ip_address", type=str, default="172.16.0.1", choices=[None, "localhost", "172.16.0.1"])
-    parser.add_argument("--camera_model", type=str, default="realsense", choices=["realsense", "zed"])
-    
+    parser.add_argument(
+        "--robot_type", type=str, default="panda", choices=["panda", "fr3"]
+    )
+    parser.add_argument(
+        "--ip_address",
+        type=str,
+        default="172.16.0.1",
+        choices=[None, "localhost", "172.16.0.1"],
+    )
+    parser.add_argument(
+        "--camera_model", type=str, default="realsense", choices=["realsense", "zed"]
+    )
+
     # training
     parser.add_argument("--max_episode_length", type=int, default=10)
     parser.add_argument("--gpu_id", type=int, default=0)
@@ -27,8 +37,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     assert args.exp is not None, "Specify --exp"
-    device = torch.device(("cuda:" + str(args.gpu_id)) if args.gpu_id >= 0. and torch.cuda.is_available() else "cpu")
-    
+    device = torch.device(
+        ("cuda:" + str(args.gpu_id))
+        if args.gpu_id >= 0.0 and torch.cuda.is_available()
+        else "cpu"
+    )
+
     env = RobotEnv(
         control_hz=10,
         DoF=args.dof,
@@ -43,7 +57,7 @@ if __name__ == '__main__':
 
     imgs = []
     for i in range(args.max_episode_length):
-        
+
         action = np.random.uniform(-1, 1, size=env.action_shape)
         next_obs, rew, done, _ = env.step(action)
         imgs.append(env.render())

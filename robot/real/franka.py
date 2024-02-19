@@ -8,12 +8,12 @@ import torch
 from polymetis import GripperInterface, RobotInterface
 from torchcontrol.policies import JointImpedanceControl
 
-# UTILITY SPECIFIC IMPORTS
-from helpers.subprocess_utils import run_threaded_command
-from helpers.transformations import (add_poses, euler_to_quat, pose_diff,
-                                     quat_to_euler)
 from robot.controllers.utils import generate_joint_space_min_jerk
 from robot.franka_base import FrankaBase
+# UTILITY SPECIFIC IMPORTS
+from utils.subprocess_utils import run_threaded_command
+from utils.transformations import (add_poses, euler_to_quat, pose_diff,
+                                   quat_to_euler)
 
 
 class FrankaHardware(FrankaBase):
@@ -53,7 +53,7 @@ class FrankaHardware(FrankaBase):
         self._max_gripper_width = self._gripper.metadata.max_width
 
     def _start_custom_controller(self):
-        
+
         self.policy = JointImpedanceControl(
             joint_pos_current=self._robot.get_joint_positions(),
             Kp=1.0 * self.gain_scale * torch.Tensor(self._robot.metadata.default_Kq),
@@ -118,7 +118,9 @@ class FrankaHardware(FrankaBase):
 
         if joint_pos_desired is not None:
             udpate_pkt["joint_pos_desired"] = (
-                joint_pos_desired if torch.is_tensor(joint_pos_desired) else torch.tensor(joint_pos_desired)
+                joint_pos_desired
+                if torch.is_tensor(joint_pos_desired)
+                else torch.tensor(joint_pos_desired)
             )
 
             # # can't update gains when using joint impedance control -> switch to hybrid in the future
@@ -165,7 +167,7 @@ class FrankaHardware(FrankaBase):
         # https://github.com/facebookresearch/fairo/issues/1398
         # for robotiq consider using
         # self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.5, blocking=blocking)
-        
+
         # franka gripper
         # goto interface doesn't grasp -> use discrete grasp/ungrasp
         # gripper crashes when running multiple grasp,grasp,grasp,... or ungrasp,ungrasp,ungrasp,... -> use flag

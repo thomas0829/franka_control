@@ -1,29 +1,43 @@
 import abc
-import torch
+
 import numpy as np
+import torch
 
 from robot.real.inverse_kinematics.robot_ik_solver import RobotIKSolver
-from helpers.transformations import add_poses, euler_to_quat, pose_diff, quat_to_euler
+from utils.transformations import (add_poses, euler_to_quat, pose_diff,
+                                   quat_to_euler)
 
 
 class FrankaBase(abc.ABC):
-    def __init__(self, robot_type="panda", control_hz=15, gripper=True, custom_controller=True, *args, **kwargs):
+    def __init__(
+        self,
+        robot_type="panda",
+        control_hz=15,
+        gripper=True,
+        custom_controller=True,
+        *args,
+        **kwargs
+    ):
         self._gripper = gripper
 
         self.robot_type = robot_type
         self.control_hz = control_hz
-        self.custom_controller = True # False if self.robot_type == "panda" else custom_controller
+        self.custom_controller = (
+            True  # False if self.robot_type == "panda" else custom_controller
+        )
 
         self.launch_ik()
 
     def launch_ik(self):
-        self._ik_solver = RobotIKSolver(robot_type=self.robot_type, control_hz=self.control_hz)
+        self._ik_solver = RobotIKSolver(
+            robot_type=self.robot_type, control_hz=self.control_hz
+        )
 
     def update_command(
         self, command, action_space="cartesian_velocity", blocking=False
     ):
         action_dict = self.create_action_dict(command, action_space=action_space)
-        
+
         if self._gripper:
             self.update_gripper(
                 action_dict["gripper_position"], velocity=False, blocking=blocking
@@ -85,11 +99,11 @@ class FrankaBase(abc.ABC):
                 )
                 action_dict["cartesian_velocity"] = cartesian_velocity.tolist()
 
-            action_dict[
-                "joint_velocity"
-            ] = self._ik_solver.cartesian_velocity_to_joint_velocity(
-                action_dict["cartesian_velocity"], robot_state=robot_state
-            ).tolist()
+            action_dict["joint_velocity"] = (
+                self._ik_solver.cartesian_velocity_to_joint_velocity(
+                    action_dict["cartesian_velocity"], robot_state=robot_state
+                ).tolist()
+            )
             joint_delta = self._ik_solver.joint_velocity_to_delta(
                 action_dict["joint_velocity"]
             )

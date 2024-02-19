@@ -1,10 +1,20 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from training.networks import GaussianMLP, CNN, MLP
+
+from training.networks import CNN, MLP, GaussianMLP
+
 
 class GaussianPolicy(nn.Module):
-    def __init__(self, act_shape, hidden_dims=[64, 64], state_embed_dim=64, state_obs_shape=None, img_embed_dim=64, img_obs_shape=None):
+    def __init__(
+        self,
+        act_shape,
+        hidden_dims=[64, 64],
+        state_embed_dim=64,
+        state_obs_shape=None,
+        img_embed_dim=64,
+        img_obs_shape=None,
+    ):
         super().__init__()
 
         assert state_obs_shape is not None or img_obs_shape is not None
@@ -22,7 +32,12 @@ class GaussianPolicy(nn.Module):
             input_dim += img_embed_dim
 
         if self.state_obs_shape:
-            self.state_encoder = MLP(input_dim=np.prod(state_obs_shape), hidden_dims=[], output_dim=state_embed_dim, output_act="ReLU")
+            self.state_encoder = MLP(
+                input_dim=np.prod(state_obs_shape),
+                hidden_dims=[],
+                output_dim=state_embed_dim,
+                output_act="ReLU",
+            )
             input_dim += state_embed_dim
 
         self.head = GaussianMLP(input_dim, hidden_dims, np.prod(act_shape), act="ReLU")
@@ -33,7 +48,7 @@ class GaussianPolicy(nn.Module):
 
         embeds = []
         if self.img_obs_shape:
-            embeds.append(self.img_encoder(obs["img"] / 255.))
+            embeds.append(self.img_encoder(obs["img"] / 255.0))
         if self.state_obs_shape:
             embeds.append(self.state_encoder(obs["state"]))
 
@@ -41,7 +56,7 @@ class GaussianPolicy(nn.Module):
             obs = torch.cat(embeds, dim=-1)
         else:
             obs = embeds[0]
-        
+
         return self.head.forward_dist(obs)
 
     def forward(self, obs, deterministic=False):
@@ -62,7 +77,7 @@ class GaussianPolicy(nn.Module):
         return log_prob
 
     def compute_loss(self, obs, actions):
-        
+
         # if not self.img_obs:
         #     obs = obs.reshape(-1, obs.shape[-1])
         #     actions = actions.reshape(-1, actions.shape[-1])
@@ -71,4 +86,3 @@ class GaussianPolicy(nn.Module):
 
         loss = -log_probs.mean()
         return loss
-   

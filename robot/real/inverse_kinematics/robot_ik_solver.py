@@ -1,10 +1,11 @@
 import numpy as np
 from dm_control import mjcf
-from dm_robotics.moma.effectors import arm_effector, cartesian_6d_velocity_effector
+from dm_robotics.moma.effectors import (arm_effector,
+                                        cartesian_6d_velocity_effector)
 
 from robot.real.inverse_kinematics.arm import FrankaArm
+from utils.transformations import euler_to_quat, quat_diff, quat_to_euler
 
-from helpers.transformations import quat_diff, quat_to_euler, euler_to_quat
 
 class RobotIKSolver:
     def __init__(self, robot_type, control_hz=10):
@@ -17,9 +18,13 @@ class RobotIKSolver:
 
         self._arm = FrankaArm(robot_type=robot_type)
         self._physics = mjcf.Physics.from_mjcf_model(self._arm.mjcf_model)
-        self._effector = arm_effector.ArmEffector(arm=self._arm, action_range_override=None, robot_name=self._arm.name)
+        self._effector = arm_effector.ArmEffector(
+            arm=self._arm, action_range_override=None, robot_name=self._arm.name
+        )
 
-        self._effector_model = cartesian_6d_velocity_effector.ModelParams(self._arm.wrist_site, self._arm.joints)
+        self._effector_model = cartesian_6d_velocity_effector.ModelParams(
+            self._arm.wrist_site, self._arm.joints
+        )
 
         self._effector_control = cartesian_6d_velocity_effector.ControlParams(
             control_timestep_seconds=1 / self.control_hz,
@@ -36,8 +41,13 @@ class RobotIKSolver:
             max_nullspace_control_iterations=300,
         )
 
-        self._cart_effector_6d = cartesian_6d_velocity_effector.Cartesian6dVelocityEffector(
-            self._arm.name, self._effector, self._effector_model, self._effector_control
+        self._cart_effector_6d = (
+            cartesian_6d_velocity_effector.Cartesian6dVelocityEffector(
+                self._arm.name,
+                self._effector,
+                self._effector_model,
+                self._effector_control,
+            )
         )
         self._cart_effector_6d.after_compile(self._arm.mjcf_model, self._physics)
 
@@ -55,11 +65,15 @@ class RobotIKSolver:
         joint_velocity = self.joint_delta_to_velocity(joint_delta)
 
         return joint_velocity
-    
-    def cartesian_position_to_joint_position(self, desired_ee_pos, desired_ee_quat, robot_state):
+
+    def cartesian_position_to_joint_position(
+        self, desired_ee_pos, desired_ee_quat, robot_state
+    ):
         qpos = np.array(robot_state["joint_positions"])
         qvel = np.array(robot_state["joint_velocities"])
-        curr_pos, curr_quat = robot_state["cartesian_position"][:3], euler_to_quat(robot_state["cartesian_position"][3:])
+        curr_pos, curr_quat = robot_state["cartesian_position"][:3], euler_to_quat(
+            robot_state["cartesian_position"][3:]
+        )
 
         lin_vel = desired_ee_pos - curr_pos
         rot_vel = quat_to_euler(quat_diff(desired_ee_quat, curr_quat))
@@ -68,7 +82,7 @@ class RobotIKSolver:
         self._arm.update_state(self._physics, qpos, qvel)
         self._cart_effector_6d.set_control(self._physics, action)
         joint_vel_ctrl = self._physics.bind(self._arm.actuators).ctrl.copy()
-		
+
         desired_qpos = qpos + joint_vel_ctrl
         np.any(desired_qpos)
 
@@ -108,7 +122,9 @@ class RobotIKSolver:
         if isinstance(joint_velocity, list):
             joint_velocity = np.array(joint_velocity)
 
-        relative_max_joint_vel = self.joint_delta_to_velocity(self.relative_max_joint_delta)
+        relative_max_joint_vel = self.joint_delta_to_velocity(
+            self.relative_max_joint_delta
+        )
         max_joint_vel_norm = (np.abs(joint_velocity) / relative_max_joint_vel).max()
 
         if max_joint_vel_norm > 1:

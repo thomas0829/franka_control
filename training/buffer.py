@@ -1,15 +1,31 @@
 import numpy as np
 
+
 class DictReplayBuffer:
     def __init__(
-        self, capacity, obs_dict_shape, act_shape, obs_dict_type=np.float32, act_type=np.float32
+        self,
+        capacity,
+        obs_dict_shape,
+        act_shape,
+        obs_dict_type=np.float32,
+        act_type=np.float32,
     ):
         self.capacity = capacity
         self.observations = {}
         self.next_observations = {}
         for k in obs_dict_shape.keys():
-            self.observations[k] = np.zeros((self.capacity,) + obs_dict_shape[k], dtype=obs_dict_type[k] if type(obs_dict_type) is dict else obs_dict_type)
-            self.next_observations[k] = np.zeros((self.capacity,) + obs_dict_shape[k], dtype=obs_dict_type[k] if type(obs_dict_type) is dict else obs_dict_type)
+            self.observations[k] = np.zeros(
+                (self.capacity,) + obs_dict_shape[k],
+                dtype=(
+                    obs_dict_type[k] if type(obs_dict_type) is dict else obs_dict_type
+                ),
+            )
+            self.next_observations[k] = np.zeros(
+                (self.capacity,) + obs_dict_shape[k],
+                dtype=(
+                    obs_dict_type[k] if type(obs_dict_type) is dict else obs_dict_type
+                ),
+            )
         self.actions = np.zeros((self.capacity,) + act_shape, dtype=act_type)
         self.rewards = np.zeros((self.capacity, 1), dtype=np.float32)
         self.dones = np.zeros((self.capacity, 1), dtype=np.float32)
@@ -52,7 +68,9 @@ class DictReplayBuffer:
             chunk = min(batch_size, self.capacity - self.pos)
             for k in self.observations.keys():
                 self.observations[k][self.pos : self.pos + chunk] = obs[k][:chunk]
-                self.next_observations[k][self.pos : self.pos + chunk] = next_obs[k][:chunk]
+                self.next_observations[k][self.pos : self.pos + chunk] = next_obs[k][
+                    :chunk
+                ]
             self.actions[self.pos : self.pos + chunk] = act[:chunk]
             self.rewards[self.pos : self.pos + chunk] = rew[:chunk]
             self.dones[self.pos : self.pos + chunk] = done[:chunk]

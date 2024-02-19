@@ -49,7 +49,7 @@ def wrap_env_in_rlds_logger(env, exp, save_dir, max_episodes_per_shard=1):
         discount_info=np.float64,
         step_metadata_info={"timestamp_ns": np.int64},
     )
-    
+
     # create logger
     rlds_env_logger = envlogger.EnvLogger(
         rlds_env,
@@ -74,20 +74,24 @@ def load_rlds_dataset(save_dir):
         print(f"Trajectory of length {len(e['steps'])}")
     return loaded_dataset
 
+
 def convert_rlds_to_np(save_dir):
 
     import rlds
     import tensorflow as tf
     import tensorflow_datasets as tfds
-    
+
     trajs = []
-    builder = tfds.builder_from_directory(save_dir).as_dataset(decoders={rlds.STEPS: tfds.decode.SkipDecoding()})
+    builder = tfds.builder_from_directory(save_dir).as_dataset(
+        decoders={rlds.STEPS: tfds.decode.SkipDecoding()}
+    )
     for e in builder["train"]:
         traj_np = tf.data.Dataset.from_tensors(e[rlds.STEPS]).as_numpy_iterator().next()
         trajs.append(traj_np)
         print(traj_np["is_first"].shape)
 
     return trajs
+
 
 class RLDSWrapper(gym.Wrapper, dm_env.Environment):
 
@@ -97,7 +101,7 @@ class RLDSWrapper(gym.Wrapper, dm_env.Environment):
     def type_action(self, act):
         act = act.astype(self.action_spec().dtype)
         return act
-    
+
     def type_observation(self, obs):
         for k in obs.keys():
             obs[k] = obs[k].astype(self.observation_spec()[k].dtype)

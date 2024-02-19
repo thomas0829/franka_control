@@ -4,7 +4,7 @@ import gym
 import mujoco
 import numpy as np
 
-from utils.transformations_mujoco import euler2quat
+from utils.transformations_mujoco import euler_to_quat_mujoco
 
 
 class ASIDWrapper(gym.Wrapper):

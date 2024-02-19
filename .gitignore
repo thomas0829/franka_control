@@ -11,3 +11,4 @@ logdir/
 *.json
 *.png
 *.zip
+*.egg-info/

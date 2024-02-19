@@ -9,9 +9,7 @@ from utils.logger import Video, configure_logger
 from utils.system import get_device, set_gpu_mode
 
 
-@hydra.main(
-    config_path="../configs/", config_name="default", version_base="1.1"
-)
+@hydra.main(config_path="../configs/", config_name="default", version_base="1.1")
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
@@ -40,10 +38,7 @@ def run_experiment(cfg):
     done = False
     while not done:
         next_obs, rew, done, _ = env.step(env.action_space.sample())
-        imgs.append(env.render())
         obs = next_obs
-
-    imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
 
 
 if __name__ == "__main__":

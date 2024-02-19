@@ -6,25 +6,27 @@ import time
 from copy import deepcopy
 
 try:
-	import pyzed.sl as sl
+    import pyzed.sl as sl
 except ModuleNotFoundError:
-	print("WARNING: You have not setup the ZED cameras, and currently cannot use them")
+    print("WARNING: You have not setup the ZED cameras, and currently cannot use them")
+
 
 def time_ms():
-	return time.time_ns() // 1_000_000
+    return time.time_ns() // 1_000_000
+
 
 def gather_zed_cameras():
-	all_zed_cameras = []
-	try:
-		cameras = sl.Camera.get_device_list()
-	except NameError:
-		return []
+    all_zed_cameras = []
+    try:
+        cameras = sl.Camera.get_device_list()
+    except NameError:
+        return []
 
-	for cam in cameras:
-		cam = ZedCamera(cam)
-		all_zed_cameras.append(cam)
+    for cam in cameras:
+        cam = ZedCamera(cam)
+        all_zed_cameras.append(cam)
 
-	return all_zed_cameras
+    return all_zed_cameras
 
 
 class ZedCamera:
@@ -34,9 +36,9 @@ class ZedCamera:
 			# depth_mode=sl.DEPTH_MODE.NEURAL,
 			# coordinate_units=sl.UNIT.METER, # force milimeters
 			depth_minimum_distance=0.1,
-			depth_stabilization=False,
+			# depth_stabilization=False,
 			camera_resolution=sl.RESOLUTION.HD720,
-			camera_fps=15,
+			camera_fps=30,
 			camera_image_flip=sl.FLIP_MODE.OFF,
 		)
 		# https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view
@@ -47,6 +49,8 @@ class ZedCamera:
 
 		self.depth = True
 		self.pointcloud = True
+
+		self.crop = True
 
 		self._configure_camera()
 
@@ -68,7 +72,7 @@ class ZedCamera:
 		sl_params = sl.InitParameters(**self._current_params)
 		sl_params.set_from_serial_number(int(self._serial_number))
 		status = self._cam.open(sl_params)
-		self._cam.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE, 50)
+		# self._cam.set_camera_settings(sl.VIDEO_SETTINGS.EXPOSURE, 50)
 		if status != sl.ERROR_CODE.SUCCESS:
 			raise RuntimeError("Camera Failed To Open")
 
@@ -112,10 +116,12 @@ class ZedCamera:
 		)
 
 		self._cam.retrieve_image(self._left_img, sl.VIEW.LEFT)
-		# self._cam.retrieve_image(self._right_img, sl.VIEW.RIGHT)
 
 		left_img = deepcopy(self._left_img.get_data())
 		left_img = cv2.cvtColor(left_img, cv2.COLOR_BGR2RGB)
+
+		if self.crop:
+			left_img = left_img[:,355:-205]
 
 		dict_1 = {
 			"array": left_img,
@@ -125,6 +131,8 @@ class ZedCamera:
 			"serial_number": self._serial_number + "/left",
 		}
 
+		# self._cam.retrieve_image(self._right_img, sl.VIEW.RIGHT)
+
 		# right_img = deepcopy(self._right_img.get_data())
 		# right_img = cv2.cvtColor(right_img, cv2.COLOR_BGR2RGB)
 
@@ -133,18 +141,22 @@ class ZedCamera:
 
 		if self.depth:
 			self._cam.retrieve_measure(self._left_depth, sl.MEASURE.DEPTH)
-			# self._cam.retrieve_measure(self._right_depth, sl.MEASURE.DEPTH_RIGHT)
 
 			left_depth = deepcopy(self._left_depth.get_data())
+
+			if self.crop:
+				left_depth = left_depth[:,355:-205]
 
 			dict_2 = {
 				"array": left_depth,
 				"shape": left_depth.shape,
-				"type": "rgb",
+				"type": "depth",
 				"read_time": received_time,
 				"serial_number": self._serial_number + "/left",
 			}
 
+			# self._cam.retrieve_measure(self._right_depth, sl.MEASURE.DEPTH_RIGHT)
+			
 			# right_depth = deepcopy(self._right_depth.get_data())
 
 			# dict_2 = {'array': right_depth,  'shape': right_depth.shape, 'type': 'rgb',

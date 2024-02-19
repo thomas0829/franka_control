@@ -11,9 +11,11 @@ from robot.sim.vec_env.asid_vec import make_env, make_vec_env
 @hydra.main(config_path="configs/", config_name="asid", version_base="1.1")
 def run_experiment(cfg):
     
-    # cfg.robot.DoF = 2
+    cfg.robot.DoF = 6
     cfg.robot.on_screen_rendering = False
-    # cfg.robot.gripper = False
+    cfg.robot.gripper = False
+    # cfg.robot.ip_address = "172.16.0.1"
+    # cfg.robot.camera_model = "zed"
 
     # cfg.env.obj_pos_noise = False
 

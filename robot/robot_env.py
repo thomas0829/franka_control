@@ -217,7 +217,7 @@ class RobotEnv(gym.Env):
                         calib_dict[sn]["intrinsic"]["ppy"],
                     )
                     self.camera_extrinsic[sn] = compute_camera_extrinsic(
-                        pos=calib_dict[sn]["extrinsic"]["pos"],
+                        pos=np.array(calib_dict[sn]["extrinsic"]["pos"]).reshape(-1),
                         ori=calib_dict[sn]["extrinsic"]["ori"],
                     )
             self.depth_scale = 1000.0

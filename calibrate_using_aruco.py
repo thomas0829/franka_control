@@ -34,7 +34,12 @@ for camera in multi_camera_wrapper._all_cameras:
     # aruco frame to center robot frame
     # x: marker size / 2 + white space on paper
     # y: table size / 2 - marker size / 2
-    aruco_offset = np.array([- (marker_size / 2), - 0.675 + (marker_size / 2) + 0.05, 0.0])
+    # aruco_offset = np.array([- (marker_size / 2), - 0.675 + (marker_size / 2) + 0.05, 0.0])
+    margin = 0.0 # 0.033 + 0.02
+    marker_radius = marker_size / 2
+    table_length = 1.350
+    franka_center = 0.17
+    aruco_offset = np.array([- (franka_center - (marker_radius + margin)), - (table_length/2 - (marker_radius + margin)), 0.0])
     extrinsics_inv[:3, 3] += aruco_offset
 
     calib_dict.append(
@@ -56,15 +61,18 @@ for camera in multi_camera_wrapper._all_cameras:
     )
 
     depth[depth == np.inf] = 1.0  # depth[~(depth==np.inf)].max()
+    depth[depth == -np.inf] = 1.0  # depth[~(depth==np.inf)].max()
+    depth[np.isnan(depth)] = 1.0
     points = depth_to_points(
         depth, intrinsics, extrinsics_inv, depth_scale=1000.0
     )
     points[np.isnan(points)] = 1.0
     points[points == np.inf] = 1.0
+    points[points == -np.inf] = 1.0
 
     colors = rgb.reshape(-1, 3) / 255.0
     points, colors = crop_points(
-        points, colors=colors, crop_min=-np.ones(3)*2, crop_max=np.ones(3)*2
+        points, colors=colors
     )
     pcds.append(points_to_pcd(points, colors=colors))
 

@@ -4,11 +4,11 @@ hydra:
   
 defaults:
   - env: rod
-  - robot: sim_2dof
+  - robot: sim_2_dof
   - train: explore
   - log: wandb
 
-exp_id: "debug"
+exp_id: "explore_rod_sim"
 
 seed: 0
 gpu_id: 0

@@ -123,7 +123,7 @@ def evaluate(policy, eval_envs, logger, tag="eval"):
     logger.dump(step=0)
 
 
-@hydra.main(config_path="../configs/", config_name="asid", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="explore_rod_sim", version_base="1.1")
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
@@ -146,7 +146,8 @@ def run_experiment(cfg):
         num_workers=cfg.num_workers,
         seed=cfg.seed,
         device_id=0,
-        exp_reward=True,
+        asid_wrapper=True,
+        asid_reward=True,
         delta=cfg.train.fd_delta,
         normalization=cfg.train.rew_normalization,
     )
@@ -176,7 +177,8 @@ def run_experiment(cfg):
         num_workers=cfg.num_workers_eval,
         seed=cfg.seed + 100,
         device_id=0,
-        exp_reward=True,
+        asid_wrapper=True,
+        asid_reward=True,
         delta=cfg.train.fd_delta,
         normalization=cfg.train.rew_normalization,
     )

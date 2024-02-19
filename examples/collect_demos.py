@@ -1,65 +1,48 @@
-import argparse
-import datetime
 import os
 import time
-
-import imageio
-import joblib
 import numpy as np
 from tqdm import tqdm
+import hydra
 
 from robot.controllers.oculus import VRController
-from robot.rlds_wrapper import (convert_rlds_to_np, load_rlds_dataset,
-                                wrap_env_in_rlds_logger)
+from robot.rlds_wrapper import (
+    convert_rlds_to_np,
+    load_rlds_dataset,
+    wrap_env_in_rlds_logger,
+)
 from robot.robot_env import RobotEnv
+from robot.sim.vec_env.vec_env import make_env
+from utils.experiment import hydra_to_dict
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp", type=str)
-    parser.add_argument("--save_dir", type=str, default="data")
-    # hardware
-    parser.add_argument("--dof", type=int, default=6, choices=[3, 4, 6])
-    parser.add_argument(
-        "--robot_type", type=str, default="panda", choices=["panda", "fr3"]
-    )
-    parser.add_argument(
-        "--ip_address",
-        type=str,
-        default="172.16.0.1",
-        choices=[None, "localhost", "172.16.0.1"],
-    )
-    parser.add_argument(
-        "--camera_model", type=str, default="realsense", choices=["realsense", "zed"]
-    )
-    # trajectories
-    parser.add_argument("--episodes", type=int, default=10)
-    parser.add_argument("--max_episode_length", type=int, default=1000)
 
-    args = parser.parse_args()
+@hydra.main(
+    config_path="../configs/", config_name="collect_demos_real", version_base="1.1"
+)
+def run_experiment(cfg):
 
-    assert args.exp is not None, "Specify --exp"
-    save_dir = os.path.join(args.save_dir, args.exp)
-    os.makedirs(save_dir, exist_ok=True)
+    data_dir = os.path.join(cfg.data_dir, cfg.exp_id, str(cfg.seed))
+    os.makedirs(data_dir, exist_ok=True)
 
-    env = RobotEnv(
-        control_hz=10,
-        DoF=args.dof,
-        robot_type=args.robot_type,
-        ip_address=args.ip_address,
-        camera_model=args.camera_model,
-        max_path_length=args.max_episode_length,
+    cfg.robot.max_path_length = cfg.max_episode_length
+
+    env = make_env(
+        robot_cfg_dict=hydra_to_dict(cfg.robot),
+        seed=cfg.seed,
+        device_id=0,
+        verbose=True,
     )
 
     oculus = VRController()
     assert oculus.get_info()["controller_on"], "ERROR: oculus controller off"
     print("Oculus Connected")
 
+    # assert env._num_cameras > 0, "ERROR: camera(s) not connected!"
+
     with wrap_env_in_rlds_logger(
-        env, args.exp, save_dir, max_episodes_per_shard=1
+        env, cfg.exp_id, data_dir, max_episodes_per_shard=1
     ) as rlds_env:
-        for i in range(args.episodes):
+        for i in range(cfg.episodes):
             rlds_env.reset()
-            # assert env._num_cameras > 0, "ERROR: camera(s) not connected!"
             print(f"Camera(s) Connected ({rlds_env.unwrapped._num_cameras})")
 
             print(f"Press 'A' to Start Collecting")
@@ -77,7 +60,7 @@ if __name__ == "__main__":
             acts = []
 
             for j in tqdm(
-                range(args.max_episode_length), desc=f"Collecting Trajectory {i}"
+                range(cfg.max_episode_length), desc=f"Collecting Trajectory {i}"
             ):
                 # wait for controller input
                 info = oculus.get_info()
@@ -95,7 +78,6 @@ if __name__ == "__main__":
                     gripper = rlds_env.unwrapped._robot.get_gripper_position()
                     state = {
                         "robot_state": {
-                            # "cartesian_position": np.concatenate(pose),
                             "cartesian_position": pose,
                             "gripper_position": gripper,
                         }
@@ -112,16 +94,19 @@ if __name__ == "__main__":
                         )
                     )
                     # prepare act
-                    if args.dof == 3:
-                        act = np.concatenate((delta_act[:3], delta_act[-1:]))
-                    elif args.dof == 4:
+                    if cfg.robot.DoF == 3:
+                        act = np.concatenate((delta_act[:3], vel_act[-1:]))
+                    elif cfg.robot.DoF == 4:
                         act = np.concatenate(
                             (delta_act[:3], delta_act[5:6], vel_act[-1:])
                         )
-                    elif args.dof == 6:
+                    elif cfg.robot.DoF == 6:
                         act = np.concatenate((delta_act, vel_act[-1:]))
 
                     next_obs, rew, done, _ = rlds_env.step(rlds_env.type_action(act))
+                    if cfg.robot.ip_address == None:
+                        time.sleep(1/cfg.robot.control_hz)
+                        env.render()
 
                     obss.append(obs)
                     acts.append(act)
@@ -133,6 +118,10 @@ if __name__ == "__main__":
     env.reset()
 
     # check if dataset was saved
-    loaded_dataset = load_rlds_dataset(save_dir)
+    loaded_dataset = load_rlds_dataset(data_dir)
 
     print(f"Finished Collecting {i} Trajectories")
+
+
+if __name__ == "__main__":
+    run_experiment()

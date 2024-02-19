@@ -1,5 +1,5 @@
 control_hz: 10
-DoF: 2
+DoF: 6
 gripper: true
 
 # Franka model: 'panda' 'fr3'
@@ -13,7 +13,7 @@ pause_after_reset: false
 # observation space configuration
 qpos: true
 ee_pos: true
-imgs: true
+imgs: false
 normalize: false
 
 # pass IP if not running on NUC "localhost" if running on NUC None if running sim
@@ -23,7 +23,7 @@ max_path_length: 20
 # camera type to use: 'realsense' 'zed'
 camera_model: null
 camera_resolution: null  # (128 128) -> HxW
-calibration_file: "cameras/calibration/calibration_aruco_real.json"
+calibration_file: "perception/cameras/calibration/logs/aruco/24_02_19_10_16_14.json"
 # Mujoco: model name
 model_name: "base_franka"
-on_screen_rendering: false
+on_screen_rendering: true

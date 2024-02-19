@@ -51,7 +51,7 @@ class ZedCamera:
         self.depth = True
         self.pointcloud = True
 
-        self.crop = True
+        self.crop = False
 
         self._configure_camera()
 

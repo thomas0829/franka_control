@@ -6,20 +6,27 @@ import numpy as np
 from perception.trackers.color_tracker import ColorTracker
 from robot.robot_env import RobotEnv
 from utils.pointclouds import crop_points
+import os
+import joblib
+import hydra
+import numpy as np
+from datetime import datetime
+from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
-if __name__ == "__main__":
+from robot.sim.vec_env.vec_env import make_env
 
-    control_hz = 10
+@hydra.main(
+    config_path="../configs/", config_name="collect_demos_real", version_base="1.1"
+)
+def run_experiment(cfg):
 
-    env = RobotEnv(
-        control_hz=control_hz,
-        DoF=6,
-        robot_type="fr3",
-        ip_address="172.16.0.1",
-        camera_model="realsense",
-        max_lin_vel=1.0,
-        max_rot_vel=1.0,
-        max_path_length=100,
+    cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_19_12_42_25.json"
+    cfg.robot.camera_model = "realsense"
+    env = make_env(
+        robot_cfg_dict=hydra_to_dict(cfg.robot),
+        seed=cfg.seed,
+        device_id=0,
+        verbose=True,
     )
 
     tracker = ColorTracker(outlier_removal=True)
@@ -55,12 +62,12 @@ if __name__ == "__main__":
                 cropped_points,
                 lowpass_filter=True,
                 cutoff_freq=1,
-                control_hz=control_hz,
+                control_hz=cfg.robot.control_hz,
                 show=False,
             )
         )
 
-        time.sleep(1 / control_hz)
+        time.sleep(1 / cfg.robot.control_hz)
 
     plt.plot(
         np.stack(rod_poses_raw)[:, 0],
@@ -75,3 +82,7 @@ if __name__ == "__main__":
 
     plt.legend()
     plt.show()
+
+
+if __name__ == "__main__":
+    run_experiment()

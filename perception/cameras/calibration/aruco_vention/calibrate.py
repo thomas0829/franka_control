@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from perception.cameras.multi_camera_wrapper import MultiCameraWrapper
 
-multi_camera_wrapper = MultiCameraWrapper(type="zed", use_threads=False)
+multi_camera_wrapper = MultiCameraWrapper(type="realsense", use_threads=False)
 
 num_cameras = multi_camera_wrapper.num_cameras
 

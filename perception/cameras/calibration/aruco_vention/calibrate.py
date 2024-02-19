@@ -83,8 +83,13 @@ for camera in multi_camera_wrapper._all_cameras:
     pcds.append(points_to_pcd(points, colors=colors))
 
 import json
+from datetime import datetime
 
-json.dump(calib_dict, open("cameras/calibration/calibration_aruco_real.json", "w"))
+current_time_date = datetime.now().strftime("%y_%m_%d_%H_%M_%S")
+json.dump(
+    calib_dict,
+    open(f"perception/cameras/calibration/logs/aruco/{current_time_date}.json", "w"),
+)
 
 x = np.zeros((1, 3))
 for d in np.arange(0, 1, 0.1):

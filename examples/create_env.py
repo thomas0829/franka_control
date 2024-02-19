@@ -14,7 +14,7 @@ def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
             cfg,
-            name=f"{cfg.exp_id}[explore][{cfg.seed}]",
+            name=f"{cfg.exp_id}[{cfg.seed}]",
             entity=cfg.log.entity,
             project=cfg.log.project,
         )
@@ -22,7 +22,7 @@ def run_experiment(cfg):
     set_gpu_mode(cfg.gpu_id >= 0, gpu_id=cfg.gpu_id)
     device = get_device()
 
-    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
+    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed))
     logger = configure_logger(logdir, cfg.log.format_strings)
 
     env = make_env(

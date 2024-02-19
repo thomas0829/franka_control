@@ -21,7 +21,7 @@ class ASIDWrapper(gym.Wrapper):
         self.verbose = verbose
 
         if self.env.DoF == 2:
-            self.env._reset_joint_qpos = np.array(
+            self.env.unwrapped._reset_joint_qpos = np.array(
                 [
                     0.85290707,
                     0.29776727,
@@ -212,7 +212,7 @@ class ASIDWrapper(gym.Wrapper):
             verbose=False,
         )
 
-        from asid.wrapper.sim.asid_reward import ASIDRewardWrapper
+        from asid.wrapper.asid_reward import ASIDRewardWrapper
 
         self.exp_reward = ASIDRewardWrapper(
             exp_env,

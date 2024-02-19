@@ -50,7 +50,7 @@ class MujocoManipulatorEnv(FrankaBase):
     def __init__(
         self,
         # robot_model_cfg: DictConfig,
-        config_name: str = "robot/real/config/franka_panda_with_hand",
+        config_name: str = "../../real/config/franka_panda_with_hand",
         model_name: str = "base_franka",
         use_grav_comp: bool = False,
         gravity: float = 9.81,
@@ -100,7 +100,7 @@ class MujocoManipulatorEnv(FrankaBase):
         # hydra.initialize(config_path=".")
         # robot_model_cfg = hydra.compose(config_name=config_name)
 
-        robot_model_cfg = omegaconf.OmegaConf.load(f"{config_name}.yaml")
+        robot_model_cfg = omegaconf.OmegaConf.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{config_name}.yaml"))
         self.model_cfg = robot_model_cfg
         # self.robot_description_path = get_full_path_to_urdf(
         #     self.model_cfg.robot_description_path
@@ -110,7 +110,7 @@ class MujocoManipulatorEnv(FrankaBase):
         #     os.path.splitext(self.robot_description_path)[0] + ".mjcf"
         # )
 
-        robot_desc_mjcf_path = f"robot/sim/mujoco/assets/{model_name}.xml"
+        robot_desc_mjcf_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"assets/{model_name}.xml")
         assert os.path.exists(
             robot_desc_mjcf_path
         ), f"No MJCF file found. Create an MJCF file at {robot_desc_mjcf_path} to use the MuJoCo simulator."
@@ -169,7 +169,7 @@ class MujocoManipulatorEnv(FrankaBase):
 
         # polymetis control: load robot hardware config
         # polymetis/polymetis/conf/robot_client/franka_hardware.yaml -> replaced by R2D2
-        with open("robot/real/config/franka_hardware.yaml", "r") as stream:
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../real/config/franka_hardware.yaml"), "r") as stream:
             try:
                 franka_hardware_conf = yaml.safe_load(stream)
             except yaml.YAMLError as exc:

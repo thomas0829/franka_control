@@ -6,7 +6,7 @@ from datetime import datetime
 
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
-from utils.logger import Video, configure_logger
+from utils.logger import configure_logger
 from utils.system import get_device, set_gpu_mode
 
 

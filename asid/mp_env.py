@@ -195,7 +195,7 @@ def collect_demo_pick_up(
     return success, imgs
 
 
-@hydra.main(config_path="configs/", config_name="collect_sim", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="collect_sim", version_base="1.1")
 def run_experiment(cfg):
 
     np.random.seed(cfg.seed)

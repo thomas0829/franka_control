@@ -33,6 +33,7 @@ def run_experiment(cfg):
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
+        asid_cfg_dict=hydra_to_dict(cfg.asid),
         seed=cfg.seed,
         device_id=0,
     )

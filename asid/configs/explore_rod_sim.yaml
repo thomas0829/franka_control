@@ -3,6 +3,7 @@ hydra:
     chdir: false
   
 defaults:
+  - asid: inertia
   - env: rod
   - robot: sim_2_dof
   - train: explore

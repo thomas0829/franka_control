@@ -145,13 +145,10 @@ def run_experiment(cfg):
     envs = make_vec_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
+        asid_cfg_dict=hydra_to_dict(cfg.asid),
         num_workers=cfg.num_workers,
         seed=cfg.seed,
         device_id=0,
-        asid_wrapper=True,
-        asid_reward=True,
-        delta=cfg.train.fd_delta,
-        normalization=cfg.train.rew_normalization,
     )
 
     # algorithm
@@ -176,13 +173,10 @@ def run_experiment(cfg):
     eval_envs = make_vec_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
+        asid_cfg_dict=hydra_to_dict(cfg.asid),
         num_workers=cfg.num_workers_eval,
         seed=cfg.seed + 100,
         device_id=0,
-        asid_wrapper=True,
-        asid_reward=True,
-        delta=cfg.train.fd_delta,
-        normalization=cfg.train.rew_normalization,
     )
 
     # set logger

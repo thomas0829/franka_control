@@ -117,7 +117,7 @@ def evaluate(policy, eval_envs, logger, tag="eval"):
         video = np.stack(frames).transpose(1, 0, 4, 2, 3)
         logger.record(
             f"{tag}/trajectory/env/camera",
-            Video(video, duration=10),
+            Video(video, fps=20),
             exclude=["stdout"],
         )
     logger.dump(step=0)

@@ -58,7 +58,8 @@ def visualize_pcds(pcds):
 
 
 def crop_points(
-    points, colors=None, crop_min=[-0.2, -1.0, -0.2], crop_max=[1.0, 1.0, 1.0]
+    points, colors=None, crop_min=[-1.0, -1.0, -0.2], crop_max=[1.0, 1.0, 1.0]
+    # points, colors=None, crop_min=[-0.2, -1.0, -0.2], crop_max=[1.0, 1.0, 1.0]
 ):
 
     idx_max = np.all((points < crop_max), axis=1)

@@ -1,3 +1,4 @@
+import copy
 import gym
 import numpy as np
 
@@ -10,13 +11,16 @@ class ObjectTrackerWrapper(gym.Wrapper):
         self,
         env,
         obj_id="rod",
-        obs_keys=["lowdim_ee", "lowdim_qpos", "obj_pose"],
+        obs_keys=None, # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
         # tracking
         color_track="red",
-        crop_min=[0.0, -0.4, -0.1],
-        crop_max=[0.5, 0.4, 0.5],
+        # crop_min=[0.0, -0.4, -0.1],
+        # crop_max=[0.5, 0.4, 0.5],
+        crop_min=-np.ones(3),
+        crop_max=np.ones(3),
         filter=False,
         cutoff_freq=1,
+        flatten=True,
         verbose=False,
         **kwargs
     ):
@@ -35,15 +39,36 @@ class ObjectTrackerWrapper(gym.Wrapper):
         self.cutoff_freq = cutoff_freq
 
         # Observations
-        self.obs_keys = obs_keys
+        self.obs_keys = obs_keys if obs_keys is not None else self.env.observation_space.keys()
+        # obs space dict to array
+        for k in copy.deepcopy(self.env.observation_space.keys()):
+            if k not in self.obs_keys:
+                del self.env.observation_space.spaces[k]
 
-    def augment_observations(self, obs):
+        self.flatten = flatten
+        obj_pose_low = -np.inf * np.ones(7)
+        obj_pose_high = np.inf * np.ones(7)
+        if self.flatten:
+            low = np.concatenate([v.low for v in self.env.observation_space.values()])
+            high = np.concatenate([v.high for v in self.env.observation_space.values()])
+            # add obj pose
+            low = np.concatenate([low, obj_pose_low])
+            high = np.concatenate([high, obj_pose_high])
+            # overwrite observation_space
+            self.observation_space = gym.spaces.Box(low=low, high=high, shape=low.shape)
+        else:
+            self.observation_space["obj_pose"] = gym.spaces.Box(
+                low=obj_pose_low, high=obj_pose_high
+            )
+
+    def augment_observations(self, obs, flatten=True):
         obs["obj_pose"] = self.get_obj_pose()
 
-        tmp = []
-        for k in self.obs_keys:
-            tmp.append(obs[k])
-        obs = np.concatenate(tmp)
+        if flatten:
+            tmp = []
+            for k in self.obs_keys:
+                tmp.append(obs[k])
+            obs = np.concatenate(tmp)
 
         return obs
 
@@ -51,7 +76,7 @@ class ObjectTrackerWrapper(gym.Wrapper):
 
         obs, reward, done, info = self.env.step(action)
         
-        return self.augment_observations(obs), reward, done, info
+        return self.augment_observations(obs, flatten=self.flatten), reward, done, info
 
     def reset(self, *args, **kwargs):
         
@@ -61,7 +86,7 @@ class ObjectTrackerWrapper(gym.Wrapper):
         # reset robot |
         obs = self.env.reset()
 
-        return self.augment_observations(obs)
+        return self.augment_observations(obs, flatten=self.flatten)
 
     def get_obj_pose(self):
         # prepare obs

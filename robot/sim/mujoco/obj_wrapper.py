@@ -43,7 +43,7 @@ class ObjWrapper(gym.Wrapper):
         self.curr_obj_pose = None
 
         # Observations
-        self.obs_keys = obs_keys
+        self.obs_keys = obs_keys if obs_keys is not None else self.env.observation_space.keys()
         # obs space dict to array
         for k in copy.deepcopy(self.env.observation_space.keys()):
             if k not in self.obs_keys:

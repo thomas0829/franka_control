@@ -22,7 +22,7 @@ def read_calibration_file(filename):
 
 def depth_to_points(depth, intrinsic, extrinsic, depth_scale=1000.0):
     height, width = depth.shape[:2]
-    depth = depth / depth_scale
+    depth = depth.squeeze() / depth_scale
     xlin = np.linspace(0, width - 1, width)
     ylin = np.linspace(0, height - 1, height)
     px, py = np.meshgrid(xlin, ylin)

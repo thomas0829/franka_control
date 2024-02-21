@@ -9,7 +9,8 @@ from asid.wrapper.asid_vec import make_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.logger import configure_logger
 from utils.system import get_device, set_gpu_mode
-
+from utils.transformations import quat_to_euler
+from utils.transformations_mujoco import euler_to_quat_mujoco
 
 @hydra.main(
     config_path="../configs/", config_name="explore_rod_sim", version_base="1.1"
@@ -65,6 +66,7 @@ def run_experiment(cfg):
     obs = env.reset()
     
     obj_init = env.get_obj_pose().copy()
+    obj_init[3:] = euler_to_quat_mujoco(quat_to_euler(obj_init[3:]))
 
     dict_real = {}
     for k in obs.keys():

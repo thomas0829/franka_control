@@ -8,11 +8,7 @@ from utils.transformations_mujoco import euler_to_quat_mujoco
 
 
 class ASIDWrapper(gym.Wrapper):
-    def __init__(
-        self,
-        env,
-        verbose=False,
-    ):
+    def __init__(self, env, parameter_dict={}, verbose=False, **kwargs):
         super(ASIDWrapper, self).__init__(env)
 
         from robot.sim.mujoco.obj_wrapper import ObjWrapper
@@ -21,7 +17,7 @@ class ASIDWrapper(gym.Wrapper):
         self.verbose = verbose
 
         if self.env.DoF == 2:
-            self.env._reset_joint_qpos = np.array(
+            self.env.unwrapped._reset_joint_qpos = np.array(
                 [
                     0.85290707,
                     0.29776727,
@@ -60,11 +56,12 @@ class ASIDWrapper(gym.Wrapper):
             )
 
         # Physics parameters
-        self.parameter_dict = {
-            "inertia": {"type": "uniform", "min": -0.1, "max": 0.1, "value": None},
-            # careful when adjusting friction -> too high values cause the object to penetrate the table and give huge reward signals even if not touched
-            "friction": {"type": "gaussian", "mean": 1.0, "std": 0.1, "value": None},
-        }
+        self.parameter_dict = parameter_dict
+        # {
+        #     "inertia": {"type": "uniform", "min": -0.1, "max": 0.1, "value": None},
+        #     # careful when adjusting friction -> too high values cause the object to penetrate the table and give huge reward signals even if not touched
+        #     "friction": {"type": "gaussian", "mean": 1.0, "std": 0.1, "value": None},
+        # }
 
         self.reset_parameters()
         self.resample_parameters()
@@ -194,30 +191,29 @@ class ASIDWrapper(gym.Wrapper):
         env_func,
         robot_cfg_dict,
         env_cfg_dict,
-        seed,
+        asid_cfg_dict,
+        seed=0,
         device_id=0,
-        delta=5e-2,
-        normalization=1e-3,
     ):
         robot_cfg_dict["on_screen_rendering"] = False
         env_cfg_dict["obj_pos_noise"] = False
+        asid_cfg_dict["reward"] = False
 
         exp_env = env_func(
             robot_cfg_dict,
             env_cfg_dict,
+            asid_cfg_dict=asid_cfg_dict,
             seed=seed,
             device_id=device_id,
-            asid_wrapper=True,
-            asid_reward=False,
             verbose=False,
         )
 
-        from asid.wrapper.sim.asid_reward import ASIDRewardWrapper
+        from asid.wrapper.asid_reward import ASIDRewardWrapper
 
         self.exp_reward = ASIDRewardWrapper(
             exp_env,
-            delta=delta,
-            normalization=normalization,
+            delta=asid_cfg_dict["delta"],
+            normalization=asid_cfg_dict["normalization"],
         )
 
     def compute_reward(self, action):

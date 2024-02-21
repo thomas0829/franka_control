@@ -117,13 +117,15 @@ def evaluate(policy, eval_envs, logger, tag="eval"):
         video = np.stack(frames).transpose(1, 0, 4, 2, 3)
         logger.record(
             f"{tag}/trajectory/env/camera",
-            Video(video, fps=30),
+            Video(video, fps=20),
             exclude=["stdout"],
         )
     logger.dump(step=0)
 
 
-@hydra.main(config_path="../configs/", config_name="explore_rod_sim", version_base="1.1")
+@hydra.main(
+    config_path="../configs/", config_name="explore_rod_sim", version_base="1.1"
+)
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
@@ -143,13 +145,10 @@ def run_experiment(cfg):
     envs = make_vec_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
+        asid_cfg_dict=hydra_to_dict(cfg.asid),
         num_workers=cfg.num_workers,
         seed=cfg.seed,
         device_id=0,
-        asid_wrapper=True,
-        asid_reward=True,
-        delta=cfg.train.fd_delta,
-        normalization=cfg.train.rew_normalization,
     )
 
     # algorithm
@@ -174,13 +173,10 @@ def run_experiment(cfg):
     eval_envs = make_vec_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
+        asid_cfg_dict=hydra_to_dict(cfg.asid),
         num_workers=cfg.num_workers_eval,
         seed=cfg.seed + 100,
         device_id=0,
-        asid_wrapper=True,
-        asid_reward=True,
-        delta=cfg.train.fd_delta,
-        normalization=cfg.train.rew_normalization,
     )
 
     # set logger

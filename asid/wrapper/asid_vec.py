@@ -7,12 +7,9 @@ from asid.wrapper.asid_wrapper import ASIDWrapper
 def make_env(
     robot_cfg_dict,
     env_cfg_dict,
+    asid_cfg_dict=None,
     seed=0,
     device_id=0,
-    asid_wrapper=False,
-    asid_reward=False,
-    delta=0.05,
-    normalization=0.001,
     verbose=False,
 ):
 
@@ -25,26 +22,27 @@ def make_env(
     )
 
     env = RobotEnv(**robot_cfg_dict, device_id=device_id, verbose=verbose)
-    
+
     if robot_cfg_dict["ip_address"] is None:
         from robot.sim.mujoco.obj_wrapper import ObjWrapper
+
         env = ObjWrapper(env, **env_cfg_dict, verbose=verbose)
     else:
         from robot.real.obj_tracker_wrapper import ObjectTrackerWrapper
+
         env = ObjectTrackerWrapper(env, **env_cfg_dict, verbose=verbose)
 
-    if asid_wrapper:
-        env = ASIDWrapper(env, verbose=verbose)
+    if asid_cfg_dict is not None:
+        env = ASIDWrapper(env, **asid_cfg_dict, verbose=verbose)
 
-        if asid_reward:
+        if asid_cfg_dict["reward"]:
             env.create_exp_reward(
                 make_env,
                 robot_cfg_dict,
                 env_cfg_dict,
+                asid_cfg_dict,
                 seed=seed,
                 device_id=device_id,
-                delta=delta,
-                normalization=normalization,
             )
 
     env.seed(seed)
@@ -55,8 +53,9 @@ def make_env(
 def make_vec_env(
     robot_cfg_dict,
     env_cfg_dict,
-    num_workers,
-    seed,
+    asid_cfg_dict=None,
+    num_workers=1,
+    seed=0,
     device_id=0,
     asid_wrapper=True,
     asid_reward=True,
@@ -71,13 +70,10 @@ def make_vec_env(
             make_env,
             robot_cfg_dict,
             env_cfg_dict,
+            asid_cfg_dict,
             seed=seed + i,
             device_id=device_id,
             verbose=bool(i == 0) and verbose,
-            asid_wrapper=asid_wrapper,
-            asid_reward=asid_reward,
-            delta=delta,
-            normalization=normalization,
         )
         for i in range(num_workers)
     ]

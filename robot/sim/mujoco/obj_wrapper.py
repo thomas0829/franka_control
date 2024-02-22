@@ -84,6 +84,11 @@ class ObjWrapper(gym.Wrapper):
 
     def reset(self, *args, **kwargs):
 
+        # reset mujoco data
+        mujoco.mj_resetData(
+            self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
+        )
+
         # randomize obj position |
         self.resample_obj_pose()
 

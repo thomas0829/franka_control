@@ -8,25 +8,24 @@ from asid.wrapper.asid_vec import make_env, make_vec_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
 
-@hydra.main(config_path="../configs/", config_name="collect_cube_real", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="explore_rod_sim", version_base="1.1")
 def run_experiment(cfg):
 
-    cfg.robot.DoF = 6
-    cfg.robot.on_screen_rendering = True
-    cfg.robot.gripper = False
-    # cfg.robot.ip_address = "172.16.0.1"
-    # cfg.robot.camera_model = "zed"
+    # cfg.robot.DoF = 6
+    # cfg.robot.on_screen_rendering = True
+    # cfg.robot.gripper = False
+    # # cfg.robot.ip_address = "172.16.0.1"
+    # # cfg.robot.camera_model = "zed"
 
-    # cfg.env.obj_pos_noise = False
-    cfg.env.flatten = True
+    # # cfg.env.obj_pos_noise = False
+    # cfg.env.flatten = True
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
+        # asid_cfg_dict=hydra_to_dict(cfg.asid),
         seed=cfg.seed,
         device_id=0,
-        asid_wrapper=True,
-        asid_reward=True,
         verbose=True,
     )
 

@@ -45,9 +45,11 @@ class RealSenseCamera:
             self._serial_number: self._process_intrinsics(intr),
         }
 
-        # color_sensor = device.query_sensors()[1]
-        # color_sensor.set_option(rs.option.enable_auto_exposure, False)
-        # color_sensor.set_option(rs.option.exposure, 300)
+        color_sensor = device.query_sensors()[1]
+        color_sensor.set_option(rs.option.enable_auto_exposure, False)
+        color_sensor.set_option(rs.option.exposure, 500)
+        depth_sensor = device.query_sensors()[0]
+        depth_sensor.set_option(rs.option.enable_auto_exposure, False)
 
         # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view
         # vertical FOV for a D455 and 1280x800 RGB
@@ -72,7 +74,7 @@ class RealSenseCamera:
         read_time = time.time()
 
         # Convert images to numpy arrays
-        depth_image = np.asanyarray(depth_frame.get_data())
+        depth_image = np.asanyarray(depth_frame.get_data())[...,None]
         color_image = np.asanyarray(color_frame.get_data())
 
         # Apply colormap on depth image (image must be converted to 8-bit per pixel first)

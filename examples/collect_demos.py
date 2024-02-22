@@ -39,7 +39,7 @@ def run_experiment(cfg):
     # assert env._num_cameras > 0, "ERROR: camera(s) not connected!"
 
     with wrap_env_in_rlds_logger(
-        env, cfg.exp_id, data_dir, max_episodes_per_shard=1
+        env, cfg.exp_id, data_dir, max_episodes_per_shard=1 # cfg.episodes
     ) as rlds_env:
         for i in range(cfg.episodes):
             rlds_env.reset()

@@ -37,7 +37,7 @@ class ZedCamera:
             # depth_mode=sl.DEPTH_MODE.NEURAL,
             # coordinate_units=sl.UNIT.METER, # force milimeters
             depth_minimum_distance=0.1,
-            # depth_stabilization=False,
+            depth_stabilization=False,
             camera_resolution=sl.RESOLUTION.HD720,
             camera_fps=30,
             camera_image_flip=sl.FLIP_MODE.OFF,
@@ -48,8 +48,8 @@ class ZedCamera:
 
         self._extriniscs = {}
 
-        self.depth = True
-        self.pointcloud = True
+        self.depth = False
+        self.pointcloud = False
 
         self._configure_camera()
 
@@ -177,7 +177,7 @@ class ZedCamera:
         # 	# dict_3 = {'array': right_pointcloud, 'shape': right_pointcloud.shape, 'type': 'pointcloud',
         # 	# 'read_time': received_time, 'serial_number': self._serial_number + '/right'}
 
-        return [dict_1, dict_1_right, dict_2]
+        return [dict_1, dict_1_right]#, dict_2]
 
     def disable_camera(self):
         if hasattr(self, "_cam"):

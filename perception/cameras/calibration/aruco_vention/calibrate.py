@@ -33,6 +33,8 @@ for camera in multi_camera_wrapper._all_cameras:
     # camera frame -> aruco frame
     extrinsics_inv = np.linalg.inv(extrinsics)
     # aruco frame to center robot frame
+    
+    # right to the robot
     # x: marker size / 2 + white space on paper
     # y: table size / 2 - marker size / 2
     # aruco_offset = np.array([- (marker_size / 2), - 0.675 + (marker_size / 2) + 0.05, 0.0])
@@ -47,6 +49,16 @@ for camera in multi_camera_wrapper._all_cameras:
             0.0,
         ]
     )
+
+    # middle front of the table
+    aruco_offset = np.array(
+        [
+            0.55,
+            0.0,
+            0.0,
+        ]
+    )
+
     extrinsics_inv[:3, 3] += aruco_offset
 
     calib_dict.append(

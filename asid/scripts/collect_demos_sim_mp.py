@@ -20,7 +20,7 @@ from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
 
 @hydra.main(
-    config_path="../configs/", config_name="explore_rod_sim", version_base="1.1"
+    config_path="../configs/", config_name="collect_cube_sim", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -28,16 +28,35 @@ def run_experiment(cfg):
     os.makedirs(logdir, exist_ok=True)
 
     from asid.wrapper.asid_vec import make_env, make_vec_env
+    
+    cfg.robot.DoF = 6
+    cfg.robot.gripper = True
+    cfg.robot.on_screen_rendering = True
+    cfg.robot.max_path_length = 100
 
     cfg.env.flatten = False
+    cfg.env.obj_pos_noise = True
+
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
-        asid_cfg_dict=hydra_to_dict(cfg.asid),
         seed=cfg.seed,
         device_id=0,
     )
 
+    # for i in range(10):
+    #     time.sleep(2.)
+    #     success, imgs = collect_demo_pick_up(
+    #                 env,
+    #                 z_waypoints=[0.3, 0.2, 0.12],
+    #                 noise_std=[5e-2, 1e-2, 5e-3],
+    #                 render=True,
+    #                 verbose=True,
+    #             )
+    #     time.sleep(2.)
+
+    # imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
+    
     with wrap_env_in_rlds_logger(
         env, cfg.exp_id, logdir, max_episodes_per_shard=1
     ) as rlds_env:
@@ -66,10 +85,10 @@ def run_experiment(cfg):
                 rlds_env,
                 z_waypoints=[0.3, 0.2, 0.12],
                 noise_std=[5e-2, 1e-2, 5e-3],
-                render=False,
+                render=True,
             )
 
-            print(f"Recorded Trajectory {i}")
+            print(f"Recorded Trajectory {i}, success {success}")
 
     env.reset()
 

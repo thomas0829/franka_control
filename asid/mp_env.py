@@ -9,8 +9,10 @@ from asid.wrapper.asid_vec import make_env
 from utils.experiment import hydra_to_dict, set_random_seed
 from utils.transformations_mujoco import quat_to_euler_mujoco
 
+def compute_cartesian_error(ee_pose, target_pose):
+    return np.linalg.norm(ee_pose[:3] - target_pose[:3])
 
-def move_to_cartesian_pose(target_pose, env, error_thresh=5e-2):
+def move_to_cartesian_pose(target_pose, env, error_thresh, max_iter=50):
     ctr = 0
     while True:
         robot_state, _ = env.unwrapped._robot.get_robot_state()
@@ -20,10 +22,10 @@ def move_to_cartesian_pose(target_pose, env, error_thresh=5e-2):
             )
         )
         env.unwrapped._robot.update_joints(q_desired, blocking=True)
-        error = np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0] - target_pose[:3])
+        error = compute_cartesian_error(env.unwrapped._robot.get_ee_pose(), target_pose)
 
         ctr += 1
-        if error < error_thresh:
+        if error < error_thresh or ctr > max_iter:
             break
 
         print("iter", ctr, "error", error)
@@ -44,7 +46,7 @@ def move_to_cartesian_pose_delta(
     curr_iter = 0
     while True:
 
-        curr_pose = np.concatenate(env.unwrapped._robot.get_ee_pose())
+        curr_pose = env.unwrapped._robot.get_ee_pose()
 
         act = np.zeros(7)
         act[:6] = target_pose[:6] - curr_pose[:6]
@@ -58,7 +60,7 @@ def move_to_cartesian_pose_delta(
             imgs.append(env.render())
 
         curr_iter += 1
-        error = np.linalg.norm(env.unwrapped._robot.get_ee_pose()[0] - target_pose[:3])
+        error = compute_cartesian_error(env.unwrapped._robot.get_ee_pose(), target_pose)
         if verbose:
             print("iter", curr_iter, "error", error, "act", act)
 
@@ -75,7 +77,7 @@ def apply_noise(act, mean=0.0, std=1e-1):
 
 
 def collect_demo_pick_up(
-    env, z_waypoints=[0.3, 0.2, 0.12], noise_std=[5e-2, 1e-2, 5e-3], render=False
+    env, z_waypoints=[0.3, 0.2, 0.12], noise_std=[5e-2, 1e-2, 5e-3], error_thresh=5e-2, render=False, verbose=False,
 ):
     """
     Collect a "pick up the red block" demo
@@ -118,10 +120,10 @@ def collect_demo_pick_up(
             target_pose_noise,
             gripper,
             env,
-            max_iter=None,
-            error_thresh=5e-2,
+            error_thresh=error_thresh,
             noise_std=noise_std[0],
             render=render,
+            verbose=verbose,
         )
     )
 
@@ -134,9 +136,10 @@ def collect_demo_pick_up(
             target_pose_noise,
             gripper,
             env,
-            error_thresh=5e-2,
+            error_thresh=error_thresh,
             noise_std=noise_std[1],
             render=render,
+            verbose=verbose,
         )
     )
 
@@ -148,9 +151,10 @@ def collect_demo_pick_up(
             target_pose,
             gripper,
             env,
-            error_thresh=5e-2,
+            error_thresh=error_thresh,
             noise_std=noise_std[2],
             render=render,
+            verbose=verbose,
         )
     )
 
@@ -158,7 +162,7 @@ def collect_demo_pick_up(
     gripper = 1.0
     imgs.append(
         move_to_cartesian_pose_delta(
-            target_pose, gripper, env, max_iter=5, noise_std=noise_std[2], render=render
+            target_pose, gripper, env, max_iter=5, noise_std=noise_std[2], render=render,verbose=verbose,
         )
     )
 
@@ -171,9 +175,10 @@ def collect_demo_pick_up(
             target_pose,
             gripper,
             env,
-            error_thresh=5e-2,
+            error_thresh=error_thresh,
             noise_std=noise_std[1],
             render=render,
+            verbose=verbose,
         )
     )
 
@@ -185,9 +190,10 @@ def collect_demo_pick_up(
             target_pose,
             gripper,
             env,
-            error_thresh=5e-2,
+            error_thresh=error_thresh,
             noise_std=noise_std[0],
             render=render,
+            verbose=verbose,
         )
     )
 

@@ -189,16 +189,16 @@ def mat_to_quat_mujoco(mat):
 
 def quat_to_euler_mujoco(quat):
     """Convert Quaternion to Euler Angles.  See rotation.py for notes"""
-    return mat2euler(quat2mat(quat))
+    return mat_to_euler_mujoco(quat_to_mat_mujoco(quat))
 
 
 def subtract_euler_mujoco(e1, e2):
     assert e1.shape == e2.shape
     assert e1.shape[-1] == 3
-    q1 = euler2quat(e1)
-    q2 = euler2quat(e2)
-    q_diff = quat_mul(q1, quat_conjugate(q2))
-    return quat2euler(q_diff)
+    q1 = euler_to_quat_mujoco(e1)
+    q2 = euler_to_quat_mujoco(e2)
+    q_diff = quat_mul_mujoco(q1, quat_conjugate_mujoco(q2))
+    return quat_to_euler_mujoco(q_diff)
 
 
 def quat_to_mat_mujoco(quat):

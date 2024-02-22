@@ -51,8 +51,6 @@ class ZedCamera:
         self.depth = False
         self.pointcloud = False
 
-        self.crop = False
-
         self._configure_camera()
 
     def _configure_camera(self):
@@ -121,9 +119,6 @@ class ZedCamera:
         left_img = deepcopy(self._left_img.get_data())
         left_img = cv2.cvtColor(left_img, cv2.COLOR_BGR2RGB)
 
-        if self.crop:
-            left_img = left_img[:, 355:-205]
-
         dict_1 = {
             "array": left_img,
             "shape": left_img.shape,
@@ -149,9 +144,6 @@ class ZedCamera:
             self._cam.retrieve_measure(self._left_depth, sl.MEASURE.DEPTH)
 
             left_depth = deepcopy(self._left_depth.get_data())[..., None]
-
-            if self.crop:
-                left_depth = left_depth[:, 355:-205]
 
             dict_2 = {
                 "array": left_depth,

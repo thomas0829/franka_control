@@ -1,0 +1,67 @@
+# cuRobo
+from curobo.geom.sdf.world import CollisionCheckerType
+from curobo.types.base import TensorDeviceType
+from curobo.types.math import Pose
+from curobo.types.robot import JointState, RobotConfig
+from curobo.util_file import (
+    get_robot_configs_path,
+    get_world_configs_path,
+    join_path,
+    load_yaml,
+)
+from curobo.wrap.reacher.motion_gen import MotionGen, MotionGenConfig, MotionGenPlanConfig
+from curobo.cuda_robot_model.cuda_robot_model import CudaRobotModel, CudaRobotModelConfig
+
+import torch
+
+
+class MotionPlanner:
+
+    def __init__(
+        self,
+        device=None,
+        robot_file="franka.yml",
+        world_file="collision_table.yml",
+    ):
+        robot_file = join_path(get_robot_configs_path(), robot_file)
+        world_file = join_path(get_world_configs_path(), world_file)
+        self.device = device
+        self.tensor_args = TensorDeviceType(device=device)
+
+        # mod this later
+        self.interpolation_dt = 0.1
+        motion_gen_config = MotionGenConfig.load_from_robot_config(
+            robot_file,
+            world_file,
+            self.tensor_args,
+            interpolation_dt=self.interpolation_dt,
+        )
+        self.motion_gen = MotionGen(motion_gen_config)
+        self.motion_gen.warmup(enable_graph=True)
+
+        robot_cfg = load_yaml(join_path(get_robot_configs_path(), robot_file))["robot_cfg"]
+        robot_cfg = RobotConfig.from_dict(robot_cfg, self.tensor_args)
+        self.kin_model = CudaRobotModel(robot_cfg.kinematics)
+        
+        self.retract_cfg = self.motion_gen.get_retract_config()
+
+    def plan_motion(self, qpos, target_ee_pose, return_ee_pose=False):
+
+        start = JointState.from_position(
+            self.tensor_args.to_device([qpos]), self.retract_cfg.view(1, -1)
+        )
+        goal = Pose(
+            self.tensor_args.to_device([target_ee_pose[:3]]),
+            self.tensor_args.to_device([target_ee_pose[3:]]),
+        )
+
+        result = self.motion_gen.plan_single(start, goal, MotionGenPlanConfig(max_attempts=1))
+
+        traj = result.get_interpolated_plan()
+        print(f"Trajectory Generated: success {result.success.item()} | len {len(traj)} | optimized_dt {result.optimized_dt.item()}")
+
+        # replace joint position with ee pose
+        if return_ee_pose:
+            traj = self.kin_model.get_state(traj.position)
+
+        return traj

@@ -42,7 +42,8 @@ def run_experiment(cfg):
         env, cfg.exp_id, data_dir, max_episodes_per_shard=1 # cfg.episodes
     ) as rlds_env:
         for i in range(cfg.episodes):
-            rlds_env.reset()
+            # reset w/o recording obs
+            rlds_env.unwrapped.reset()
             print(f"Camera(s) Connected ({rlds_env.unwrapped._num_cameras})")
 
             print(f"Press 'A' to Start Collecting")
@@ -50,8 +51,8 @@ def run_experiment(cfg):
             while True:
                 info = oculus.get_info()
                 if info["success"]:
-                    # get obs after resetting scene
-                    obs = rlds_env.unwrapped.get_observation()
+                    # reset w/ recording obs after resetting the scene
+                    obs = rlds_env.reset()
                     break
 
             print(f"Press 'B' to Stop Collecting")

@@ -34,14 +34,22 @@
         <!-- modeled a cuboid (rod_body) with a cube (rod_com) that can be moved to shift center of mass -->
         <body name="rod_body" pos="0.4 0.3 0.02" quat="1 0 0 0">
             <freejoint name="rod_freejoint" />
-            <inertial pos="0 0 0" mass="0.2" diaginertia="1. 1. 1." />
-            <body name="rod_com" pos="0 0 0" quat="1 0 0 0">
-                <inertial pos="0 0 0" mass="0.1" diaginertia="1. 1. 1." />
-                <geom name="rod_geom_com" group="3" conaffinity="1" contype="1" condim="3"
+            <inertial pos="0 0 0" mass="0." diaginertia="1. 1. 1." />
+            
+            <!-- moveable weight inside the rod -->
+            <body name="rod_com" pos="0. -0.12 0.0" quat="1 0 0 0">
+                <inertial pos="0 0 0" mass="6.45" diaginertia="1. 1. 1." />
+                <geom name="rod_geom_com" conaffinity="1" contype="1" condim="3"
                     pos="0. 0 0" type="box" size="0.02 0.03 0.02" rgba="0 0 1 1" />
+                    <!-- group=3 -->
             </body>
-            <geom conaffinity="1" mass="0.1" contype="1" condim="3" name="rod_geom_0"
-                size="0.02 0.15 0.02" type="box" rgba="1 0 0 1" />
+
+            <!-- simulate contact force through multiple boxes, i.e., additional surface points -->
+            <geom name="rod_geom_1" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
+            <geom name="rod_geom_2" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
+            <geom name="rod_geom_3" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.0 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
+            <geom name="rod_geom_4" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. -0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
+            <geom name="rod_geom_5" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. -0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
         </body>
 
         <!-- franka's reachable workspace -->

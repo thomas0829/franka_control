@@ -120,7 +120,8 @@
                       <geom mesh="finger_0" material="off_white" class="visual" />
                       <geom mesh="finger_1" material="black" class="visual" />
                       <!-- https://github.com/google-deepmind/mujoco/issues/239 -->
-                      <geom class="collision" pos="0 0.012 0.033" type="box" size="0.01 0.012 0.02" />
+                      <geom class="collision" pos="0 0.009 0.033" type="box" size="0.01 0.007 0.02" />
+                      <!-- <geom class="collision" pos="0 0.012 0.033" type="box" size="0.01 0.012 0.02" /> -->
                       <!-- <geom mesh="finger_0" class="collision" /> -->
                       <!-- <geom class="fingertip_pad_collision_1" />
                       <geom class="fingertip_pad_collision_2" />
@@ -134,7 +135,8 @@
                       <geom mesh="finger_0" material="off_white" class="visual" />
                       <geom mesh="finger_1" material="black" class="visual" />
                       <!-- https://github.com/google-deepmind/mujoco/issues/239 -->
-                      <geom class="collision" pos="0. 0.012 0.033" type="box" size="0.01 0.012 0.02" />
+                      <geom class="collision" pos="0. 0.009 0.033" type="box" size="0.01 0.007 0.02" />
+                      <!-- <geom class="collision" pos="0. 0.012 0.033" type="box" size="0.01 0.012 0.02" /> -->
                       <!-- <geom mesh="finger_0" class="collision" /> -->
                       <!-- <geom class="fingertip_pad_collision_1" />
                       <geom class="fingertip_pad_collision_2" />

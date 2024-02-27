@@ -43,7 +43,9 @@ class ObjWrapper(gym.Wrapper):
         self.curr_obj_pose = None
 
         # Observations
-        self.obs_keys = obs_keys if obs_keys is not None else self.env.observation_space.keys()
+        self.obs_keys = (
+            obs_keys if obs_keys is not None else self.env.observation_space.keys()
+        )
         # obs space dict to array
         for k in copy.deepcopy(self.env.observation_space.keys()):
             if k not in self.obs_keys:
@@ -149,4 +151,12 @@ class ObjWrapper(gym.Wrapper):
         self.env._robot.data.qpos[self.obj_joint_id + 3 : self.obj_joint_id + 7] = qpos[
             3:
         ]
-        mujoco.mj_forward(self.env._robot.model, self.env._robot.data)
+        # could use mj_forward but physics parameters sometimes cause instabilities that move the object
+        # so we want to make sure the object comes to a hold, hence, mj_step
+
+        # mujoco.mj_forward(self.env._robot.model, self.env._robot.data)
+        mujoco.mj_step(
+            self.env._robot.model,
+            self.env._robot.data,
+            nstep=self.env.unwrapped._robot.frame_skip,
+        )

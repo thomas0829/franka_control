@@ -36,7 +36,7 @@ class ObjWrapper(gym.Wrapper):
             "x": {"min": 0.0, "max": 0.1},
             # "x": {"min": -0.1, "max": 0.1},
             "y": {"min": -0.1, "max": 0.1},
-            "yaw": {"min": 0.0, "max": 3.14},
+            "yaw": {"min": 0.0, "max": 1.57},
         }
         self.obj_pos_noise = obj_pos_noise
         self.init_obj_pose = self.get_obj_pose()

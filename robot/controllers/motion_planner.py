@@ -57,16 +57,44 @@ class MotionPlanner:
         robot_cfg = RobotConfig.from_dict(robot_cfg, self.tensor_args)
         self.kin_model = CudaRobotModel(robot_cfg.kinematics)
 
+        from curobo.geom.types import WorldConfig
+        world_cfg = WorldConfig.from_dict(load_yaml(join_path(get_world_configs_path(), world_file)))
+
+        from curobo.wrap.reacher.ik_solver import IKSolver, IKSolverConfig
+        ik_config = IKSolverConfig.load_from_robot_config(
+            robot_cfg,
+            world_cfg,
+            rotation_threshold=0.05,
+            position_threshold=0.005,
+            num_seeds=20,
+            self_collision_check=True,
+            self_collision_opt=True,
+            tensor_args=self.tensor_args,
+            use_cuda_graph=True,
+        )
+        self.ik_solver = IKSolver(ik_config)
+
         self.retract_cfg = self.motion_gen.get_retract_config()
 
-    def plan_motion(self, qpos, target_ee_pose, return_ee_pose=False):
+    def plan_motion(self, ee_pose, target_ee_pose, return_ee_pose=False):
 
-        start = JointState.from_position(
-            self.tensor_args.to_device([qpos]), self.retract_cfg.view(1, -1)
+        start = Pose(
+            self.tensor_args.to_device([ee_pose[:3]]),
+            self.tensor_args.to_device([ee_pose[3:]]),
+            normalize_rotation=False
         )
+
+        result = self.ik_solver.solve_single(start)
+        qpos = result.solution[0]
+        start = JointState.from_position(
+            qpos, self.kin_model.joint_names
+            # self.tensor_args.to_device([qpos]), self.kin_model.joint_names
+        )
+
         goal = Pose(
             self.tensor_args.to_device([target_ee_pose[:3]]),
             self.tensor_args.to_device([target_ee_pose[3:]]),
+            normalize_rotation=False
         )
 
         result = self.motion_gen.plan_single(

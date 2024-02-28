@@ -37,13 +37,15 @@ def move_to_target(env, motion_planner, target_pose):
 )
 def run_experiment(cfg):
 
-    # cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_19_12_42_25.json"
-    # cfg.robot.camera_model = "realsense"
+    # real
+    cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_27_16_28_52.json"
+    cfg.robot.camera_model = "realsense"
 
+    # sim
+    # cfg.robot.on_screen_rendering = False
+    # cfg.env.obj_pos_noise = True
+    
     cfg.robot.gripper = True
-    cfg.robot.on_screen_rendering = True
-
-    cfg.env.obj_pos_noise = True
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
@@ -53,41 +55,41 @@ def run_experiment(cfg):
         verbose=False,
     )
 
-    motion_planner = MotionPlanner(interpolation_dt=0.1, device=torch.device("cuda:0"))
+    tracker = ColorTracker(outlier_removal=False)
+    tracker.reset()
+    # define workspace
+    crop_min = [0.0, -0.6, -0.1]
+    crop_max = [0.7, 0.6, 0.5]
 
-    # tracker = ColorTracker(outlier_removal=False)
-    # tracker.reset()
-    # # define workspace
-    # crop_min = [0.0, -0.6, -0.1]
-    # crop_max = [0.7, 0.6, 0.5]
+    obs = env.reset()
 
-    # obs = env.reset()
+    imgs = []
+    actions = np.ones(env.action_shape)
 
-    # imgs = []
-    # actions = np.ones(env.action_shape)
+    # run for 25 steps to eliminate realsense noise or get filtered estimate
+    for i in range(25):
+        obs_dict = env.get_images_and_points()
+        rgbs, points = [], []
+        for key in obs_dict.keys():
+            rgbs.append(obs_dict[key]["rgb"])
+            points.append(obs_dict[key]["points"])
+        tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
+        cropped_points = crop_points(
+            tracked_points, crop_min=crop_min, crop_max=crop_max
+        )
 
-    # # run for 25 steps to eliminate realsense noise or get filtered estimate
-    # for i in range(25):
-    #     obs_dict = env.get_images_and_points()
-    #     rgbs, points = [], []
-    #     for key in obs_dict.keys():
-    #         rgbs.append(obs_dict[key]["rgb"])
-    #         points.append(obs_dict[key]["points"])
-    #     tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
-    #     cropped_points = crop_points(
-    #         tracked_points, crop_min=crop_min, crop_max=crop_max
-    #     )
-
-    #     rod_pose = tracker.get_rod_pose(
-    #         cropped_points,
-    #         lowpass_filter=False,
-    #         cutoff_freq=1,
-    #         control_hz=cfg.robot.control_hz,
-    #         show=False,
-    #     )
-    #     time.sleep(0.1)
+        rod_pose = tracker.get_rod_pose(
+            cropped_points,
+            lowpass_filter=False,
+            cutoff_freq=1,
+            control_hz=cfg.robot.control_hz,
+            show=False,
+        )
+        time.sleep(0.1)
 
     env.reset()
+
+    motion_planner = MotionPlanner(interpolation_dt=0.1, device=torch.device("cuda:0"))
 
     # get rod pose
     rod_pose = env.get_obj_pose()

@@ -5,8 +5,9 @@ import time
 import grpc
 import numpy as np
 import torch
-from polymetis import GripperInterface, RobotInterface
-from torchcontrol.policies import JointImpedanceControl
+# from polymetis import GripperInterface, RobotInterface
+# from torchcontrol.policies import JointImpedanceControl
+from robot.real.robot_interface import RobotInterface
 
 from robot.controllers.utils import generate_joint_space_min_jerk
 from robot.franka_base import FrankaBase
@@ -45,13 +46,12 @@ class FrankaHardware(FrankaBase):
         self.update_joints(self._robot.home_pose, velocity=False, blocking=True)
 
     def launch_robot(self, ip_address, gripper=True):
-        self._robot = RobotInterface(ip_address=ip_address)
-        self._gripper = None
-        # if gripper:
-        # TODO deal w/ no gripperin real
-        self._gripper = GripperInterface(ip_address=ip_address)
-        self._max_gripper_width = self._gripper.metadata.max_width
-
+        # self._robot = RobotInterface(ip_address=ip_address)
+        # self._gripper = GripperInterface(ip_address=ip_address)
+        # self._max_gripper_width = self._gripper.metadata.max_width
+            
+        self._robot = RobotInterface()
+    
     def _start_custom_controller(self):
 
         self.policy = JointImpedanceControl(
@@ -66,6 +66,9 @@ class FrankaHardware(FrankaBase):
     def update_joints(
         self, command, velocity=False, blocking=False, cartesian_noise=None
     ):
+        self._robot.update_joints(self, command, velocity=False, blocking=False, cartesian_noise=None)
+        return
+    
         if cartesian_noise is not None:
             command = self.add_noise_to_joints(command, cartesian_noise)
         command = torch.Tensor(command)
@@ -117,6 +120,10 @@ class FrankaHardware(FrankaBase):
         udpate_pkt = {}
 
         if joint_pos_desired is not None:
+
+            self._robot.update_joints(self, joint_pos_desired, velocity=False, blocking=False, cartesian_noise=None)
+            return
+        
             udpate_pkt["joint_pos_desired"] = (
                 joint_pos_desired
                 if torch.is_tensor(joint_pos_desired)
@@ -159,6 +166,9 @@ class FrankaHardware(FrankaBase):
         )
 
     def update_gripper(self, command, velocity=True, blocking=False):
+        self._robot.update_gripper(command, velocity=True, blocking=False)
+        return
+    
         if velocity:
             gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)
             command = gripper_delta + self.get_gripper_position()
@@ -207,18 +217,23 @@ class FrankaHardware(FrankaBase):
         return desired_joints.tolist()
 
     def get_joint_positions(self):
+        return self._robot.get_joint_positions()
         return self._robot.get_joint_positions().tolist()
 
     def get_joint_velocities(self):
+        return self._robot.get_joint_velocities()
         return self._robot.get_joint_velocities().tolist()
 
     def get_gripper_position(self):
+        return self._robot.get_gripper_position()
         if self._gripper:
             return 1 - (self._gripper.get_state().width / self._max_gripper_width)
         else:
             return 0.0
 
     def get_ee_pose(self):
+        return self._robot.get_ee_pose()
+
         pos, quat = self._robot.get_ee_pose()
         angle = quat_to_euler(quat.numpy())
         return np.concatenate([pos, angle])
@@ -236,6 +251,8 @@ class FrankaHardware(FrankaBase):
             return 0.0
 
     def get_robot_state(self):
+        return self._robot.get_robot_state()
+    
         robot_state = self._robot.get_robot_state()
         gripper_position = self.get_gripper_position()
         pos, quat = self._robot.robot_model.forward_kinematics(

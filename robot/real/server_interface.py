@@ -58,6 +58,9 @@ class ServerInterface:
             cartesian_noise = cartesian_noise.tolist()
         self.server.update_joints(command, velocity, blocking, cartesian_noise)
 
+    def move_to_joint_positions(self, command):
+        self.server.move_to_joint_positions(command)
+
     def update_gripper(self, command, velocity=True, blocking=False):
         self.server.update_gripper(command, velocity, blocking)
 

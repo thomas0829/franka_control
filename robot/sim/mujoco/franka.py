@@ -207,7 +207,6 @@ class MujocoManipulatorEnv(FrankaBase):
         self._max_gripper_width = 0.08
 
         if self.torque_control:
-            # self.model.dof_damping[self.franka_joint_ids] = self.joint_damping * 100
             self.model.actuator_ctrlrange[self.franka_joint_ids] = np.array(
                 [self.joint_limits_low, self.joint_limits_high]
             ).T
@@ -669,10 +668,16 @@ class MujocoManipulatorEnv(FrankaBase):
                 self.apply_joint_torques(torques)
         elif "joint_pos_desired" in udpate_pkt:
             # WARNING: actuator must be general or position
-            self.data.ctrl[: len(self.franka_joint_ids)] = udpate_pkt[
-                "joint_pos_desired"
-            ]
+
+            # # set position -> sim only has to be stepped once
+            self.data.qpos[self.franka_joint_ids] = udpate_pkt["joint_pos_desired"]
             mujoco.mj_step(self.model, self.data)
+
+            # # WARNING: actuator must be general or position
+            # self.data.ctrl[: len(self.franka_joint_ids)] = udpate_pkt[
+            #     "joint_pos_desired"
+            # ]
+            # mujoco.mj_step(self.model, self.data)
 
     def move_to_joint_positions(self, joint_pos_desired=None, time_to_go=3):
         # fast reset for simulation -> jump to joint positions

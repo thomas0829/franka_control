@@ -12,18 +12,38 @@ from perception.trackers.color_tracker import ColorTracker
 from robot.robot_env import RobotEnv
 from utils.pointclouds import crop_points
 from utils.transformations import euler_to_rmat, quat_to_euler
+from utils.transformations_mujoco import *
 
 from asid.wrapper.asid_vec import make_env, make_vec_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
+from asid.scripts.collect_demos_sim_curobo import *
 
+def move_to_target(env, motion_planner, target_pose):
+
+    start = env.unwrapped._robot.get_ee_pose()
+    start = np.concatenate((start[:3], euler_to_quat_mujoco(start[3:])))
+
+    # IMPORTANT: flip yaw angle mujoco to curobo!
+    start[5] = -start[5]
+    goal = np.concatenate((target_pose[:3], euler_to_quat_mujoco(target_pose[3:6])))
+    qpos_plan = motion_planner.plan_motion(start, goal, return_ee_pose=False)
+    for i in range(len(qpos_plan)):
+        env.unwrapped._robot.move_to_joint_positions(qpos_plan[i].position.cpu().numpy())
+        env.render()
+        
 @hydra.main(
-    config_path="configs/", config_name="collect_rod_real", version_base="1.1"
+    config_path="configs/", config_name="collect_rod_sim", version_base="1.1"
 )
 def run_experiment(cfg):
 
-    cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_19_12_42_25.json"
-    cfg.robot.camera_model = "realsense"
+    # cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_19_12_42_25.json"
+    # cfg.robot.camera_model = "realsense"
+
+    cfg.robot.gripper = True
+    cfg.robot.on_screen_rendering = True
+
+    cfg.env.obj_pos_noise = True
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
@@ -33,139 +53,121 @@ def run_experiment(cfg):
         verbose=False,
     )
 
-    tracker = ColorTracker(outlier_removal=False)
-    tracker.reset()
-    # define workspace
-    crop_min = [0.0, -0.6, -0.1]
-    crop_max = [0.7, 0.6, 0.5]
+    motion_planner = MotionPlanner(interpolation_dt=0.1, device=torch.device("cuda:0"))
 
-    obs = env.reset()
+    # tracker = ColorTracker(outlier_removal=False)
+    # tracker.reset()
+    # # define workspace
+    # crop_min = [0.0, -0.6, -0.1]
+    # crop_max = [0.7, 0.6, 0.5]
 
-    # # MOVE ABOVE TOOL
-    # target_pose = torch.tensor(
-    #     [0.49, 0.34, 0.2079993, -3.14152481, -0.04132315, -0.81102356]
-    # )
-    # target_pose[3:] = torch.tensor(env._default_angle)
-    # target_pose[2] = 0.23
-    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
+    # obs = env.reset()
 
-    # # MOVE DOWN
-    # target_pose[2] = 0.20
-    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
+    # imgs = []
+    # actions = np.ones(env.action_shape)
 
-    # # MOVE DOWN
-    # target_pose[2] = 0.19
-    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
+    # # run for 25 steps to eliminate realsense noise or get filtered estimate
+    # for i in range(25):
+    #     obs_dict = env.get_images_and_points()
+    #     rgbs, points = [], []
+    #     for key in obs_dict.keys():
+    #         rgbs.append(obs_dict[key]["rgb"])
+    #         points.append(obs_dict[key]["points"])
+    #     tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
+    #     cropped_points = crop_points(
+    #         tracked_points, crop_min=crop_min, crop_max=crop_max
+    #     )
 
-    # # GRASP
+    #     rod_pose = tracker.get_rod_pose(
+    #         cropped_points,
+    #         lowpass_filter=False,
+    #         cutoff_freq=1,
+    #         control_hz=cfg.robot.control_hz,
+    #         show=False,
+    #     )
+    #     time.sleep(0.1)
+
+    env.reset()
+
+    # get rod pose
+    rod_pose = env.get_obj_pose()
+    target_pos = rod_pose[:3]
+
+    # convert euler to mujoco quat
+    target_orn = quat_to_euler_mujoco(rod_pose[3:])
+    init_rod_pitch = target_orn[0]
+    init_rod_yaw = target_orn[2]
+
+    # up right ee
+    target_orn[0] -= np.pi
+
+    # align pose -> grasp pose
+    target_orn[2] += np.pi / 2 
+
+    # IMPORTANT: flip yaw angle mujoco to curobo!
+    target_orn[2] = -target_orn[2]
+
+    # gripper is symmetric
+    if target_orn[2] > np.pi / 2:
+        target_orn[2] -= np.pi
+    if target_orn[2] < -np.pi / 2:
+        target_orn[2] += np.pi
+
+    # Set grasp target to center of mass
+    com = -0.1
+    target_pos[0] -= com * np.sin(init_rod_yaw)
+    target_pos[1] += com * np.cos(init_rod_yaw)
+
+
+    # MOVE ABOVE
+    target_pos[2] += 0.2
+    move_to_target(env, motion_planner, np.concatenate((target_pos, target_orn)))
+
+    # MOVE DOWN
+    target_pos[2] = 0.17
+    move_to_target(env, motion_planner, np.concatenate((target_pos, target_orn)))
+
+    # MOVE UP
+    target_pos[2] = 0.3
+    move_to_target(env, motion_planner, np.concatenate((target_pos, target_orn)))
+
+    # PICK
     # env.unwrapped._robot.update_gripper(1.0, velocity=False, blocking=True)
+    # imgs.append(env.render())
+    move_to_target(env, motion_planner, target_pose)
+
+    # MOVE UP
+    target_pose[2] = 0.3
+    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
+    # imgs.append(env.render())
+    move_to_target(env, motion_planner, target_pose)
+
+    # # MOVE TO YELLOW BLOCK
+    # target_pose = torch.tensor(
+    #     [0.28793925, -0.35449123, 0.12003776, 3.07100117, 0.01574947, -0.80526758]
+    #     # [0.28867856, -0.40134683, 0.11756707, 3.13773595, 0.0078624, -0.70369389]
+    # )
+    # target_pose[2] = 0.3
+    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
+    # imgs.append(env.render())
+
+    # # MOVE DOWN + yellow block height + margin
+    # target_pose[2] = 0.12 + 0.05 + 0.02
+    # env.unwrapped._robot.update_pose(target_pose, blocking=True)
+    # imgs.append(env.render())
+
+    # # DROP
+    # env.unwrapped._robot.update_gripper(0.0, velocity=False, blocking=True)
+    # imgs.append(env.render())
 
     # # MOVE UP
     # target_pose[2] = 0.3
     # env.unwrapped._robot.update_pose(target_pose, blocking=True)
-
-    imgs = []
-    actions = np.ones(env.action_shape)
-
-    # run for 25 steps to eliminate realsense noise or get filtered estimate
-    for i in range(25):
-        obs_dict = env.get_images_and_points()
-        rgbs, points = [], []
-        for key in obs_dict.keys():
-            rgbs.append(obs_dict[key]["rgb"])
-            points.append(obs_dict[key]["points"])
-        tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
-        cropped_points = crop_points(
-            tracked_points, crop_min=crop_min, crop_max=crop_max
-        )
-
-        rod_pose = tracker.get_rod_pose(
-            cropped_points,
-            lowpass_filter=False,
-            cutoff_freq=1,
-            control_hz=cfg.robot.control_hz,
-            show=False,
-        )
-        time.sleep(0.1)
-
-    rod_angle = quat_to_euler(rod_pose[3:]).copy()
-    print(env.unwrapped._robot.get_ee_angle(), rod_angle)
-
-    # MOVE ABOVE ROD
-    target_pose = rod_pose.copy()
-    # set fixed height
-    target_pose[2] = 0.4
-    # set rod z angle + z offset for franka EE
-    target_pose[3:6] = rod_angle
-    target_pose[5] += np.pi / 4
-    # overwrite x,y angle w/ gripper default
-    target_pose[3:5] = env.unwrapped._default_angle[:2]
-    # set dummy gripper
-    target_pose[-1] = 0
-
-    # get rotation matrix from rod angle
-    rod_angle_z = np.zeros(3)
-    rod_angle_z[2] = rod_angle[2]
-    rmat = euler_to_rmat(rod_angle_z)
-    # transform rod pos to origin
-    rod_pos_origin = target_pose[:3] @ np.linalg.inv(rmat)
-    # add displacement
-    # lenght of rod = 0.15 | +/- 0.07
-    # + away from robot, - towards robot
-    rod_pos_origin[0] += +0.08
-    # transform back
-    rod_pos_new = rod_pos_origin @ rmat
-    # overwrite x,y
-    target_pose[:2] = rod_pos_new[:2]
-
-    env.unwrapped._robot.update_pose(target_pose, blocking=True)
-    imgs.append(env.render())
-
-    # MOVE DOWN ABOVE
-    target_pose[2] = 0.17
-    env.unwrapped._robot.update_pose(target_pose, blocking=True)
-    imgs.append(env.render())
-
-    # MOVE DOWN
-    target_pose[2] = 0.12
-    env.unwrapped._robot.update_pose(target_pose, blocking=True)
-    imgs.append(env.render())
-
-    # PICK
-    env.unwrapped._robot.update_gripper(1.0, velocity=False, blocking=True)
-    imgs.append(env.render())
-
-    # MOVE UP
-    target_pose[2] = 0.3
-    env.unwrapped._robot.update_pose(target_pose, blocking=True)
-    imgs.append(env.render())
-
-    # MOVE TO YELLOW BLOCK
-    target_pose = torch.tensor(
-        [0.28793925, -0.35449123, 0.12003776, 3.07100117, 0.01574947, -0.80526758]
-        # [0.28867856, -0.40134683, 0.11756707, 3.13773595, 0.0078624, -0.70369389]
-    )
-    target_pose[2] = 0.3
-    env.unwrapped._robot.update_pose(target_pose, blocking=True)
-    imgs.append(env.render())
-
-    # MOVE DOWN + yellow block height + margin
-    target_pose[2] = 0.12 + 0.05 + 0.02
-    env.unwrapped._robot.update_pose(target_pose, blocking=True)
-    imgs.append(env.render())
-
-    # DROP
-    env.unwrapped._robot.update_gripper(0.0, velocity=False, blocking=True)
-    imgs.append(env.render())
-
-    # MOVE UP
-    target_pose[2] = 0.3
-    env.unwrapped._robot.update_pose(target_pose, blocking=True)
-    imgs.append(env.render())
+    # imgs.append(env.render())
 
     env.reset()
 
-    imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
+    # imageio.mimsave("test_rollout.gif", np.stack(imgs), duration=3)
 
 
 if __name__ == "__main__":

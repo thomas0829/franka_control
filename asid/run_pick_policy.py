@@ -25,25 +25,33 @@ def move_to_target(env, motion_planner, target_pose):
     start = np.concatenate((start[:3], euler_to_quat_mujoco(start[3:])))
 
     # IMPORTANT: flip yaw angle mujoco to curobo!
-    start[5] = -start[5]
+    if env.unwrapped.sim:
+        start[5] = -start[5]
     goal = np.concatenate((target_pose[:3], euler_to_quat_mujoco(target_pose[3:6])))
     qpos_plan = motion_planner.plan_motion(start, goal, return_ee_pose=False)
     for i in range(len(qpos_plan)):
-        env.unwrapped._robot.move_to_joint_positions(qpos_plan[i].position.cpu().numpy())
+        # real -> but slow
+        # env.unwrapped._robot.update_joints(qpos_plan[i].position.cpu().numpy().tolist(), velocity=False, blocking=True)
+        if env.unwrapped.sim:
+            env.unwrapped._robot.move_to_joint_positions(qpos_plan[i].position.cpu().numpy())
+        # env.unwrapped._robot.update_desired_joint_positions(qpos_plan[i].position.cpu().tolist())
+        # time.sleep(0.1)
         env.render()
         
 @hydra.main(
-    config_path="configs/", config_name="collect_rod_sim", version_base="1.1"
+    config_path="configs/", config_name="collect_rod_real", version_base="1.1"
 )
 def run_experiment(cfg):
 
-    # cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_19_12_42_25.json"
+    # real
+    # cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_27_16_28_52.json"
     # cfg.robot.camera_model = "realsense"
 
+    # sim
+    # cfg.robot.on_screen_rendering = False
+    # cfg.env.obj_pos_noise = True
+    
     cfg.robot.gripper = True
-    cfg.robot.on_screen_rendering = True
-
-    cfg.env.obj_pos_noise = True
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
@@ -53,53 +61,56 @@ def run_experiment(cfg):
         verbose=False,
     )
 
-    motion_planner = MotionPlanner(interpolation_dt=0.1, device=torch.device("cuda:0"))
+    tracker = ColorTracker(outlier_removal=False)
+    tracker.reset()
+    # define workspace
+    crop_min = [0.0, -0.6, -0.1]
+    crop_max = [0.7, 0.6, 0.5]
 
-    # tracker = ColorTracker(outlier_removal=False)
-    # tracker.reset()
-    # # define workspace
-    # crop_min = [0.0, -0.6, -0.1]
-    # crop_max = [0.7, 0.6, 0.5]
+    obs = env.reset()
 
-    # obs = env.reset()
+    imgs = []
+    actions = np.ones(env.action_shape)
 
-    # imgs = []
-    # actions = np.ones(env.action_shape)
+    # run for 25 steps to eliminate realsense noise or get filtered estimate
+    for i in range(25):
+        obs_dict = env.get_images_and_points()
+        rgbs, points = [], []
+        for key in obs_dict.keys():
+            rgbs.append(obs_dict[key]["rgb"])
+            points.append(obs_dict[key]["points"])
+        tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
+        cropped_points = crop_points(
+            tracked_points, crop_min=crop_min, crop_max=crop_max
+        )
 
-    # # run for 25 steps to eliminate realsense noise or get filtered estimate
-    # for i in range(25):
-    #     obs_dict = env.get_images_and_points()
-    #     rgbs, points = [], []
-    #     for key in obs_dict.keys():
-    #         rgbs.append(obs_dict[key]["rgb"])
-    #         points.append(obs_dict[key]["points"])
-    #     tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
-    #     cropped_points = crop_points(
-    #         tracked_points, crop_min=crop_min, crop_max=crop_max
-    #     )
+        rod_pose = tracker.get_rod_pose(
+            cropped_points,
+            lowpass_filter=False,
+            cutoff_freq=1,
+            control_hz=cfg.robot.control_hz,
+            show=False,
+        )
+        time.sleep(0.1)
 
-    #     rod_pose = tracker.get_rod_pose(
-    #         cropped_points,
-    #         lowpass_filter=False,
-    #         cutoff_freq=1,
-    #         control_hz=cfg.robot.control_hz,
-    #         show=False,
-    #     )
-    #     time.sleep(0.1)
+    motion_planner = MotionPlanner(interpolation_dt=0.3, device=torch.device("cuda:0"))
 
     env.reset()
-
+    
     # get rod pose
     rod_pose = env.get_obj_pose()
     target_pos = rod_pose[:3]
 
     # convert euler to mujoco quat
-    target_orn = quat_to_euler_mujoco(rod_pose[3:])
+    if env.unwrapped.sim:
+        target_orn = quat_to_euler_mujoco(rod_pose[3:])
+    else:
+        target_orn = quat_to_euler(rod_pose[3:])
     init_rod_pitch = target_orn[0]
     init_rod_yaw = target_orn[2]
 
     # up right ee
-    target_orn[0] -= np.pi
+    target_orn[:1] = env.unwrapped._default_angle[:1]
 
     # align pose -> grasp pose
     target_orn[2] += np.pi / 2 

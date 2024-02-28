@@ -22,8 +22,8 @@ ip_address: null
 max_path_length: 20
 # camera type to use: 'realsense' 'zed'
 camera_model: null
-camera_resolution: null  # (128 128) -> HxW
-calibration_file: "perception/cameras/calibration/logs/default.json"
+camera_resolution: [480, 640]  # (128 128) -> HxW
+calibration_file: "perception/cameras/calibration/logs/aruco/most_recent_calib.json"
 # Mujoco: model name
 model_name: "base_franka"
 on_screen_rendering: false

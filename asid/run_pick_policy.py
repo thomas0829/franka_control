@@ -29,11 +29,13 @@ def move_to_target(env, motion_planner, target_pose):
     goal = np.concatenate((target_pose[:3], euler_to_quat_mujoco(target_pose[3:6])))
     qpos_plan = motion_planner.plan_motion(start, goal, return_ee_pose=False)
     for i in range(len(qpos_plan)):
-        env.unwrapped._robot.move_to_joint_positions(qpos_plan[i].position.cpu().numpy())
+        env.unwrapped._robot.update_joints(qpos_plan[i].position.cpu().numpy().tolist(), velocity=False, blocking=True)
+        # if env.unwrapped.sim:
+        #     env.unwrapped._robot.move_to_joint_positions(qpos_plan[i].position.cpu().numpy())
         env.render()
         
 @hydra.main(
-    config_path="configs/", config_name="collect_rod_sim", version_base="1.1"
+    config_path="configs/", config_name="collect_rod_real", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -87,16 +89,19 @@ def run_experiment(cfg):
         )
         time.sleep(0.1)
 
-    env.reset()
-
     motion_planner = MotionPlanner(interpolation_dt=0.1, device=torch.device("cuda:0"))
 
+    env.reset()
+    
     # get rod pose
     rod_pose = env.get_obj_pose()
     target_pos = rod_pose[:3]
 
     # convert euler to mujoco quat
-    target_orn = quat_to_euler_mujoco(rod_pose[3:])
+    if env.unwrapped.sim:
+        target_orn = quat_to_euler_mujoco(rod_pose[3:])
+    else:
+        target_orn = quat_to_euler(rod_pose[3:])
     init_rod_pitch = target_orn[0]
     init_rod_yaw = target_orn[2]
 

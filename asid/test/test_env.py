@@ -12,7 +12,7 @@ from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 def run_experiment(cfg):
 
     # cfg.robot.DoF = 6
-    # cfg.robot.on_screen_rendering = True
+    cfg.robot.on_screen_rendering = True
     # cfg.robot.gripper = False
     # # cfg.robot.ip_address = "172.16.0.1"
     # # cfg.robot.camera_model = "zed"
@@ -23,7 +23,7 @@ def run_experiment(cfg):
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
-        # asid_cfg_dict=hydra_to_dict(cfg.asid),
+        asid_cfg_dict=hydra_to_dict(cfg.asid),
         seed=cfg.seed,
         device_id=0,
         verbose=True,
@@ -38,9 +38,13 @@ def run_experiment(cfg):
     for i in range(15):
         env.seed(i)
         env.reset()
-        for i in range(2):
-            obs, reward, done, info = env.step(env.action_space.sample())
-            # time.sleep(0.1)
+        for i in range(20):
+            # obs, reward, done, info = env.step(env.action_space.sample())
+            # obs, reward, done, info = env.step(np.array([0.3, 0.]))
+            obs, reward, done, info = env.step(np.array([0., 0.]))
+            print(reward)
+            env.render()
+            time.sleep(0.1)
             # env.render()
         # print(reward, env.get_parameters(), env.unwrapped._robot.get_ee_pos())
         # obs, reward, done, info = env.step(np.array([0.3, 0., 1.]))

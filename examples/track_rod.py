@@ -22,18 +22,21 @@ def run_experiment(cfg):
 
     # cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_19_12_42_25.json"
     # cfg.robot.camera_model = "realsense"
+    
+    verbose = False
+    
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         seed=cfg.seed,
         device_id=0,
-        verbose=True,
+        verbose=verbose,
     )
 
-    tracker = ColorTracker(outlier_removal=True)
-
+    tracker = ColorTracker(outlier_removal=False)
+    
     # define workspace
-    crop_min = [0.0, -0.4, -0.1]
-    crop_max = [0.5, 0.4, 0.5]
+    crop_min = [0.0, -0.6, -0.1]
+    crop_max = [0.7, 0.6, 0.5]
 
     rod_poses_raw = []
     rod_poses_filter = []
@@ -47,7 +50,7 @@ def run_experiment(cfg):
             points.append(obs_dict[key]["points"])
 
         # track points
-        tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
+        tracked_points = tracker.track_multiview(rgbs, points, color="red", show=verbose)
         # crop to workspace
         cropped_points = crop_points(
             tracked_points, crop_min=crop_min, crop_max=crop_max
@@ -55,7 +58,7 @@ def run_experiment(cfg):
 
         # compare raw and filtered rod pose
         rod_poses_raw.append(
-            tracker.get_rod_pose(cropped_points, lowpass_filter=False, show=False)
+            tracker.get_rod_pose(cropped_points, lowpass_filter=False, show=verbose)
         )
         rod_poses_filter.append(
             tracker.get_rod_pose(

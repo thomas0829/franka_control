@@ -98,6 +98,10 @@ json.dump(
     calib_dict,
     open(f"perception/cameras/calibration/logs/aruco/{current_time_date}.json", "w"),
 )
+json.dump(
+    calib_dict,
+    open(f"perception/cameras/calibration/logs/aruco/most_recent_calib.json", "w"),
+)
 
 x = np.zeros((1, 3))
 for d in np.arange(0, 1, 0.1):

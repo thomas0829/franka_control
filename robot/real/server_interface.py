@@ -43,20 +43,20 @@ class ServerInterface:
         self.server.kill_controller()
 
     def update_command(self, command, action_space="cartesian_velocity", blocking=False):
-        action_dict = self.server.update_command(command.tolist(), action_space, blocking)
+        action_dict = self.server.update_command(command, action_space, blocking)
         return action_dict
 
     def create_action_dict(self, command, action_space="cartesian_velocity"):
-        action_dict = self.server.create_action_dict(command.tolist(), action_space)
+        action_dict = self.server.create_action_dict(command, action_space)
         return action_dict
 
     def update_pose(self, command, velocity=True, blocking=False):
-        self.server.update_pose(command.tolist(), velocity, blocking)
+        self.server.update_pose(command, velocity, blocking)
 
     def update_joints(self, command, velocity=True, blocking=False, cartesian_noise=None):
         if cartesian_noise is not None:
             cartesian_noise = cartesian_noise.tolist()
-        self.server.update_joints(command.tolist(), velocity, blocking, cartesian_noise)
+        self.server.update_joints(command, velocity, blocking, cartesian_noise)
 
     def update_gripper(self, command, velocity=True, blocking=False):
         self.server.update_gripper(command, velocity, blocking)

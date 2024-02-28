@@ -11,9 +11,9 @@ from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 @hydra.main(config_path="../configs/", config_name="explore_rod_sim", version_base="1.1")
 def run_experiment(cfg):
 
-    # cfg.robot.DoF = 6
+    cfg.robot.DoF = 6
     # cfg.robot.on_screen_rendering = True
-    # cfg.robot.gripper = False
+    cfg.robot.gripper = True
     # # cfg.robot.ip_address = "172.16.0.1"
     # # cfg.robot.camera_model = "zed"
 
@@ -26,7 +26,7 @@ def run_experiment(cfg):
         # asid_cfg_dict=hydra_to_dict(cfg.asid),
         seed=cfg.seed,
         device_id=0,
-        verbose=True,
+        verbose=False,
     )
 
     # env.set_parameters(np.array([0., 1.]))
@@ -34,12 +34,13 @@ def run_experiment(cfg):
     # import joblib
     # joblib.dump(env.unwrapped.get_images_and_points(), "points_sim")
 
-    start = time.time()
     for i in range(15):
         env.seed(i)
         env.reset()
-        for i in range(2):
+        for i in range(10):
+            start = time.time()
             obs, reward, done, info = env.step(env.action_space.sample())
+            print(time.time() - start)
             # time.sleep(0.1)
             # env.render()
         # print(reward, env.get_parameters(), env.unwrapped._robot.get_ee_pos())
@@ -48,7 +49,7 @@ def run_experiment(cfg):
         # time.sleep(0.3)
         # print(env.unwrapped._robot.get_ee_pos(), env.get_obj_pose()[:3], reward)
         # env.render()
-    print(time.time() - start)
+    
 
 
 if __name__ == "__main__":

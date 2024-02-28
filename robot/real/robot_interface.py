@@ -5,12 +5,11 @@ import time
 import grpc
 import numpy as np
 import torch
-from polymetis import GripperInterface, RobotInterface
 
 from r2d2.misc.subprocess_utils import run_terminal_command, run_threaded_command
 
 
-class RobotInterface:
+class RobotInterfaceServer:
     def __init__(self, ip_address=""):
         self.launch_robot()
 
@@ -37,6 +36,8 @@ class RobotInterface:
         time.sleep(5)
 
     def launch_robot(self):
+        from polymetis import GripperInterface, RobotInterface
+        
         self._robot = RobotInterface(ip_address="localhost")
         self._gripper = GripperInterface(ip_address="localhost")
         self._max_gripper_width = self._gripper.metadata.max_width

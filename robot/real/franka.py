@@ -7,7 +7,7 @@ import numpy as np
 import torch
 # from polymetis import GripperInterface, RobotInterface
 # from torchcontrol.policies import JointImpedanceControl
-from robot.real.robot_interface import RobotInterface
+from robot.real.server_interface import ServerInterface
 
 from robot.controllers.utils import generate_joint_space_min_jerk
 from robot.franka_base import FrankaBase
@@ -50,7 +50,7 @@ class FrankaHardware(FrankaBase):
         # self._gripper = GripperInterface(ip_address=ip_address)
         # self._max_gripper_width = self._gripper.metadata.max_width
             
-        self._robot = RobotInterface()
+        self._robot = ServerInterface(ip_address=ip_address)
     
     def _start_custom_controller(self):
 
@@ -66,7 +66,7 @@ class FrankaHardware(FrankaBase):
     def update_joints(
         self, command, velocity=False, blocking=False, cartesian_noise=None
     ):
-        self._robot.update_joints(self, command, velocity=False, blocking=False, cartesian_noise=None)
+        self._robot.update_joints(command, velocity=velocity, blocking=blocking, cartesian_noise=None)
         return
     
         if cartesian_noise is not None:
@@ -121,7 +121,7 @@ class FrankaHardware(FrankaBase):
 
         if joint_pos_desired is not None:
 
-            self._robot.update_joints(self, joint_pos_desired, velocity=False, blocking=False, cartesian_noise=None)
+            self._robot.update_joints(joint_pos_desired, velocity=False, blocking=False, cartesian_noise=None)
             return
         
             udpate_pkt["joint_pos_desired"] = (
@@ -166,7 +166,7 @@ class FrankaHardware(FrankaBase):
         )
 
     def update_gripper(self, command, velocity=True, blocking=False):
-        self._robot.update_gripper(command, velocity=True, blocking=False)
+        self._robot.update_gripper(command, velocity=velocity, blocking=blocking)
         return
     
         if velocity:
@@ -246,7 +246,7 @@ class FrankaHardware(FrankaBase):
 
     def get_gripper_state(self):
         if self._gripper:
-            return self._gripper.get_state().width
+            return self._robot.get_gripper_state()
         else:
             return 0.0
 

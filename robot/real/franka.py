@@ -121,7 +121,7 @@ class FrankaHardware(FrankaBase):
 
         if joint_pos_desired is not None:
 
-            self._robot.update_joints(joint_pos_desired, velocity=False, blocking=False, cartesian_noise=None)
+            self._robot.update_desired_joint_positions(joint_pos_desired)
             return
         
             udpate_pkt["joint_pos_desired"] = (

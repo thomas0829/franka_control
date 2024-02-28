@@ -1,5 +1,5 @@
 control_hz: 10
-DoF: 2
+DoF: 6
 gripper: false
 
 # Franka model: 'panda' 'fr3'

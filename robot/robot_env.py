@@ -398,7 +398,7 @@ class RobotEnv(gym.Env):
         # reset to home pose
         for _ in range(3):
             self._robot.update_joints(
-                self._reset_joint_qpos, velocity=False, blocking=True
+                self._reset_joint_qpos.tolist(), velocity=False, blocking=True
             )
 
             epsilon = 0.1

@@ -6,12 +6,11 @@ defaults:
   - asid: inertia
   - env: rod
   - robot: sim_2_dof
-  - train: explore
+  - train: sysid
   - log: stdout
 
 exp_id: "inertia"
 
 seed: 0
 gpu_id: 0
-num_workers: 16
-num_workers_eval: 8
+num_workers: 8

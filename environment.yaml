@@ -7,7 +7,7 @@ channels:
   - defaults
 dependencies:
   - polymetis
-  - librealsense=2.50.0
+  - librealsense=2.54.2.5684
   - scipy=1.7.3
   - cmake
   - pybind11

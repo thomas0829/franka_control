@@ -125,13 +125,23 @@ class ASIDWrapper(gym.Wrapper):
     def resample_parameters(self):
         for key in self.parameter_dict:
             # sample new parameter value
+
+            # use set parameter + clip
             if self.params_set:
                 value = self.parameter_dict[key]["value"]
+                if self.parameter_dict[key]["type"] == "uniform":
+                    value = np.clip(
+                        value,
+                        self.parameter_dict[key]["min"],
+                        self.parameter_dict[key]["max"],
+                    )
+            # sample parameter from uniform
             elif self.parameter_dict[key]["type"] == "uniform":
                 value = np.random.uniform(
                     low=self.parameter_dict[key]["min"],
                     high=self.parameter_dict[key]["max"],
                 )
+            # sample parameter from gaussian
             elif self.parameter_dict[key]["type"] == "gaussian":
                 value = np.random.normal(
                     loc=self.parameter_dict[key]["mean"],
@@ -161,9 +171,9 @@ class ASIDWrapper(gym.Wrapper):
         mujoco.mj_resetData(
             self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
         )
-        mujoco.mj_setConst(
-            self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
-        )
+        # mujoco.mj_setConst(
+        #     self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
+        # )
 
     def set_data(self, new_data):
         self.env.unwrapped._robot.data = new_data

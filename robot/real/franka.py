@@ -151,19 +151,19 @@ class FrankaHardware(FrankaBase):
         # reset using min_jerk traj
         for i in range(len(waypoints)):
             self.update_desired_joint_positions(
-                joint_pos_desired=waypoints[i]["position"],
-                kp=self.reset_gain_scale
-                * torch.Tensor(self._robot.metadata.default_Kq),
-                kd=self.reset_gain_scale
-                * torch.Tensor(self._robot.metadata.default_Kqd),
+                joint_pos_desired=waypoints[i]["position"].tolist(),
+                # kp=self.reset_gain_scale
+                # * torch.Tensor(self._robot.metadata.default_Kq),
+                # kd=self.reset_gain_scale
+                # * torch.Tensor(self._robot.metadata.default_Kqd),
             )
             time.sleep(dt)
 
         # reset back gains to gain-policy
-        self.update_desired_joint_positions(
-            kp=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kq),
-            kd=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kqd),
-        )
+        # self.update_desired_joint_positions(
+        #     kp=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kq),
+        #     kd=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kqd),
+        # )
 
     def update_gripper(self, command, velocity=True, blocking=False):
         self._robot.update_gripper(command, velocity=velocity, blocking=blocking)

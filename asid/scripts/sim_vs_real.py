@@ -12,6 +12,7 @@ from utils.system import get_device, set_gpu_mode
 from utils.transformations import quat_to_euler
 from utils.transformations_mujoco import euler_to_quat_mujoco
 
+
 @hydra.main(
     config_path="../configs/", config_name="explore_rod_sim", version_base="1.1"
 )
@@ -46,49 +47,66 @@ def run_experiment(cfg):
         ]
     )
 
-    # collect trajectory in REAL
+    # # collect trajectory in REAL
 
-    cfg.robot.ip_address = "172.16.0.1"
-    cfg.robot.camera_model = "realsense"
+    # cfg.robot.ip_address = "172.16.0.1"
+    # cfg.robot.camera_model = "realsense"
     cfg.robot.imgs = True
-    
+
     cfg.env.obs_keys = None
     cfg.env.flatten = False
 
-    env = make_env(
-        robot_cfg_dict=hydra_to_dict(cfg.robot),
-        env_cfg_dict=hydra_to_dict(cfg.env),
-        seed=cfg.seed,
-        device_id=0,
-        verbose=False,
+    # env = make_env(
+    #     robot_cfg_dict=hydra_to_dict(cfg.robot),
+    #     env_cfg_dict=hydra_to_dict(cfg.env),
+    #     seed=cfg.seed,
+    #     device_id=0,
+    #     verbose=False,
+    # )
+
+    # obs = env.reset()
+
+    # obj_init = env.get_obj_pose().copy()
+    # obj_init[3:] = euler_to_quat_mujoco(quat_to_euler(obj_init[3:]))
+
+    # dict_real = {}
+    # for k in obs.keys():
+    #     dict_real[k] = []
+
+    # for act in act_seq:
+    #     for k in dict_real.keys():
+    #         dict_real[k].append(obs[k])
+    #     next_obs, rew, done, _ = env.step(act)
+    #     obs = next_obs
+
+    # for k in dict_real.keys():
+    #     dict_real[k] = np.stack(dict_real[k], axis=0)
+
+    # env.reset()
+
+    obj_init = np.array(
+        [
+            3.91770379e-01,
+            1.74474065e-01,
+            3.60922709e-04,
+            0.00000000e00,
+            0.00000000e00,
+            -3.21755699e-01,
+            9.46822724e-01,
+        ]
     )
-
-    obs = env.reset()
-    
-    obj_init = env.get_obj_pose().copy()
     obj_init[3:] = euler_to_quat_mujoco(quat_to_euler(obj_init[3:]))
-
     dict_real = {}
-    for k in obs.keys():
-        dict_real[k] = []
-
-    for act in act_seq:
-        for k in dict_real.keys():
-            dict_real[k].append(obs[k])
-        next_obs, rew, done, _ = env.step(act)
-        obs = next_obs
-
-    for k in dict_real.keys():
-        dict_real[k] = np.stack(dict_real[k], axis=0)
-
-    env.reset()
 
     # collect trajectory in SIM
 
     cfg.robot.ip_address = None
     cfg.robot.camera_model = None
 
+    cfg.env.obj_pos_noise = False
+
     cfg.asid.reward = False
+    cfg.asid.parameter_dict = {}
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
@@ -120,7 +138,7 @@ def run_experiment(cfg):
     current_time_date = datetime.now().strftime("%y_%m_%d_%H_%M_%S")
 
     joblib.dump(data_dict, os.path.join(logdir, f"sim_vs_real_{current_time_date}"))
-
+    print(f"sim_vs_real_{current_time_date}")
 
 if __name__ == "__main__":
     run_experiment()

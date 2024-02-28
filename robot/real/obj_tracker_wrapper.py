@@ -4,7 +4,8 @@ import numpy as np
 
 from perception.trackers.color_tracker import ColorTracker
 from utils.pointclouds import crop_points
-
+from utils.transformations import quat_to_euler
+from utils.transformations_mujoco import euler_to_quat_mujoco, quat_to_euler_mujoco
 
 class ObjectTrackerWrapper(gym.Wrapper):
     def __init__(
@@ -108,7 +109,7 @@ class ObjectTrackerWrapper(gym.Wrapper):
         # get raw or filtered rod pose
         if self.obj_id == "rod":
             if self.filter:
-                return self.tracker.get_rod_pose(
+                obj_pose = self.tracker.get_rod_pose(
                     cropped_points,
                     lowpass_filter=True,
                     cutoff_freq=self.cutoff_freq,
@@ -116,6 +117,9 @@ class ObjectTrackerWrapper(gym.Wrapper):
                     show=self.verbose,
                 )
             else:
-                return self.tracker.get_rod_pose(
+                obj_pose = self.tracker.get_rod_pose(
                     cropped_points, lowpass_filter=False, show=self.verbose
                 )
+            # convert to mujoco quaternion
+            obj_pose[-4:] = euler_to_quat_mujoco(quat_to_euler(obj_pose[-4:]))
+            return obj_pose

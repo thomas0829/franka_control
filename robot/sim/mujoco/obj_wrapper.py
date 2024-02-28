@@ -13,7 +13,7 @@ class ObjWrapper(gym.Wrapper):
         env,
         obj_id="rod",
         obj_pos_noise=True,
-        obs_keys=["lowdim_ee", "lowdim_qpos", "obj_pose"],
+        obs_keys=None, # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
         flatten=True,
         verbose=False,
     ):

@@ -25,13 +25,17 @@ def move_to_target(env, motion_planner, target_pose):
     start = np.concatenate((start[:3], euler_to_quat_mujoco(start[3:])))
 
     # IMPORTANT: flip yaw angle mujoco to curobo!
-    start[5] = -start[5]
+    if env.unwrapped.sim:
+        start[5] = -start[5]
     goal = np.concatenate((target_pose[:3], euler_to_quat_mujoco(target_pose[3:6])))
     qpos_plan = motion_planner.plan_motion(start, goal, return_ee_pose=False)
     for i in range(len(qpos_plan)):
-        env.unwrapped._robot.update_joints(qpos_plan[i].position.cpu().numpy().tolist(), velocity=False, blocking=True)
-        # if env.unwrapped.sim:
-        #     env.unwrapped._robot.move_to_joint_positions(qpos_plan[i].position.cpu().numpy())
+        # real -> but slow
+        # env.unwrapped._robot.update_joints(qpos_plan[i].position.cpu().numpy().tolist(), velocity=False, blocking=True)
+        if env.unwrapped.sim:
+            env.unwrapped._robot.move_to_joint_positions(qpos_plan[i].position.cpu().numpy())
+        # env.unwrapped._robot.update_desired_joint_positions(qpos_plan[i].position.cpu().tolist())
+        # time.sleep(0.1)
         env.render()
         
 @hydra.main(
@@ -40,8 +44,8 @@ def move_to_target(env, motion_planner, target_pose):
 def run_experiment(cfg):
 
     # real
-    cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_27_16_28_52.json"
-    cfg.robot.camera_model = "realsense"
+    # cfg.robot.calibration_file = "perception/cameras/calibration/logs/aruco/24_02_27_16_28_52.json"
+    # cfg.robot.camera_model = "realsense"
 
     # sim
     # cfg.robot.on_screen_rendering = False
@@ -89,7 +93,7 @@ def run_experiment(cfg):
         )
         time.sleep(0.1)
 
-    motion_planner = MotionPlanner(interpolation_dt=0.1, device=torch.device("cuda:0"))
+    motion_planner = MotionPlanner(interpolation_dt=0.3, device=torch.device("cuda:0"))
 
     env.reset()
     
@@ -106,7 +110,7 @@ def run_experiment(cfg):
     init_rod_yaw = target_orn[2]
 
     # up right ee
-    target_orn[0] -= np.pi
+    target_orn[:1] = env.unwrapped._default_angle[:1]
 
     # align pose -> grasp pose
     target_orn[2] += np.pi / 2 

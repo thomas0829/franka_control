@@ -155,8 +155,13 @@ class RobotInterfaceServer:
             )
             self._grasping = False
 
-    def move_to_joint_positions(self, command):
-        time_to_go = self.adaptive_time_to_go(command)
+    def update_desired_joint_positions(self, command):
+        command = torch.Tensor(command)
+        self._robot.update_desired_joint_positions(command)
+
+    def move_to_joint_positions(self, command, time_to_go=None):
+        if time_to_go is None:
+            time_to_go = self.adaptive_time_to_go(command)
         self._robot.move_to_joint_positions(command, time_to_go=time_to_go)
 
     def get_joint_positions(self):

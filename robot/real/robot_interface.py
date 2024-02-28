@@ -6,12 +6,14 @@ import grpc
 import numpy as np
 import torch
 
-from r2d2.misc.subprocess_utils import run_terminal_command, run_threaded_command
+from utils.transformations import *
 
+# from r2d2.misc.subprocess_utils import run_terminal_command, run_threaded_command
 
 class RobotInterfaceServer:
     def __init__(self, ip_address=""):
         self.launch_robot()
+        self._grasping = False
 
     def launch_controller(self):
         try:
@@ -26,12 +28,6 @@ class RobotInterfaceServer:
         # self._gripper_process = run_terminal_command(
         #     "echo " + sudo_password + " | sudo -S " + "bash " + dir_path + "/launch_gripper.sh"
         # )
-        self._robot_process = run_terminal_command(
-            "launch_robot.py robot_client=franka_hardware"
-        )
-        self._gripper_process = run_terminal_command(
-            "launch_gripper.py gripper=franka_hand"
-        )
         self._server_launched = True
         time.sleep(5)
 
@@ -140,6 +136,9 @@ class RobotInterfaceServer:
     def get_joint_velocities(self):
         return self._robot.get_joint_velocities().tolist()
 
+    def get_gripper_state(self):
+        return self._gripper.get_state().width
+    
     def get_gripper_position(self):
         return 1 - (self._gripper.get_state().width / self._max_gripper_width)
 

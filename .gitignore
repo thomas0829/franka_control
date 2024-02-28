@@ -6,6 +6,7 @@ data/
 outputs/
 wandb/
 logdir/
+build/
 
 *.gif
 *.json

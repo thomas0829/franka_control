@@ -10,6 +10,7 @@ def make_env(
     asid_cfg_dict=None,
     seed=0,
     device_id=0,
+    sysid=False,
     verbose=False,
 ):
 
@@ -20,7 +21,12 @@ def make_env(
             if asid_cfg_dict is not None:
                 print("asid config", asid_cfg_dict)
 
-    if env_cfg_dict is not None:
+    
+    if env_cfg_dict is not None and sysid:
+        robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
+            "base", "sysid_" + env_cfg_dict["obj_id"]
+        )
+    elif env_cfg_dict is not None:
         robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
             "base", env_cfg_dict["obj_id"]
         )

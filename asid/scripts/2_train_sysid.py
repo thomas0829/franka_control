@@ -27,21 +27,25 @@ def run_experiment(cfg):
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
     logger = configure_logger(logdir, cfg.log.format_strings)
 
+    cfg.asid.obs_noise = 0.0
     # train env
     envs_sysid = make_vec_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
         asid_cfg_dict=hydra_to_dict(cfg.asid),
+        sysid=True,
         num_workers=cfg.num_workers,
         seed=cfg.seed,
         device_id=0,
     )
 
-    rollout = joblib.load(os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore", "rollout.pkl"))
-    
+    rollout = joblib.load(
+        os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore", "rollout.pkl")
+    )
+
     # # convert angles to mujoco quaternion and
     # set obj pose
-    obj_pose = rollout["obs"][0,...,-7:].copy()
+    obj_pose = rollout["obs"][0, ..., -7:].copy()
     # obj_pose[:,3:] = euler_to_quat_mujoco(quat_to_euler(obj_pose[:,3:]))
     obj_pose = np.repeat(obj_pose, cfg.num_workers, axis=0)
     envs_sysid.set_obj_pose(obj_pose)
@@ -51,8 +55,8 @@ def run_experiment(cfg):
     #     rollout["obs"][i,...,-4:] = euler_to_quat_mujoco(quat_to_euler(rollout["obs"][i,...,-4:]))
 
     params_dim = envs_sysid.get_parameters()[0].shape[0]
-    
-    imageio.mimsave(f"real.gif", np.stack(rollout["rgbd"][..., :3])[:,0], duration=3)
+
+    imageio.mimsave(f"real.gif", np.stack(rollout["rgbd"][..., :3])[:, 0], duration=3)
     video = np.transpose(rollout["rgbd"][..., :3], (1, 0, 4, 2, 3))
     logger.record(
         f"real/trajectory",
@@ -100,26 +104,21 @@ def run_experiment(cfg):
         print("restart", i, mean_fit, mean, std)
 
     best_idx = np.argmax(Js)
-    
-    logger.record(
-            f"result/J",
-            Js[best_idx]
-        )
+
+    logger.record(f"result/J", Js[best_idx])
     for i, mean in enumerate(means[best_idx]):
-        logger.record(
-            f"result/mean_{i}",
-            mean
-        )
+        logger.record(f"result/mean_{i}", mean)
 
     param_dict = {
         "real_zeta": rollout["zeta"],
         "mu": means[best_idx],
         "sigma": stds[best_idx],
-        "final_obs": rollout["obs"][-1]
+        "final_obs": rollout["obs"][-1],
     }
     joblib.dump(param_dict, os.path.join(identifier.logger.dir, "zeta"))
 
     logger.dump(step=0)
+
 
 if __name__ == "__main__":
     run_experiment()

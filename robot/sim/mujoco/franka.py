@@ -671,7 +671,7 @@ class MujocoManipulatorEnv(FrankaBase):
             # WARNING: actuator must be general or position
 
             # # set position -> sim only has to be stepped once
-            # self.data.qpos[self.franka_joint_ids] = udpate_pkt["joint_pos_desired"]
+            # self.data.qpos[self.franka_joint_ids] = udpate_pkt["joint_pos_desired"].cpu().numpy()
             # mujoco.mj_step(self.model, self.data)
 
             # WARNING: actuator must be general or position

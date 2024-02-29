@@ -11,8 +11,8 @@ from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 @hydra.main(config_path="../configs/", config_name="explore_rod_sim", version_base="1.1")
 def run_experiment(cfg):
 
-    cfg.robot.DoF = 6
-    # cfg.robot.on_screen_rendering = True
+    cfg.robot.DoF = 2
+    cfg.robot.on_screen_rendering = False
     cfg.robot.gripper = True
     # # cfg.robot.ip_address = "172.16.0.1"
     # # cfg.robot.camera_model = "zed"
@@ -34,13 +34,14 @@ def run_experiment(cfg):
     # import joblib
     # joblib.dump(env.unwrapped.get_images_and_points(), "points_sim")
 
+    start = time.time()
     for i in range(15):
         env.seed(i)
         env.reset()
         for i in range(10):
-            start = time.time()
             obs, reward, done, info = env.step(env.action_space.sample())
-            print(time.time() - start)
+            print(env.get_parameters(), reward)
+    print(time.time() - start)
             # time.sleep(0.1)
             # env.render()
         # print(reward, env.get_parameters(), env.unwrapped._robot.get_ee_pos())

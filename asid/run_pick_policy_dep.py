@@ -67,6 +67,26 @@ def run_experiment(cfg):
     crop_min = [0.0, -0.6, -0.1]
     crop_max = [0.7, 0.6, 0.5]
 
+    for i in range(25):
+        obs_dict = env.get_images_and_points()
+        rgbs, points = [], []
+        for key in obs_dict.keys():
+            rgbs.append(obs_dict[key]["rgb"])
+            points.append(obs_dict[key]["points"])
+        tracked_points = tracker.track_multiview(rgbs, points, color="red", show=False)
+        cropped_points = crop_points(
+            tracked_points, crop_min=crop_min, crop_max=crop_max
+        )
+
+        rod_pose = tracker.get_rod_pose(
+            cropped_points,
+            lowpass_filter=False,
+            cutoff_freq=1,
+            control_hz=cfg.robot.control_hz,
+            show=False,
+        )
+        time.sleep(0.1)
+        
     obs = env.reset()
 
     imgs = []

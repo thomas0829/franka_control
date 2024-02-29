@@ -134,7 +134,7 @@ def move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env
             env.render()
 
             # early stopping when actions don't change position anymore
-            if np.linalg.norm(target_pose[:3]-curr_pose[:3]) < progress_threshold:
+            if np.linalg.norm(des_pose[:3]-curr_pose[:3]) < progress_threshold:
                 break
             last_curr_pose = curr_pose
 
@@ -142,7 +142,7 @@ def move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env
 
 
 @hydra.main(
-    config_path="../configs/", config_name="collect_rod_real", version_base="1.1"
+    config_path="../configs/", config_name="collect_rod_sim", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -159,6 +159,9 @@ def run_experiment(cfg):
     cfg.env.flatten = False
     cfg.env.obj_pos_noise = True
 
+    if cfg.robot.ip_address is None:
+        cfg.env.filter = True
+
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
@@ -166,19 +169,27 @@ def run_experiment(cfg):
         device_id=0,
     )
 
+    env.reset()
+
+    # warmstart tracker filter
+    if not env.unwrapped.sim:
+        for i in range(25):    
+            rod_pose = env.get_obj_pose()
+            time.sleep(1/cfg.robot.control_hz)
+
+    rod_pose = env.get_obj_pose()
+
     noise_std = 0 # 5e-2
 
-    motion_planner = MotionPlanner(interpolation_dt=0.5, device=torch.device("cuda:0"))
+    motion_planner = MotionPlanner(interpolation_dt=0.1, device=torch.device("cuda:0"))
     controller = CartesianPDController(Kp=0.7, Kd=0., control_hz=10)
     imgs = []
 
-    progress_threshold = 0.3
-
-    env.reset()
+    progress_threshold = 0.1
 
     # get initial target pose
-    target_pos = env.get_obj_pose().copy()[:3]
-    target_euler = quat_to_euler_mujoco(env.get_obj_pose().copy()[3:])
+    target_pos = rod_pose.copy()[:3]
+    target_euler = quat_to_euler_mujoco(rod_pose.copy()[3:])
     target_pose = np.concatenate((target_pos, target_euler))
 
     curr_pose = env.unwrapped._robot.get_ee_pose()
@@ -186,7 +197,7 @@ def run_experiment(cfg):
     # target_pose[3:] = curr_pose[3:] + angular_diff
 
     # overwrite x,y angle w/ gripper default
-    target_pose[3:5] = env.unwrapped._default_angle[:3]
+    target_pose[3:5] = env.unwrapped._default_angle[:2]
 
     # target_pose[3:5] = env.unwrapped._default_angle[:3]
     # target_pose[5] -= np.pi / 4
@@ -208,6 +219,10 @@ def run_experiment(cfg):
     # align pose -> grasp pose
     target_pose[5] += np.pi / 2 
 
+    # real robot offset
+    if not env.unwrapped.sim:
+        target_pose[5] -= np.pi / 4
+        
     # IMPORTANT: flip yaw angle mujoco to curobo!
     # target_orn[2] = -target_orn[2]
 
@@ -218,7 +233,7 @@ def run_experiment(cfg):
         target_pose[5] += np.pi
 
     # Set grasp target to center of mass
-    com = 0.
+    com = 0.1
     target_pose[0] -= com * np.sin(init_rod_yaw)
     target_pose[1] += com * np.cos(init_rod_yaw)
 
@@ -229,7 +244,12 @@ def run_experiment(cfg):
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
-    target_pose[2] = 0.12
+    target_pose[2] = 0.2 # lowest curobo allows w/o colliding
+    gripper = 0.0
+    tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
+    imgs += tmp
+
+    target_pose[2] = 0.117 # lowest curobo allows w/o colliding
     gripper = 0.0
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp

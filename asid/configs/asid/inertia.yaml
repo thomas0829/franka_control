@@ -4,4 +4,4 @@ reward: true
 delta: 0.1
 normalization: 0.02
 
-obs_noise: 0.005
+obs_noise: 0.

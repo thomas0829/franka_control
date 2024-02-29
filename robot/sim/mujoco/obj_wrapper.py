@@ -16,8 +16,11 @@ class ObjWrapper(gym.Wrapper):
         obs_keys=None, # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
         flatten=True,
         verbose=False,
+        **kwargs
     ):
         super(ObjWrapper, self).__init__(env)
+        
+        print(f"WARNING: ObjectTrackerWrapper doesn't take {kwargs}!")
 
         self.verbose = verbose
 

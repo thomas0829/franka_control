@@ -4,3 +4,5 @@ parameter_dict: {"friction": {"type": "gaussian", "mean": 1.0, "std": 0.1, "valu
 reward: true
 delta: 0.1
 normalization: 0.02
+
+obs_noise: 0.

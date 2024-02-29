@@ -1,4 +1,5 @@
 obj_id: "cube"
 obj_pos_noise: true
 obs_keys: ["lowdim_ee", "lowdim_qpos", "obj_pose"]
+filter: false
 flatten: false

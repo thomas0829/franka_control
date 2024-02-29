@@ -142,7 +142,7 @@ def move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env
 
 
 @hydra.main(
-    config_path="../configs/", config_name="collect_rod_sim", version_base="1.1"
+    config_path="../configs/", config_name="collect_rod_real", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -155,6 +155,8 @@ def run_experiment(cfg):
     cfg.robot.gripper = True
     cfg.robot.on_screen_rendering = True
     cfg.robot.max_path_length = 100
+
+    cfg.robot.control_hz = 15
 
     cfg.env.flatten = False
     cfg.env.obj_pos_noise = True
@@ -233,38 +235,76 @@ def run_experiment(cfg):
         target_pose[5] += np.pi
 
     # Set grasp target to center of mass
-    com = 0.1
+    com = 0.0381 # -0.0499
     target_pose[0] -= com * np.sin(init_rod_yaw)
     target_pose[1] += com * np.cos(init_rod_yaw)
 
     render = True
 
+    # MOVE ABOVE
     target_pose[2] = 0.3 + np.random.normal(loc=0.0, scale=noise_std)
     gripper = 0.0
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
+    # MOVE DOWN
     target_pose[2] = 0.2 # lowest curobo allows w/o colliding
     gripper = 0.0
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
-    target_pose[2] = 0.117 # lowest curobo allows w/o colliding
-    gripper = 0.0
-    tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
-    imgs += tmp
+    # MOVE DOWN
+    # go down manually -> better than MP
+    while env.unwrapped._robot.get_ee_pose()[2] > 0.13:
+        env.step(np.array([0., 0., -0.03, 0., 0., 0., 0.]))
 
+    # GRASP
+    # make sure gripper is fully closed -> 3 steps
+    for _ in range(3):
+        env.step(np.array([0., 0., 0., 0., 0., 0., 1.]))
+
+    # MOVE UP
     target_pose[2] = 0.2 + np.random.normal(loc=0.0, scale=noise_std)
     gripper = 1.0
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
+    # MOVE UP
     target_pose[2] = 0.3 + np.random.normal(loc=0.0, scale=noise_std)
     gripper = 1.0
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
-    imageio.mimwrite("test_rollout.gif", np.stack(imgs), duration=10)
+    # MOVE TO PLACE LOCATION
+    target_pose[:3] = np.array([0.4, -0.3, 0.3])
+    # target_pose[:3] = np.array([0.4, -0.3, 0.4])
+    target_pose[3:5] = env.unwrapped._default_angle[:2]
+    target_pose[5] = np.pi/4
+    gripper = 1.0
+    tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
+    imgs += tmp
+
+    # MOVE DOWN
+    target_pose[2] = 0.15
+    # target_pose[2] = 0.31
+    gripper = 1.0
+    tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
+    imgs += tmp
+
+    # RELEASE GRASP
+    for _ in range(1):
+        env.step(np.array([0., 0., 0., 0., 0., 0., 0.]))
+
+    # MOVE UP
+    # target_pose[2] = 0.5
+    target_pose[2] = 0.3
+    gripper = 0.0
+    tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
+    imgs += tmp
+
+    env.reset()
+
+    imageio.mimwrite("pick_up.gif", np.stack(imgs), duration=10)
 
 
 

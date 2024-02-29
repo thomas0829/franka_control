@@ -140,7 +140,7 @@ class SysIdentifier():
         for i in trange(self.n_epochs, disable=not self.verbose):
 
             candidates = self.sample()
-
+            # candidates = np.ones_like(candidates) * -0.05
             # for obs in real_obs:
                 # fit += self.fitness(candidates, real_obs, real_acts, envs, render=i % self.eval_interval == 0)
             

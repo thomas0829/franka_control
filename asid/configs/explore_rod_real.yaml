@@ -9,7 +9,7 @@ defaults:
   - train: explore
   - log: stdout
 
-exp_id: "inertia"
+exp_id: "inertia_second"
 
 seed: 0
 gpu_id: 0

@@ -8,7 +8,7 @@ from utils.transformations_mujoco import euler_to_quat_mujoco
 
 
 class ASIDWrapper(gym.Wrapper):
-    def __init__(self, env, parameter_dict={}, obs_noise=0., verbose=False, **kwargs):
+    def __init__(self, env, parameter_dict={}, obs_noise=0.0, verbose=False, **kwargs):
         super(ASIDWrapper, self).__init__(env)
 
         from robot.sim.mujoco.obj_wrapper import ObjWrapper
@@ -76,8 +76,17 @@ class ASIDWrapper(gym.Wrapper):
         self.exp_reward = None
 
     def add_noise(self, obs):
-        return obs + np.random.normal(0, self.obs_noise, obs.shape)
-    
+
+        if self.obs_noise == 0.0:
+            return obs
+
+        if type(obs) is dict:
+            for k in obs.keys():
+                if "rgb" not in k and "depth" not in k:
+                    obs[k] += np.random.normal(0, self.obs_noise, obs[k].shape)
+        else:
+            obs += np.random.normal(0, self.obs_noise, obs.shape)
+
     def step(self, action):
 
         self.last_action = action
@@ -213,7 +222,7 @@ class ASIDWrapper(gym.Wrapper):
         robot_cfg_dict["on_screen_rendering"] = False
         env_cfg_dict["obj_pos_noise"] = False
         asid_cfg_dict["reward"] = False
-        asid_cfg_dict["obs_noise"] = 0.
+        asid_cfg_dict["obs_noise"] = 0.0
 
         exp_env = env_func(
             robot_cfg_dict,

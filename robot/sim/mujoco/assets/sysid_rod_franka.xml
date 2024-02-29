@@ -48,12 +48,12 @@
             </body>
 
             <!-- simulate contact force through multiple boxes, i.e., additional surface points -->
-            <geom name="rod_geom_0" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0. 0.0" type="box" size="0.02 0.15 0.02" rgba="1 0 0 1"/>
-            <!-- <geom name="rod_geom_1" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
+            <!-- <geom name="rod_geom_0" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0. 0.0" type="box" size="0.02 0.15 0.02" rgba="1 0 0 1"/> -->
+            <geom name="rod_geom_1" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
             <geom name="rod_geom_2" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
             <geom name="rod_geom_3" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.0 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
             <geom name="rod_geom_4" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. -0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
-            <geom name="rod_geom_5" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. -0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="0 1 0 1"/> -->
+            <geom name="rod_geom_5" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. -0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="0 1 0 1"/>
         </body>
 
         <!-- franka's reachable workspace -->

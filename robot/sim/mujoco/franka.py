@@ -677,8 +677,9 @@ class MujocoManipulatorEnv(FrankaBase):
             # WARNING: actuator must be general or position
             self.data.ctrl[: len(self.franka_joint_ids)] = udpate_pkt[
                 "joint_pos_desired"
-            ]
-            mujoco.mj_step(self.model, self.data)
+            ]#.cpu().numpy()
+            # TODO: check if nstep messes up sim2real
+            mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
 
     def move_to_joint_positions(self, joint_pos_desired=None, time_to_go=3):
         # fast reset for simulation -> jump to joint positions

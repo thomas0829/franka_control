@@ -32,7 +32,7 @@ def viz_points(points):
     points = crop_points(points)
     visualize_pcds([points_to_pcd(points)])
 
-@hydra.main(config_path="../configs/", config_name="explore_rod_sim", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="explore_rod_real", version_base="1.1")
 def run_experiment(cfg):
 
     if "wandb" in cfg.log.format_strings:
@@ -187,6 +187,8 @@ def run_experiment(cfg):
     for k, v in data.items():
         data[k] = np.stack(v)
 
+    import imageio
+    imageio.mimwrite("explore.gif", data["rgbd"].squeeze(), duration=10)
     # b, t, c, h, w
     video = np.transpose(data["rgbd"][..., :3], (1, 0, 4, 2, 3))
     logger.record(

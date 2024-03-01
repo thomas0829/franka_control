@@ -87,6 +87,8 @@ class ASIDWrapper(gym.Wrapper):
         else:
             obs += np.random.normal(0, self.obs_noise, obs.shape)
 
+        return obs 
+    
     def step(self, action):
 
         self.last_action = action

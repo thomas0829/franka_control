@@ -186,7 +186,7 @@ def collect_demo_pick_up(
 
     # randomize grasp angle z
     rng = np.random.randint(0, 3)
-    target_pose[5:] += np.pi / 2 if rng else -np.pi / 2 if rng == 1 else 0
+    target_pose[5:] += np.pi / 2 if rng==2 else -np.pi / 2 if rng == 1 else 0
     # target_pose[3:] = np.arctan2(np.sin(target_pose[3:]), np.cos(target_pose[3:]))
 
     # WARNING: real robot EE is offset by 90 deg -> target_pose[5] += np.pi / 4
@@ -196,7 +196,7 @@ def collect_demo_pick_up(
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
-    target_pose[2] = 0.12 + np.random.normal(loc=0.0, scale=noise_std/2)
+    target_pose[2] = 0.13 + np.random.normal(loc=0.0, scale=noise_std/2)
     gripper = 0.0
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
@@ -228,7 +228,7 @@ def run_experiment(cfg):
     
     cfg.robot.DoF = 6
     cfg.robot.gripper = True
-    cfg.robot.on_screen_rendering = True
+    cfg.robot.on_screen_rendering = False
     cfg.robot.max_path_length = 100
 
     cfg.env.flatten = False
@@ -241,6 +241,7 @@ def run_experiment(cfg):
         device_id=0,
     )
 
+    successes = []
     # with wrap_env_in_rlds_logger(
     #     env, cfg.exp_id, logdir, max_episodes_per_shard=1
     # ) as rlds_env:
@@ -254,12 +255,15 @@ def run_experiment(cfg):
         success, _ = collect_demo_pick_up(
             env,
             # rlds_env,
-            render=True,
+            render=False,
         )
+        successes.append(success)
 
         print(f"Recorded Trajectory {i}, success {success}")
 
     env.reset()
+
+    print(np.sum(successes), "/", len(successes))
 
     # check if dataset was saved
     loaded_dataset = load_rlds_dataset(logdir)

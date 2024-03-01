@@ -12,7 +12,7 @@ from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 def run_experiment(cfg):
 
     cfg.robot.DoF = 2
-    cfg.robot.on_screen_rendering = False
+    cfg.robot.on_screen_rendering = True
     cfg.robot.gripper = True
     # # cfg.robot.ip_address = "172.16.0.1"
     # # cfg.robot.camera_model = "zed"
@@ -39,7 +39,11 @@ def run_experiment(cfg):
         env.seed(i)
         env.reset()
         for i in range(10):
-            obs, reward, done, info = env.step(env.action_space.sample())
+            act = env.action_space.sample()
+            act = np.zeros_like(act)
+            # act[0] = 0.3
+            obs, reward, done, info = env.step(act)
+            # env.render()
             print(env.get_parameters(), reward)
     print(time.time() - start)
             # time.sleep(0.1)

@@ -1,6 +1,6 @@
 <mujoco model="rod_franka">
 
-    <option>
+    <option cone="elliptic" impratio="100" noslip_iterations="3">
         <flag multiccd="enable" />
     </option>
     <size njmax='1000' nconmax='1000' />
@@ -42,13 +42,13 @@
                 <!-- <inertial pos="0 0 0" mass="1." diaginertia="1. 1. 1." /> -->
                 <!-- <inertial pos="0 0 0" mass="0.75" diaginertia="0.00002 0.00002 0.00002" /> -->
                 <inertial pos="0 0 0" mass="0.01" diaginertia="0.0002 0.0002 0.0002" />
-                <geom name="rod_geom_com" conaffinity="0" contype="0" condim="3"
+                <geom name="rod_geom_com" conaffinity="0" contype="0" condim="6"
                     pos="0. 0 0" type="box" size="0.02 0.03 0.02" rgba="0 0 1 1" />
                     <!-- group=3 -->
             </body>
 
             <!-- simulate contact force through multiple boxes, i.e., additional surface points -->
-            <geom name="rod_geom_0" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0. 0.0" type="box" size="0.02 0.15 0.02" rgba="1 0 0 1"/>
+            <geom name="rod_geom_0" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="6" pos="0. 0. 0.0" type="box" size="0.02 0.15 0.02" rgba="1 0 0 1"/>
             <!-- <geom name="rod_geom_1" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
             <geom name="rod_geom_2" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
             <geom name="rod_geom_3" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.0 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>

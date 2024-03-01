@@ -196,7 +196,7 @@ def collect_demo_pick_up(
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
-    target_pose[2] = 0.14 + np.random.normal(loc=0.0, scale=noise_std/2)
+    target_pose[2] = 0.12 + np.random.normal(loc=0.0, scale=noise_std/2)
     gripper = 0.0
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
@@ -211,95 +211,6 @@ def collect_demo_pick_up(
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
-    imageio.mimwrite("test_rollout.gif", np.stack(imgs), duration=10)
-
-    # MOVE ABOVE
-    target_pose[2] = z_waypoints[0]
-    # add pose noise
-    target_pose_noise = apply_noise(target_pose, mean=0.0, std=noise_std[0])
-    gripper = 0.0
-    # move to target pose + add action noise
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose_noise,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[0],
-            render=render,
-            verbose=verbose,
-        )
-    )
-
-    # MOVE CLOSER
-    target_pose[2] = z_waypoints[1]
-    target_pose_noise = apply_noise(target_pose, mean=0.0, std=noise_std[1])
-    gripper = 0.0
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose_noise,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[1],
-            render=render,
-            verbose=verbose,
-        )
-    )
-
-    # MOVE DOWN
-    target_pose[2] = z_waypoints[2]
-    gripper = 0.0
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[2],
-            render=render,
-            verbose=verbose,
-        )
-    )
-
-    # GRASP
-    gripper = 1.0
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose, gripper, env, max_iter=5, noise_std=noise_std[2], render=render,verbose=verbose,
-        )
-    )
-
-    # MOVE UP
-    target_pose[2] = z_waypoints[1]
-    target_pose_noise = apply_noise(target_pose, mean=0.0, std=noise_std[1])
-    gripper = 1.0
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[1],
-            render=render,
-            verbose=verbose,
-        )
-    )
-
-    # MOVE ABOVE
-    target_pose[2] = z_waypoints[0]
-    target_pose_noise = apply_noise(target_pose, mean=0.0, std=noise_std[1])
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[0],
-            render=render,
-            verbose=verbose,
-        )
-    )
 
     success = env.get_obj_pose()[2] > 0.1
     return success, imgs

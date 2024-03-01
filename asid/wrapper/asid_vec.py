@@ -68,10 +68,6 @@ def make_vec_env(
     num_workers=1,
     seed=0,
     device_id=0,
-    asid_wrapper=True,
-    asid_reward=True,
-    delta=0.05,
-    normalization=0.001,
     verbose=False,
 ):
     from robot.sim.vec_env.vec_wrapper import SubVecEnv

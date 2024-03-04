@@ -1,11 +1,12 @@
 import os
-import hydra
-import numpy as np
-import joblib
-import imageio
 
-from asid.wrapper.asid_vec import make_env, make_vec_env
+import hydra
+import imageio
+import joblib
+import numpy as np
+
 from asid.sysid.identifier import SysIdentifier
+from asid.wrapper.asid_vec import make_env, make_vec_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.logger import Video, configure_logger
 from utils.system import get_device, set_gpu_mode
@@ -33,7 +34,8 @@ def run_experiment(cfg):
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
         asid_cfg_dict=hydra_to_dict(cfg.asid),
-        sysid=True,
+        # only use special sysid env when running on real
+        sysid=False if cfg.robot.ip_address is None else True,
         num_workers=cfg.num_workers,
         seed=cfg.seed,
         device_id=0,
@@ -46,13 +48,8 @@ def run_experiment(cfg):
     # # convert angles to mujoco quaternion and
     # set obj pose
     obj_pose = rollout["obs"][0, ..., -7:].copy()
-    # obj_pose[:,3:] = euler_to_quat_mujoco(quat_to_euler(obj_pose[:,3:]))
     obj_pose = np.repeat(obj_pose, cfg.num_workers, axis=0)
     envs_sysid.set_obj_pose(obj_pose)
-
-    # # convert angles to mujoco quaternion
-    # for i in range(rollout["obs"].shape[0]):
-    #     rollout["obs"][i,...,-4:] = euler_to_quat_mujoco(quat_to_euler(rollout["obs"][i,...,-4:]))
 
     params_dim = envs_sysid.get_parameters()[0].shape[0]
 
@@ -92,7 +89,8 @@ def run_experiment(cfg):
         )
 
         # sphere pos, real action sequence
-        rollout["zeta"] = np.zeros(params_dim)
+        if "zeta" not in rollout.keys():
+            rollout["zeta"] = np.zeros(params_dim)
         mean_fit, mean, std = identifier.identify(
             rollout["obs"], rollout["act"], rollout["zeta"], envs_sysid
         )

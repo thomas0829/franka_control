@@ -21,7 +21,8 @@ class ObjWrapper(gym.Wrapper):
     ):
         super(ObjWrapper, self).__init__(env)
         
-        print(f"WARNING: ObjectTrackerWrapper doesn't take {kwargs}!")
+        if verbose:
+            print(f"WARNING: ObjWrapper doesn't take {kwargs}!")
 
         self.verbose = verbose
 

@@ -94,14 +94,14 @@ class ASIDWrapper(gym.Wrapper):
         self.last_action = action
 
         if self.reward_first:
-            reward = self.compute_reward(action)
+            asid_reward = self.compute_reward(action)
 
-        obs, _, done, info = self.env.step(action)
+        obs, reward, done, info = self.env.step(action)
 
         if not self.reward_first:
-            reward = self.compute_reward(action)
+            asid_reward = self.compute_reward(action)
 
-        return self.add_noise(obs), reward, done, info
+        return self.add_noise(obs), reward + asid_reward, done, info
 
     def reset(self, *args, **kwargs):
 

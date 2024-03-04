@@ -234,14 +234,11 @@ class SysIdentifier:
             # seed multi envs the same
             if self.rnd_env_seed:
                 envs.seed(self.seed)
-                envs.set_parameters(
-                    params[i * self.num_workers : (i + 1) * self.num_workers]
-                )
             else:
                 envs.seed_sysid(self.seed)
-                envs.set_parameters(
-                    params[i * self.num_workers : (i + 1) * self.num_workers]
-                )
+            envs.set_parameters(
+                params[i * self.num_workers : (i + 1) * self.num_workers]
+            )
             obs = envs.reset()
 
             # envs.render_up()
@@ -277,7 +274,7 @@ class SysIdentifier:
             #     sim_obs_tmp = np.array(sim_obs_tmp)[:, np.newaxis]
 
             sim_obs = (
-                sim_obs_tmp
+                np.stack(sim_obs_tmp)
                 if sim_obs is None
                 else np.concatenate((sim_obs, sim_obs_tmp), axis=1)
             )

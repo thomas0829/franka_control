@@ -15,12 +15,8 @@ import yaml
 
 # from polymetis.utils.data_dir import get_full_path_to_urdf
 # from polysim.envs import AbstractControlledEnv
-from utils.transformations import (
-    euler_to_quat,
-    quat_to_euler,
-    rmat_to_euler,
-    rmat_to_quat,
-)
+from utils.transformations import (euler_to_quat, quat_to_euler, rmat_to_euler,
+                                   rmat_to_quat)
 from utils.transformations_mujoco import mat_to_quat_mujoco
 
 log = logging.getLogger(__name__)
@@ -650,11 +646,12 @@ class MujocoManipulatorEnv(FrankaBase):
         udpate_pkt = {}
 
         if joint_pos_desired is not None:
-            udpate_pkt["joint_pos_desired"] = (
-                joint_pos_desired
-                if torch.is_tensor(joint_pos_desired)
-                else torch.tensor(joint_pos_desired)
-            )
+            udpate_pkt["joint_pos_desired"] = joint_pos_desired
+            # (
+            #     joint_pos_desired
+            #     if torch.is_tensor(joint_pos_desired)
+            #     else torch.tensor(joint_pos_desired)
+            # )
         if kp is not None:
             udpate_pkt["kp"] = kp if torch.is_tensor(kp) else torch.tensor(kp)
         if kd is not None:
@@ -677,7 +674,7 @@ class MujocoManipulatorEnv(FrankaBase):
             # WARNING: actuator must be general or position
             self.data.ctrl[: len(self.franka_joint_ids)] = udpate_pkt[
                 "joint_pos_desired"
-            ]#.cpu().numpy()
+            ]
             # TODO: check if nstep messes up sim2real
             mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
 

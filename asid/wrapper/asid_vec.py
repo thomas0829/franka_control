@@ -1,7 +1,7 @@
 from functools import partial
 
-from robot.robot_env import RobotEnv
 from asid.wrapper.asid_wrapper import ASIDWrapper
+from robot.robot_env import RobotEnv
 
 
 def make_env(
@@ -11,6 +11,7 @@ def make_env(
     seed=0,
     device_id=0,
     sysid=False,
+    collision=False,
     verbose=False,
 ):
 
@@ -25,6 +26,10 @@ def make_env(
     if env_cfg_dict is not None and sysid:
         robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
             "base", "sysid_" + env_cfg_dict["obj_id"]
+        )
+    elif env_cfg_dict is not None and collision:
+        robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
+            "base", "collision_" + env_cfg_dict["obj_id"]
         )
     elif env_cfg_dict is not None:
         robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(

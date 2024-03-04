@@ -5,6 +5,8 @@ from dm_robotics.moma.effectors import (arm_effector,
 
 from robot.real.inverse_kinematics.arm import FrankaArm
 from utils.transformations import euler_to_quat, quat_diff, quat_to_euler
+from utils.transformations_mujoco import (euler_to_quat_mujoco,
+                                          quat_to_euler_mujoco)
 
 
 class RobotIKSolver:
@@ -40,6 +42,20 @@ class RobotIKSolver:
             max_cartesian_velocity_control_iterations=300,
             max_nullspace_control_iterations=300,
         )
+
+        # scaler = 0.1
+        # self._effector_control = cartesian_6d_velocity_effector.ControlParams(
+        # 	control_timestep_seconds=1 / control_hz,
+        # 	max_lin_vel=1.0,
+        # 	max_rot_vel=1.0,
+        # 	joint_velocity_limits=np.array([2.075 * scaler] * 4 + [2.51 * scaler] * 3),
+        # 	nullspace_gain=0.025, #1e-2 #Encourages small joint changes
+        # 	regularization_weight=1e-2, #1e-2 #Encourages staying near joint centers
+        # 	enable_joint_position_limits=True,
+        # 	minimum_distance_from_joint_position_limit=0.3, #0.01
+        # 	joint_position_limit_velocity_scale=0.95,
+        # 	max_cartesian_velocity_control_iterations=300,
+        # 	max_nullspace_control_iterations=300)
 
         self._cart_effector_6d = (
             cartesian_6d_velocity_effector.Cartesian6dVelocityEffector(

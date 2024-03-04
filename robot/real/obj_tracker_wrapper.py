@@ -27,7 +27,9 @@ class ObjectTrackerWrapper(gym.Wrapper):
     ):
         super().__init__(env)
 
-        print(f"WARNING: ObjectTrackerWrapper doesn't take {kwargs}!")
+        if verbose:
+            print(f"WARNING: ObjectTrackerWrapper doesn't take {kwargs}!")
+        
         self.obj_id = obj_id
 
         # Tracking

@@ -73,6 +73,8 @@ def make_vec_env(
     num_workers=1,
     seed=0,
     device_id=0,
+    sysid=False,
+    collision=False,
     verbose=False,
 ):
     from robot.sim.vec_env.vec_wrapper import SubVecEnv
@@ -85,6 +87,8 @@ def make_vec_env(
             asid_cfg_dict,
             seed=seed + i,
             device_id=device_id,
+            sysid=sysid,
+            collision=collision,
             verbose=bool(i == 0) and verbose,
         )
         for i in range(num_workers)

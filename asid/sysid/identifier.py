@@ -199,6 +199,12 @@ class SysIdentifier:
 
             if i > 0 and i % self.save_interval == 0 and self.logger is not None:
                 self.save_zeta(real_obs, os.path.join(self.logger.dir, f"zeta_{i}"))
+
+            if type(self.distribution) == GaussianDiagonalDistribution and np.all(
+                self.distribution._std < 1e-3
+            ):
+                break
+
         if self.logger is not None:
             self.save_zeta(real_obs, os.path.join(self.logger.dir, f"zeta"))
 

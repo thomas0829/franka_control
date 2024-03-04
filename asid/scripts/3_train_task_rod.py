@@ -140,8 +140,8 @@ def jump_to_cartesian_pose(
     if gripper:
         env.unwrapped._robot.update_gripper(gripper)
 
-    # while np.linalg.norm(target_pose[:3] - env.unwrapped._robot.get_ee_pose()[:3]) > 1e-2:
-    while np.linalg.norm(target_pose - env.unwrapped._robot.get_ee_pose()) > 5e-2:
+    while np.linalg.norm(target_pose[:3] - env.unwrapped._robot.get_ee_pose()[:3]) > 5e-2:
+    # while np.linalg.norm(target_pose - env.unwrapped._robot.get_ee_pose()) > 5e-2:
         robot_state = env.unwrapped._robot.get_robot_state()[0]
         desired_qpos = (
             env.unwrapped._robot._ik_solver.cartesian_position_to_joint_position(
@@ -170,6 +170,8 @@ def jump_to_cartesian_pose(
 def collect_rollout(
     env, action, control_hz=10, render=False, verbose=False
 ):
+
+    env.reset()
 
     rod_pose = env.get_obj_pose()
 
@@ -472,7 +474,6 @@ def cem_rollout_worker(
 
         if zeta is not None:
             env.set_parameters(zeta)
-        env.reset()
         
         # Sample action
         action = np.random.normal(action_mean, action_std)
@@ -618,27 +619,28 @@ def run_experiment(cfg):
     else:
         print("Using default zeta_dict")
         zeta_dict = {"mu": np.array([0.07]), "": np.array([0.08])}
-        # zeta_dict = {"mu_0": np.array([1.0]), "mu_1": np.array([0.0]), "_0": np.array([1.0]), "_1": np.array([0.0])}
 
     # Train policy
-    if cfg.train.mode == "sysid":
-        if "mu" in zeta_dict.keys():
-            action_mean, action_std = train_cem_policy(cfg, zeta_dict["mu"])
-        else:
-            action_mean, action_std = train_cem_policy(
-                cfg, np.concatenate((zeta_dict["mu_0"], zeta_dict["mu_1"]))
-            )
-        print(f"action_mean: {action_mean}, action_std: {action_std}")
-        action = np.random.normal(action_mean, action_std)
-    elif cfg.train.mode == "domain_rand":
-        action_mean, action_std = train_cem_policy(cfg, None)
-        print(
-            f"{cfg.exp_id} {cfg.train.mode} action_mean: {action_mean}, action_std: {action_std}"
-        )
-        action = np.random.normal(action_mean, action_std)
-    elif cfg.train.mode == "manual":
+    if cfg.train.mode == "manual":
         action = cfg.train.action
-
+    
+    else:
+        if cfg.train.mode == "sysid":
+            action_mean, action_std = train_cem_policy(cfg, zeta_dict["mu"])
+        elif cfg.train.mode == "domain_rand":
+            action_mean, action_std = train_cem_policy(cfg, None)
+        
+        action = np.random.normal(action_mean, action_std)
+        print(
+                f"{cfg.exp_id} {cfg.train.mode} action_mean: {action_mean}, action_std: {action_std}"
+            )
+        
+        param_dict = {
+            "mu": action_mean,
+            "sigma": action_std,
+        }
+        joblib.dump(param_dict, os.path.join(logdir, cfg.exp_id, str(cfg.seed), "task", "policy"))
+        
     # Evaluate policy
     eval_env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),

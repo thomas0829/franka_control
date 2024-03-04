@@ -165,7 +165,7 @@ class FrankaHardware(FrankaBase):
         #     kd=self.gain_scale * torch.Tensor(self._robot.metadata.default_Kqd),
         # )
 
-    def update_gripper(self, command, velocity=True, blocking=False):
+    def update_gripper(self, command, velocity=False, blocking=False):
         self._robot.update_gripper(command, velocity=velocity, blocking=blocking)
         return
     

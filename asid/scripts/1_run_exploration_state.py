@@ -74,6 +74,7 @@ def run_experiment(cfg):
     # visualize_env_points(env.get_points())
     
     ckptdir = os.path.join(
+                    # logdir, "policy_step_9001" # custom ckpt
                     logdir, "policy"
                 )
     

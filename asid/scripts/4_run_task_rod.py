@@ -8,6 +8,7 @@ from utils.logger import Video, configure_logger
 from utils.system import get_device, set_gpu_mode
 from asid.wrapper.asid_vec import make_env, make_vec_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
+from asid.utils.move import collect_rollout
 
 
 @hydra.main(config_path="../configs/", config_name="task_rod_sim", version_base="1.1")
@@ -33,18 +34,11 @@ def run_experiment(cfg):
     cfg.asid.obs_noise = 0.0
 
     # # Load task policy
-    # task_dir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "task", "policy")
-    # assert os.path.exists(task_dir), f"Policy not found in {task_dir}"
-    # policy_dict = joblib.load(task_dir)
-    # for k, v in policy_dict.items():
-    #     policy_dict[k] = np.array(v)
-
-    # Load zeta parameter
-    zeta_dir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "sysid", "zeta")
-    assert os.path.exists(zeta_dir), f"Zeta not found in {zeta_dir}"
-    zeta_dict = joblib.load(zeta_dir)
-    for k, v in zeta_dict.items():
-        zeta_dict[k] = np.array(v)
+    task_dir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "task", "policy")
+    assert os.path.exists(task_dir), f"Policy not found in {task_dir}"
+    policy_dict = joblib.load(task_dir)
+    for k, v in policy_dict.items():
+        policy_dict[k] = np.array(v)
 
     # Make environment
     env = make_env(
@@ -55,15 +49,33 @@ def run_experiment(cfg):
         device_id=cfg.gpu_id,
         collision=True,
     )
+
+    # Load zeta parameter
     if cfg.robot.ip_address is None:
+        zeta_dir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "sysid", "zeta")
+        assert os.path.exists(zeta_dir), f"Zeta not found in {zeta_dir}"
+        zeta_dict = joblib.load(zeta_dir)
+        for k, v in zeta_dict.items():
+            zeta_dict[k] = np.array(v)
+
         env.set_parameters(zeta_dict["real_zeta"])
 
     # Sample action
-    action = -0.0588  # np.random.normal(policy_dict["mu"], policy_dict["std"])
-
+    action = np.random.normal(policy_dict["mu"], policy_dict["std"])
+    
+    # # clip manual action and convert weight block position to center of mass
+    # def normalize(value, x0, x1, y0, y1):
+    #     """
+    #     Normalize a value from a range [x0, x1] to a new range [y0, y1].
+    #     Returns:
+    #     - The normalized value.
+    #     """
+    #     return y0 + ((value - x0) * (y1 - y0)) / (x1 - x0)
+    # action = -0.14
+    # action = np.clip(action, -0.1, 0.1)
+    # action = normalize(action, -0.1, 0.1, -0.07, 0.07)
+    
     # Execute
-    from asid.scripts.c_train_task_rod import collect_rollout
-
     reward, imgs = collect_rollout(
         env, action, control_hz=cfg.robot.control_hz, render=True, verbose=True
     )

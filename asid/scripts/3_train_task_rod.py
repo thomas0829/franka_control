@@ -33,30 +33,26 @@ def train_cem_policy(cfg, zeta=None):
     action_mean = cfg.train.algorithm.mu_init
     action_std = cfg.train.algorithm.sigma_init
 
-    q = Queue()
     batch_size = num_samples // num_procs
+    batch_size = 1
     for _ in trange(num_iters, desc="CEM iteration"):
 
-        procs = [
-            Process(
-                target=cem_rollout_worker,
-                args=(q, cfg, batch_size, action_mean, action_std, zeta),
+        from multiprocessing import Pool
+
+        with Pool(num_procs) as p:
+            results = p.starmap(
+                cem_rollout_worker,
+                [
+                    (cfg, batch_size, action_mean, action_std, zeta, cfg.seed + i)
+                    for i in range(num_procs)
+                ],
             )
-            for _ in range(num_procs)
-        ]
-
-        for p in procs:
-            p.start()
-
-        for p in procs:
-            p.join()
 
         # Update mean and std
-        results = [q.get() for _ in range(num_procs)]
-        actions = np.concatenate([res["actions"] for res in results], axis=0)
-        rewards = np.concatenate([res["rewards"] for res in results], axis=0)
+        actions = np.concatenate([res["act"] for res in results], axis=0)
+        rewards = np.concatenate([res["rew"] for res in results], axis=0)
 
-        elites = actions[np.cfgort(rewards)][-num_elites:]
+        elites = actions[np.argsort(rewards)][-num_elites:]
         action_mean = np.mean(elites, axis=0)
         action_std = np.std(elites, axis=0)
         print(
@@ -66,16 +62,16 @@ def train_cem_policy(cfg, zeta=None):
 
 
 def cem_rollout_worker(
-    q,
     cfg,
     num_rollouts,
     action_mean,
     action_std,
     zeta,
+    seed=0,
     verbose=False,
     render=False,
 ):
-
+    
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
@@ -94,6 +90,7 @@ def cem_rollout_worker(
             env.set_parameters(zeta)
 
         # Sample action
+        np.random.seed(seed)
         action = np.random.normal(action_mean, action_std)
 
         # Collect rollout -> resets env
@@ -108,7 +105,7 @@ def cem_rollout_worker(
         actions[i] = action
         rewards[i] = reward
 
-    return actions, rewards
+    return {"act": actions, "rew": rewards}
 
 
 @hydra.main(config_path="../configs/", config_name="task_rod_sim", version_base="1.1")
@@ -128,7 +125,11 @@ def run_experiment(cfg):
     logger = configure_logger(logdir, cfg.log.format_strings)
 
     # cfg.robot.on_screen_rendering = True
+    cfg.robot.DoF = 6
     cfg.robot.gripper = True
+    cfg.robot.max_path_length = 1e5
+
+    cfg.env.obs_keys = ["lowdim_ee", "lowdim_qpos"]
     cfg.asid.obs_noise = 0.0
 
     # Load zeta parameter

@@ -1,6 +1,5 @@
 from functools import partial
 
-from asid.wrapper.asid_wrapper import ASIDWrapper
 from robot.robot_env import RobotEnv
 
 
@@ -49,6 +48,7 @@ def make_env(
             env = ObjectTrackerWrapper(env, **env_cfg_dict, verbose=verbose)
 
         if asid_cfg_dict is not None:
+            from asid.wrapper.asid_wrapper import ASIDWrapper
             env = ASIDWrapper(env, **asid_cfg_dict, verbose=verbose)
 
             if asid_cfg_dict["reward"]:

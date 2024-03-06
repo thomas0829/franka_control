@@ -1,3 +1,4 @@
+import time
 import numpy as np
 
 from utils.transformations import *
@@ -58,6 +59,10 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
 
     env.reset()
 
+    if not env.unwrapped.sim:
+        for i in range(25):
+            rod_pose = env.get_obj_pose()
+            time.sleep(1 / env.unwrapped._robot.control_hz)
     rod_pose = env.get_obj_pose()
     
     imgs = []
@@ -144,8 +149,8 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
         env.step(np.array([0.0, 0.0, -0.03, 0.0, 0.0, 0.0, 0.0]))
 
     # GRASP
-    # make sure gripper is fully closed -> 3 steps
-    for _ in range(3):
+    # make sure gripper is fully closed -> 5 steps
+    for _ in range(5):
         env.step(np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
 
     # MOVE UP

@@ -11,7 +11,7 @@ from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from asid.utils.move import collect_rollout
 
 
-@hydra.main(config_path="../configs/", config_name="task_rod_sim", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="task_rod_real", version_base="1.1")
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
@@ -29,6 +29,9 @@ def run_experiment(cfg):
 
     cfg.robot.DoF = 6
     cfg.robot.gripper = True
+    cfg.robot.max_path_length = 1e5
+    
+    cfg.robot.on_screen_rendering = cfg.robot.ip_address is None
 
     cfg.env.color_track = "yellow"
     cfg.env.filter = True
@@ -50,7 +53,7 @@ def run_experiment(cfg):
         asid_cfg_dict=hydra_to_dict(cfg.asid) if cfg.robot.ip_address is None else None,
         seed=cfg.seed,
         device_id=cfg.gpu_id,
-        collision=True,
+        collision=False,
         verbose=False
     )
 
@@ -65,8 +68,7 @@ def run_experiment(cfg):
         env.set_parameters(zeta_dict["real_zeta"])
 
     # Sample action
-    action = np.random.normal(policy_dict["mu"], policy_dict["std"])
-    
+    action = np.random.normal(policy_dict["mu"], policy_dict["sigma"])
     # # clip manual action and convert weight block position to center of mass
     # def normalize(value, x0, x1, y0, y1):
     #     """

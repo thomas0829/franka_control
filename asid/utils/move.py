@@ -26,9 +26,12 @@ def jump_to_cartesian_pose(
     if gripper:
         env.unwrapped._robot.update_gripper(gripper)
 
+    ctr = 0
     while (
-        np.linalg.norm(target_pose[:3] - env.unwrapped._robot.get_ee_pose()[:3]) > 5e-2
-    ):
+        # np.linalg.norm(target_pose[:3] - env.unwrapped._robot.get_ee_pose()[:3]) > 5e-2
+        np.linalg.norm(target_pose - env.unwrapped._robot.get_ee_pose()) > 3e-2 and ctr < 100
+    ):  
+        ctr += 1
         # while np.linalg.norm(target_pose - env.unwrapped._robot.get_ee_pose()) > 5e-2:
         robot_state = env.unwrapped._robot.get_robot_state()[0]
         desired_qpos = (
@@ -185,12 +188,14 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
 
     # MOVE TO PLACE LOCATION
     target_pose[:3] = np.array([0.4, -0.3, 0.3])
-    target_pose[3:5] = env.unwrapped._default_angle[:2]
-    target_pose[5] = -np.pi / 2
+    target_pose[3:6] = env.unwrapped._default_angle
+    target_pose[5] -= np.pi / 2
+    # if not env.unwrapped.sim:
+    #     target_pose[5] -= np.pi / 4
     # real robot offset
     # TODO check this!
-    if not env.unwrapped.sim:
-        target_pose[5] += np.pi / 4
+    # if not env.unwrapped.sim:
+    #     target_pose[5] -= np.pi / 4
     gripper = 1.0
     tmp, _ = jump_to_cartesian_pose(
         target_pose,
@@ -202,7 +207,7 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
     imgs += tmp
 
     # MOVE DOWN
-    target_pose[2] = 0.15
+    target_pose[2] = 0.17
     gripper = 1.0
     tmp, _ = jump_to_cartesian_pose(
         target_pose,

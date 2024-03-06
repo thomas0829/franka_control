@@ -1,0 +1,15 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - asid: inertia
+  - env: bottle
+  - robot: sim_6_dof
+  - train: explore
+  - log: wandb
+
+exp_id: "collect_bottle_sim"
+
+seed: 0
+gpu_id: 0

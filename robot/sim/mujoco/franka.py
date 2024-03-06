@@ -626,7 +626,11 @@ class MujocoManipulatorEnv(FrankaBase):
                         self._robot.start_cartesian_impedance()
                 if self.custom_controller:
                     # run controller loop for int((1/self.control_hz) / self.model.opt.timestep) instead of time.sleep(1/self.control_hz)
-                    for _ in range(self.frame_skip):
+                    
+                    if self.torque_control:
+                        for _ in range(self.frame_skip):
+                            self.update_desired_joint_positions(command)
+                    else:
                         self.update_desired_joint_positions(command)
                         # self.update_desired_joint_positions(command + torch.normal(mean=0., std=1e-1, size=command.shape))
                 else:
@@ -676,6 +680,7 @@ class MujocoManipulatorEnv(FrankaBase):
                 "joint_pos_desired"
             ]
             # TODO: check if nstep messes up sim2real
+            # mujoco.mj_step(self.model, self.data)
             mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
 
     def move_to_joint_positions(self, joint_pos_desired=None, time_to_go=3):
@@ -741,7 +746,7 @@ class MujocoManipulatorEnv(FrankaBase):
         if self.has_renderer:
             self.render()
 
-    def update_gripper(self, command, velocity=True, blocking=False):
+    def update_gripper(self, command, velocity=False, blocking=False):
         # 1. -> close, 0. -> open
         if velocity:
             gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)

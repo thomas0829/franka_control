@@ -1,6 +1,7 @@
 import argparse
 import os
 from multiprocessing import Process, Queue
+from multiprocessing import Pool
 
 import hydra
 import imageio
@@ -21,7 +22,7 @@ from utils.transformations_mujoco import *
 from asid.utils.move import collect_rollout
 
 
-def train_cem_policy(cfg, zeta=None):
+def train_cem_policy(cfg, zeta=None, obj_pose=None):
 
     num_iters, num_samples, num_procs = (
         cfg.train.algorithm.num_iters,
@@ -36,17 +37,41 @@ def train_cem_policy(cfg, zeta=None):
     batch_size = num_samples // num_procs
     batch_size = 1
     for _ in trange(num_iters, desc="CEM iteration"):
+        # q = Queue()
+        # with Pool(num_procs) as p:
+        #     results = p.map(
+        #         cem_rollout_worker,
+        #         [
+        #             (cfg, batch_size, action_mean, action_std, zeta, cfg.seed + i)
+        #             for i in range(num_procs)
+        #         ],
+        #     )
 
-        from multiprocessing import Pool
+        # procs = [
+        #     Process(target=cem_rollout_worker, args=(q, cfg, batch_size, action_mean, action_std, zeta))
+        #     for _ in range(num_procs)
+        # ]
+        
+        # for p in procs:
+        #     p.start()
 
-        with Pool(num_procs) as p:
-            results = p.starmap(
-                cem_rollout_worker,
-                [
-                    (cfg, batch_size, action_mean, action_std, zeta, cfg.seed + i)
-                    for i in range(num_procs)
-                ],
-            )
+        # for p in procs:
+        #     p.join()
+
+        # # Update mean and std
+        # results = [q.get() for _ in range(num_procs)]
+        # actions = np.concatenate([res["actions"] for res in results], axis=0)
+        # rewards = np.concatenate([res["rewards"] for res in results], axis=0)
+
+        # elites = actions[np.argsort(rewards)][-num_elites:]
+        # action_mean = np.mean(elites, axis=0)
+        # action_std = np.std(elites, axis=0)
+        # print(f"action_mean: {action_mean}, action_std: {action_std}, reward: {np.mean(rewards)} zeta: {zeta}")
+
+        results = []
+        for i in trange(num_samples, desc="collecting rollouts..."):
+            res = cem_rollout_worker(cfg, batch_size, action_mean, action_std, zeta, obj_pose, cfg.seed + i)
+            results.append(res)
 
         # Update mean and std
         actions = np.concatenate([res["act"] for res in results], axis=0)
@@ -62,11 +87,13 @@ def train_cem_policy(cfg, zeta=None):
 
 
 def cem_rollout_worker(
+    # q,
     cfg,
     num_rollouts,
     action_mean,
     action_std,
     zeta,
+    obj_pose,
     seed=0,
     verbose=False,
     render=False,
@@ -78,16 +105,19 @@ def cem_rollout_worker(
         asid_cfg_dict=hydra_to_dict(cfg.asid),
         seed=cfg.seed,
         device_id=cfg.gpu_id,
-        collision=True,
+        # TODO
+        collision=False,
     )
 
     actions = np.zeros((num_rollouts), dtype=np.float32)
     rewards = np.zeros((num_rollouts), dtype=np.float32)
 
     for i in range(num_rollouts):
-
+        
         if zeta is not None:
             env.set_parameters(zeta)
+        if obj_pose is not None:
+            env.set_obj_pose(obj_pose)
 
         # Sample action
         np.random.seed(seed)
@@ -101,11 +131,11 @@ def cem_rollout_worker(
             verbose=verbose,
             render=render,
         )
-
         actions[i] = action
         rewards[i] = reward
 
     return {"act": actions, "rew": rewards}
+    # q.put({"actions": actions, "rewards": rewards})
 
 
 @hydra.main(config_path="../configs/", config_name="task_rod_sim", version_base="1.1")
@@ -128,29 +158,34 @@ def run_experiment(cfg):
     cfg.robot.DoF = 6
     cfg.robot.gripper = True
     cfg.robot.max_path_length = 1e5
+    cfg.robot.on_screen_rendering = True
 
     cfg.env.obs_keys = ["lowdim_ee", "lowdim_qpos"]
+    cfg.env.obj_pos_noise = False
+
     cfg.asid.obs_noise = 0.0
+    cfg.asid.reward = False
 
     # Load zeta parameter
     zeta_dir = os.path.join(logdir, cfg.exp_id, str(cfg.seed), "sysid", "zeta")
     if os.path.exists(zeta_dir):
-        zeta_dict = joblib.load(zeta_dir)
-        for k, v in zeta_dict.items():
-            zeta_dict[k] = np.array(v)
+        sysid_dict = joblib.load(zeta_dir)
+        for k, v in sysid_dict.items():
+            sysid_dict[k] = np.array(v)
+        zeta = sysid_dict["mu"]
+        obj_pose = sysid_dict["final_obs"][-7:]
     else:
-        print("Using default zeta_dict")
-        zeta_dict = {"mu": np.array([0.07]), "": np.array([0.08])}
+        zeta = np.array([0.07])
+        obj_pose = np.array([0.4, 0.3, 0.02, 0, 0, 0, 0])
 
     # Train policy
     if cfg.train.mode == "manual":
         action = cfg.train.action
-
     else:
         if cfg.train.mode == "sysid":
-            action_mean, action_std = train_cem_policy(cfg, zeta_dict["mu"])
+            action_mean, action_std = train_cem_policy(cfg, zeta=zeta, obj_pose=obj_pose)
         elif cfg.train.mode == "domain_rand":
-            action_mean, action_std = train_cem_policy(cfg, None)
+            action_mean, action_std = train_cem_policy(cfg, zeta=None, obj_pose=obj_pose)
 
         action = np.random.normal(action_mean, action_std)
         print(
@@ -175,7 +210,7 @@ def run_experiment(cfg):
         device_id=cfg.gpu_id,
         collision=True,
     )
-    eval_env.set_parameters(zeta_dict[""])
+    eval_env.set_parameters(sysid_dict[""])
     video_path = os.path.join(cfg.logdir, cfg.exp_id, str(cfg.seed), "sysid")
     os.makedirs(video_path, exist_ok=True)
     reward = collect_rollout(
@@ -185,7 +220,7 @@ def run_experiment(cfg):
         video_path=os.path.join(video_path, f"{cfg.train.mode}.gif"),
     )
     print(
-        f"FINAL real zeta {zeta_dict['']} EXP {cfg.exp_id} ALGO {cfg.train.mode} reward: {reward} act {action} act_mean {action_mean} act_std {action_std}"
+        f"FINAL real zeta {sysid_dict['']} EXP {cfg.exp_id} ALGO {cfg.train.mode} reward: {reward} act {action} act_mean {action_mean} act_std {action_std}"
     )
 
 

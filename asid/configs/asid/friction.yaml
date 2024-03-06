@@ -1,6 +1,8 @@
 # careful when adjusting friction -> too high values cause the object to penetrate the table and give huge reward signals even if not touched
-parameter_dict: {"friction": {"type": "gaussian", "mean": 1.0, "std": 0.1, "value": null}}
+parameter_dict: {"friction": {"type": "gaussian", "mean": 1.0, "std": 0.05, "value": null}}
 
 reward: true
 delta: 0.1
 normalization: 0.02
+
+obs_noise: 0.

@@ -1,0 +1,73 @@
+<mujoco model="rod_franka">
+
+    <option>
+        <flag multiccd="enable" />
+    </option>
+    <size njmax='1000' nconmax='1000' />
+
+    <include file="basic_scene.xml" />
+    <include file="franka_assets/franka_assets.xml" />
+
+    <visual>
+        <global offwidth="2560" offheight="1920" />
+        <quality shadowsize="4096" offsamples="8" />
+        <map force="0.1" fogend="5" />
+    </visual>
+
+    <compiler inertiafromgeom='auto' inertiagrouprange='0 5' angle="radian" texturedir="texture"
+        meshdir="franka_assets/meshes" />
+    <worldbody>
+
+        <!-- Cameras -->
+        <camera name="front" fovy="65"
+            pos="1.3420383158842424 -0.037408864541261 0.5281817817238226"
+            quat="0.60670078 0.37513562 0.37637644 0.5912091" />
+        <camera name="left" fovy="65" pos="0.5663422788968194 0.8021645313506761 0.4900356493435141"
+            quat="0.05478277 0.06033676 0.56395431 0.82177482" />
+
+        <!-- Robot -->
+        <body pos='0. 0. 0.' euler='0 0 0'>
+            <include file="franka_assets/chain.xml" />
+        </body>
+
+        <!-- Rod -->
+        <!-- modeled a cuboid (rod_body) with a cube (rod_com) that can be moved to shift center of mass -->
+        <body name="rod_body" pos="0.4 0.3 0.02" euler="0 0 0.7">
+            <freejoint name="rod_freejoint" />
+            <inertial pos="0 0 0" mass="0.0" diaginertia="0.0002 0.0002 0.0002" />
+            
+            <!-- moveable weight inside the rod -->
+            <body name="rod_com" pos="0. 0. 0." quat="1 0 0 0">
+                <!-- <body name="rod_com" pos="0. -0.12 0.0" quat="1 0 0 0"> -->
+                <!-- <inertial pos="0 0 0" mass="1." diaginertia="1. 1. 1." /> -->
+                <!-- <inertial pos="0 0 0" mass="0.75" diaginertia="0.00002 0.00002 0.00002" /> -->
+                <inertial pos="0 0 0" mass="0.1" diaginertia="0.0002 0.0002 0.0002" />
+                <geom name="rod_geom_com" conaffinity="0" contype="0" condim="3"
+                    pos="0. 0 0" type="box" size="0.02 0.03 0.02" rgba="0 0 1 1" />
+                    <!-- group=3 -->
+            </body>
+
+            <!-- simulate contact force through multiple boxes, i.e., additional surface points -->
+            <!-- <geom name="rod_geom_0" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0. 0.0" type="box" size="0.02 0.15 0.02" rgba="1 0 0 1"/> -->
+            <geom name="rod_geom_1" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
+            <geom name="rod_geom_2" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
+            <geom name="rod_geom_3" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. 0.0 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
+            <geom name="rod_geom_4" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. -0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
+            <geom name="rod_geom_5" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. -0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="0 1 0 1"/>
+        </body>
+
+        <!-- franka's reachable workspace -->
+        <!-- low: np.array([0.35, -0.38, 0.13, 0.00]),
+            high: np.array([0.65, 0.38, 0.8, 0.085]), -->
+        <!-- <geom conaffinity="2" contype="2" condim="1" name="reach" pos="0.54 0. 0.215"
+        size="0.16 0.25 0.2" type="box" rgba="0 255 0 0.1"/> -->
+
+    </worldbody>
+
+    <include file="franka_assets/actuator_position.xml" />
+    <!-- <include file="franka_assets/actuator_position.xml" /> -->
+
+    <keyframe>
+        <key qpos='8.52907066e-01  2.97767267e-01  4.38237010e-02 -2.70994978e+00 -4.81877543e-03  2.89241547e+00  1.67766532e+00  1.66114713e-06 2.00536372e-06  0.35  0.3  0.02 1 0 0 0'/>
+    </keyframe>
+</mujoco>

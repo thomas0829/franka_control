@@ -1,6 +1,6 @@
 <mujocoinclude>
   <compiler angle="radian" meshdir="meshes" autolimits="true"/>
-  <option integrator="RK4"/>
+  <option integrator="implicit"/>
 
   <default>
     <default class="panda">

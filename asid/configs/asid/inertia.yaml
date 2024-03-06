@@ -1,7 +1,7 @@
-parameter_dict: {"inertia": {"type": "uniform", "min": -0.12, "max": 0.12, "value": null}}
+parameter_dict: {"inertia": {"type": "uniform", "min": -0.1, "max": 0.1, "value": null}}
 
 reward: true
-delta: 0.1
+delta: 0.01
 normalization: 0.02
 
-obs_noise: 0.005
+obs_noise: 0.05

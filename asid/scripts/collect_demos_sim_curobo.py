@@ -186,7 +186,7 @@ def collect_demo_pick_up(
 
     # randomize grasp angle z
     rng = np.random.randint(0, 3)
-    target_pose[5:] += np.pi / 2 if rng else -np.pi / 2 if rng == 1 else 0
+    target_pose[5:] += np.pi / 2 if rng==2 else -np.pi / 2 if rng == 1 else 0
     # target_pose[3:] = np.arctan2(np.sin(target_pose[3:]), np.cos(target_pose[3:]))
 
     # WARNING: real robot EE is offset by 90 deg -> target_pose[5] += np.pi / 4
@@ -196,7 +196,7 @@ def collect_demo_pick_up(
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
-    target_pose[2] = 0.14 + np.random.normal(loc=0.0, scale=noise_std/2)
+    target_pose[2] = 0.13 + np.random.normal(loc=0.0, scale=noise_std/2)
     gripper = 0.0
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
@@ -211,95 +211,6 @@ def collect_demo_pick_up(
     tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
     imgs += tmp
 
-    imageio.mimwrite("test_rollout.gif", np.stack(imgs), duration=10)
-
-    # MOVE ABOVE
-    target_pose[2] = z_waypoints[0]
-    # add pose noise
-    target_pose_noise = apply_noise(target_pose, mean=0.0, std=noise_std[0])
-    gripper = 0.0
-    # move to target pose + add action noise
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose_noise,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[0],
-            render=render,
-            verbose=verbose,
-        )
-    )
-
-    # MOVE CLOSER
-    target_pose[2] = z_waypoints[1]
-    target_pose_noise = apply_noise(target_pose, mean=0.0, std=noise_std[1])
-    gripper = 0.0
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose_noise,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[1],
-            render=render,
-            verbose=verbose,
-        )
-    )
-
-    # MOVE DOWN
-    target_pose[2] = z_waypoints[2]
-    gripper = 0.0
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[2],
-            render=render,
-            verbose=verbose,
-        )
-    )
-
-    # GRASP
-    gripper = 1.0
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose, gripper, env, max_iter=5, noise_std=noise_std[2], render=render,verbose=verbose,
-        )
-    )
-
-    # MOVE UP
-    target_pose[2] = z_waypoints[1]
-    target_pose_noise = apply_noise(target_pose, mean=0.0, std=noise_std[1])
-    gripper = 1.0
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[1],
-            render=render,
-            verbose=verbose,
-        )
-    )
-
-    # MOVE ABOVE
-    target_pose[2] = z_waypoints[0]
-    target_pose_noise = apply_noise(target_pose, mean=0.0, std=noise_std[1])
-    imgs.append(
-        move_to_cartesian_pose_delta(
-            target_pose,
-            gripper,
-            env,
-            error_thresh=error_thresh,
-            noise_std=noise_std[0],
-            render=render,
-            verbose=verbose,
-        )
-    )
 
     success = env.get_obj_pose()[2] > 0.1
     return success, imgs
@@ -317,7 +228,7 @@ def run_experiment(cfg):
     
     cfg.robot.DoF = 6
     cfg.robot.gripper = True
-    cfg.robot.on_screen_rendering = True
+    cfg.robot.on_screen_rendering = False
     cfg.robot.max_path_length = 100
 
     cfg.env.flatten = False
@@ -330,6 +241,7 @@ def run_experiment(cfg):
         device_id=0,
     )
 
+    successes = []
     # with wrap_env_in_rlds_logger(
     #     env, cfg.exp_id, logdir, max_episodes_per_shard=1
     # ) as rlds_env:
@@ -343,12 +255,15 @@ def run_experiment(cfg):
         success, _ = collect_demo_pick_up(
             env,
             # rlds_env,
-            render=True,
+            render=False,
         )
+        successes.append(success)
 
         print(f"Recorded Trajectory {i}, success {success}")
 
     env.reset()
+
+    print(np.sum(successes), "/", len(successes))
 
     # check if dataset was saved
     loaded_dataset = load_rlds_dataset(logdir)

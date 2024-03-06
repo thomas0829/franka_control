@@ -1,0 +1,6 @@
+# careful when adjusting friction -> too high values cause the object to penetrate the table and give huge reward signals even if not touched
+parameter_dict: {}
+
+reward: false
+delta: 0.
+normalization: 1.

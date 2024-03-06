@@ -14,10 +14,15 @@ class ObjWrapper(gym.Wrapper):
         obj_id="rod",
         obj_pos_noise=True,
         obs_keys=None, # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
+        safety_penalty=0.,
         flatten=True,
         verbose=False,
+        **kwargs
     ):
         super(ObjWrapper, self).__init__(env)
+        
+        if verbose:
+            print(f"WARNING: ObjWrapper doesn't take {kwargs}!")
 
         self.verbose = verbose
 
@@ -41,6 +46,9 @@ class ObjWrapper(gym.Wrapper):
         self.obj_pos_noise = obj_pos_noise
         self.init_obj_pose = self.get_obj_pose()
         self.curr_obj_pose = None
+
+        # Reward
+        self.safety_penalty = safety_penalty
 
         # Observations
         self.obs_keys = (
@@ -78,10 +86,15 @@ class ObjWrapper(gym.Wrapper):
 
         return obs
 
+    def obj_on_table(self):
+        return self.get_obj_pose()[2] > 0.
+
     def step(self, action):
 
         obs, reward, done, info = self.env.step(action)
 
+        reward -= self.safety_penalty * int(not self.obj_on_table())
+        
         return self.augment_observations(obs, flatten=self.flatten), reward, done, info
 
     def reset(self, *args, **kwargs):

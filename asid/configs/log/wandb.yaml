@@ -5,4 +5,4 @@ dir: logdir
 format_strings: [stdout, wandb]
 
 entity: memmelma
-project: debug
+project: asid

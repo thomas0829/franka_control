@@ -15,12 +15,8 @@ import yaml
 
 # from polymetis.utils.data_dir import get_full_path_to_urdf
 # from polysim.envs import AbstractControlledEnv
-from utils.transformations import (
-    euler_to_quat,
-    quat_to_euler,
-    rmat_to_euler,
-    rmat_to_quat,
-)
+from utils.transformations import (euler_to_quat, quat_to_euler, rmat_to_euler,
+                                   rmat_to_quat)
 from utils.transformations_mujoco import mat_to_quat_mujoco
 
 log = logging.getLogger(__name__)
@@ -478,8 +474,8 @@ class MujocoManipulatorEnv(FrankaBase):
         state_dict = {
             "cartesian_position": np.concatenate([pos, quat]),
             "gripper_position": gripper_position,
-            "joint_positions": torch.tensor(joint_positions, dtype=torch.float32),
-            "joint_velocities": torch.tensor(joint_velocities, dtype=torch.float32),
+            "joint_positions": joint_positions,
+            "joint_velocities": joint_velocities,
             # "joint_torques_computed": list(robot_state.joint_torques_computed),
             # "prev_joint_torques_computed": list(
             #     robot_state.prev_joint_torques_computed
@@ -589,7 +585,8 @@ class MujocoManipulatorEnv(FrankaBase):
     ):
         if cartesian_noise is not None:
             command = self.add_noise_to_joints(command, cartesian_noise)
-        command = torch.Tensor(command)
+        
+        # command = torch.Tensor(command)
 
         if velocity:
             joint_delta = self._ik_solver.joint_velocity_to_delta(command)
@@ -649,11 +646,12 @@ class MujocoManipulatorEnv(FrankaBase):
         udpate_pkt = {}
 
         if joint_pos_desired is not None:
-            udpate_pkt["joint_pos_desired"] = (
-                joint_pos_desired
-                if torch.is_tensor(joint_pos_desired)
-                else torch.tensor(joint_pos_desired)
-            )
+            udpate_pkt["joint_pos_desired"] = joint_pos_desired
+            # (
+            #     joint_pos_desired
+            #     if torch.is_tensor(joint_pos_desired)
+            #     else torch.tensor(joint_pos_desired)
+            # )
         if kp is not None:
             udpate_pkt["kp"] = kp if torch.is_tensor(kp) else torch.tensor(kp)
         if kd is not None:
@@ -670,14 +668,15 @@ class MujocoManipulatorEnv(FrankaBase):
             # WARNING: actuator must be general or position
 
             # # set position -> sim only has to be stepped once
-            # self.data.qpos[self.franka_joint_ids] = udpate_pkt["joint_pos_desired"]
+            # self.data.qpos[self.franka_joint_ids] = udpate_pkt["joint_pos_desired"].cpu().numpy()
             # mujoco.mj_step(self.model, self.data)
 
             # WARNING: actuator must be general or position
             self.data.ctrl[: len(self.franka_joint_ids)] = udpate_pkt[
                 "joint_pos_desired"
             ]
-            mujoco.mj_step(self.model, self.data)
+            # TODO: check if nstep messes up sim2real
+            mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
 
     def move_to_joint_positions(self, joint_pos_desired=None, time_to_go=3):
         # fast reset for simulation -> jump to joint positions

@@ -37,6 +37,8 @@ def jump_to_cartesian_pose(
         )
         # env.unwrapped._robot.move_to_joint_positions(desired_qpos)
         env.unwrapped._robot.update_desired_joint_positions(desired_qpos.tolist())
+        if render:
+            env.render()
         if verbose:
             print(
                 "error",
@@ -139,14 +141,18 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
     # MOVE DOWN
     # go down manually -> better than MP
     while env.unwrapped._robot.get_ee_pose()[2] > 0.13 or (
-        env.unwrapped.sim and env.unwrapped._robot.get_ee_pose()[2] > 0.113
+        env.unwrapped.sim and env.unwrapped._robot.get_ee_pose()[2] > 0.12
     ):
-        env.step(np.array([0.0, 0.0, -0.03, 0.0, 0.0, 0.0, 0.0]))
-
+        env.step(np.array([0.0, 0.0, -0.1, 0.0, 0.0, 0.0, 0.0]))
+        if render:
+            env.render()
+        
     # GRASP
     # make sure gripper is fully closed -> 3 steps
     for _ in range(3):
         env.step(np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
+        if render:
+            env.render()
 
     # MOVE UP
     target_pose[2] = 0.2

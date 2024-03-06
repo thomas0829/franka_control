@@ -34,7 +34,7 @@
         <!-- modeled a cuboid (rod_body) with a cube (rod_com) that can be moved to shift center of mass -->
         <body name="rod_body" pos="0.4 0.3 0.02" euler="0 0 0.7">
             <freejoint name="rod_freejoint" />
-            <inertial pos="0 0 0" mass="0.0" diaginertia="0.0002 0.0002 0.0002" />
+            <!-- <inertial pos="0 0 0" mass="0.0" diaginertia="0.0002 0.0002 0.0002" /> -->
             
             <!-- moveable weight inside the rod -->
             <body name="rod_com" pos="0. 0.1 0." quat="1 0 0 0">

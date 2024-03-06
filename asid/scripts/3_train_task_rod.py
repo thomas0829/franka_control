@@ -158,7 +158,7 @@ def run_experiment(cfg):
     cfg.robot.DoF = 6
     cfg.robot.gripper = True
     cfg.robot.max_path_length = 1e5
-    cfg.robot.on_screen_rendering = True
+    cfg.robot.on_screen_rendering = False
 
     cfg.env.obs_keys = ["lowdim_ee", "lowdim_qpos"]
     cfg.env.obj_pos_noise = False

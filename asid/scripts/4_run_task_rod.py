@@ -30,10 +30,13 @@ def run_experiment(cfg):
     cfg.robot.DoF = 6
     cfg.robot.gripper = True
 
+    cfg.env.color_track = "yellow"
+    cfg.env.filter = True
     cfg.env.obs_keys = ["lowdim_ee", "lowdim_qpos"]
+    
     cfg.asid.obs_noise = 0.0
 
-    # # Load task policy
+    # Load task policy
     task_dir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "task", "policy")
     assert os.path.exists(task_dir), f"Policy not found in {task_dir}"
     policy_dict = joblib.load(task_dir)
@@ -48,6 +51,7 @@ def run_experiment(cfg):
         seed=cfg.seed,
         device_id=cfg.gpu_id,
         collision=True,
+        verbose=False
     )
 
     # Load zeta parameter

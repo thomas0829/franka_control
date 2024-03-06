@@ -78,6 +78,9 @@ class ServerInterface:
 
     def get_gripper_state(self):
         return self.server.get_gripper_state()
+    
+    def get_gripper_position(self):
+        return self.server.get_gripper_position()
 
     def get_robot_state(self):
         return self.server.get_robot_state()

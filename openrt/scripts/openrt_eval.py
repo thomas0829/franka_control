@@ -40,6 +40,9 @@ def inverse_discretize_bins(binned_data, min_value, max_value, num_bins=256):
 
 
 def inverse_discretize(action_bins, min_max_lst):
+    action_bins = action_bins.replace("    ", " ")
+    action_bins = action_bins.replace("   ", " ")
+    action_bins = action_bins.replace("  ", " ")
     action_values = action_bins.split(" ")[1:7]
     new_action_values = []
     for i in range(len(action_values)):
@@ -83,7 +86,7 @@ def call_rt(img, msg, url, minmaxlst):
     image.save(buffer, format="JPEG", quality=80)
     jpeg_data = buffer.getvalue()
 
-    prompt = f'What action should the robot take to `{msg}`'
+    prompt = f'<image>\nWhat action should the robot take to `{msg}`'
     data = {"images": jpeg_data, "queries": prompt, "answers": ""}
     data_bytes = pickle.dumps(data)
     
@@ -139,13 +142,11 @@ def run_experiment(cfg):
     done = False
     while not done:
 
-        images_array = envs.render()
-        data["rgbd"].append(images_array)
-
         start = time.time()
 
         # preprocess img
         img = obs[0]["215122255213_rgb"][:, 160:]
+        data["rgbd"].append(img)
 
         # call openrt api
         act = call_rt(img, cfg.inference.msg, cfg.inference.url, cfg.inference.minmaxlst)[None]
@@ -175,20 +176,20 @@ def run_experiment(cfg):
 
     imageio.mimwrite("open_rt_eval.gif", data["rgbd"].squeeze(), duration=10)
 
-    # b, t, c, h, w
-    video = np.transpose(data["rgbd"][..., :3], (1, 0, 4, 2, 3))
-    logger.record(
-        f"eval_policy/traj",
-        Video(video, fps=10),
-        exclude=["stdout"],
-    )
-    logger.dump(step=0)
+    # # b, t, c, h, w
+    # video = np.transpose(data["rgbd"][..., :3], (1, 0, 4, 2, 3))
+    # logger.record(
+    #     f"eval_policy/traj",
+    #     Video(video, fps=10),
+    #     exclude=["stdout"],
+    # )
+    # logger.dump(step=0)
 
-    # joblib.dump(data, os.path.join(logdir, f"rollout_{'sim' if cfg.env.sim else 'real'}.pkl"))
-    # for rod that doesn're require reconstruction
-    filenames = joblib.dump(data, os.path.join(logdir, f"rollout.pkl"))
-    print("Saved rollout to", filenames)
-    # print(os.path.join(logdir, f"rollout_{'sim' if cfg.env.sim else 'real'}.pkl"))
+    # # joblib.dump(data, os.path.join(logdir, f"rollout_{'sim' if cfg.env.sim else 'real'}.pkl"))
+    # # for rod that doesn're require reconstruction
+    # filenames = joblib.dump(data, os.path.join(logdir, f"rollout.pkl"))
+    # print("Saved rollout to", filenames)
+    # # print(os.path.join(logdir, f"rollout_{'sim' if cfg.env.sim else 'real'}.pkl"))
 
 
 if __name__ == "__main__":

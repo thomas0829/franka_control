@@ -164,8 +164,10 @@ class ColorTracker:
             upper_mask = cv2.inRange(init_hsv, lower2, upper2)
             full_mask = lower_mask + upper_mask
         elif color == "yellow":
-            lower = np.array([20, 100, 20])
-            upper = np.array([30, 255, 255])
+            # lower = np.array([20, 100, 20])
+            # upper = np.array([30, 255, 255])
+            lower = np.array([20, 100, 90])
+            upper = np.array([25, 255, 255])
             full_mask = cv2.inRange(init_hsv, lower, upper)
         elif color == "tennis":
             lower = np.array([30, 80, 50])

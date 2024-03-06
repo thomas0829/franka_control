@@ -133,7 +133,7 @@ def run_experiment(cfg):
     cfg.asid.obs_noise = 0.0
 
     # Load zeta parameter
-    zeta_dir = os.path.join(logdir, cfg.exp_id, str(cfg.seed), "sysid", "zeta")
+    zeta_dir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "sysid", "zeta")
     if os.path.exists(zeta_dir):
         zeta_dict = joblib.load(zeta_dir)
         for k, v in zeta_dict.items():

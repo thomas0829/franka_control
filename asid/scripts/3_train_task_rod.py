@@ -22,7 +22,7 @@ from utils.transformations_mujoco import *
 from asid.utils.move import collect_rollout
 
 
-def train_cem_policy(cfg, zeta=None, obj_pose=None):
+def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
 
     num_iters, num_samples, num_procs = (
         cfg.train.algorithm.num_iters,
@@ -70,7 +70,7 @@ def train_cem_policy(cfg, zeta=None, obj_pose=None):
 
         results = []
         for i in trange(num_samples, desc="collecting rollouts..."):
-            res = cem_rollout_worker(cfg, batch_size, action_mean, action_std, zeta, obj_pose, cfg.seed + i)
+            res = cem_rollout_worker(cfg, batch_size, action_mean, action_std, zeta, obj_pose, cfg.seed + i, False, render)
             results.append(res)
 
         # Update mean and std
@@ -133,7 +133,6 @@ def cem_rollout_worker(
         )
         actions[i] = action
         rewards[i] = reward
-
     return {"act": actions, "rew": rewards}
     # q.put({"actions": actions, "rewards": rewards})
 
@@ -173,7 +172,7 @@ def run_experiment(cfg):
         for k, v in sysid_dict.items():
             sysid_dict[k] = np.array(v)
         zeta = sysid_dict["mu"]
-        obj_pose = sysid_dict["final_obs"][-7:]
+        obj_pose = sysid_dict["final_obs"][0,-7:]
     else:
         zeta = np.array([0.07])
         obj_pose = np.array([0.4, 0.3, 0.02, 0, 0, 0, 0])
@@ -183,9 +182,9 @@ def run_experiment(cfg):
         action = cfg.train.action
     else:
         if cfg.train.mode == "sysid":
-            action_mean, action_std = train_cem_policy(cfg, zeta=zeta, obj_pose=obj_pose)
+            action_mean, action_std = train_cem_policy(cfg, zeta=zeta, obj_pose=obj_pose, render=cfg.robot.on_screen_rendering)
         elif cfg.train.mode == "domain_rand":
-            action_mean, action_std = train_cem_policy(cfg, zeta=None, obj_pose=obj_pose)
+            action_mean, action_std = train_cem_policy(cfg, zeta=None, obj_pose=obj_pose, render=cfg.robot.on_screen_rendering)
 
         action = np.random.normal(action_mean, action_std)
         print(
@@ -198,7 +197,7 @@ def run_experiment(cfg):
         }
         joblib.dump(
             param_dict,
-            os.path.join(logdir, cfg.exp_id, str(cfg.seed), "task", "policy"),
+            os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "task", "policy"),
         )
 
     # Evaluate policy
@@ -210,17 +209,13 @@ def run_experiment(cfg):
         device_id=cfg.gpu_id,
         collision=True,
     )
-    eval_env.set_parameters(sysid_dict[""])
-    video_path = os.path.join(cfg.logdir, cfg.exp_id, str(cfg.seed), "sysid")
-    os.makedirs(video_path, exist_ok=True)
+    eval_env.set_parameters(sysid_dict["mu"])
     reward = collect_rollout(
         eval_env,
         action,
-        log_video=True,
-        video_path=os.path.join(video_path, f"{cfg.train.mode}.gif"),
     )
     print(
-        f"FINAL real zeta {sysid_dict['']} EXP {cfg.exp_id} ALGO {cfg.train.mode} reward: {reward} act {action} act_mean {action_mean} act_std {action_std}"
+        f"FINAL real zeta {sysid_dict['mu']} EXP {cfg.exp_id} ALGO {cfg.train.mode} reward: {reward} act {action} act_mean {action_mean} act_std {action_std}"
     )
 
 

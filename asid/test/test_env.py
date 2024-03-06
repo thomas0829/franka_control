@@ -4,20 +4,22 @@ import hydra
 import numpy as np
 import torch
 
+from asid.utils.move import jump_to_cartesian_pose
 from asid.wrapper.asid_vec import make_env, make_vec_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
+from utils.transformations_mujoco import *
 
-@hydra.main(config_path="../configs/", config_name="explore_rod_sim", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="explore_bottle_sim", version_base="1.1")
 def run_experiment(cfg):
 
-    cfg.robot.DoF = 2
+    # cfg.robot.DoF = 2
     cfg.robot.on_screen_rendering = True
     cfg.robot.gripper = True
     # # cfg.robot.ip_address = "172.16.0.1"
     # # cfg.robot.camera_model = "zed"
 
-    # # cfg.env.obj_pos_noise = False
+    cfg.env.obj_id = "bottle"
     # cfg.env.flatten = True
 
     env = make_env(
@@ -28,6 +30,57 @@ def run_experiment(cfg):
         device_id=0,
         verbose=False,
     )
+
+    env.set_parameters(np.zeros(1))
+    env.reset()
+    rod_pose = env.get_obj_pose()
+
+    target_pos = rod_pose.copy()[:3]
+    target_euler = quat_to_euler_mujoco(rod_pose.copy()[3:])
+    target_pose = np.concatenate((target_pos, target_euler))
+    target_pose[3:] = env.unwrapped._default_angle
+
+    target_pose[2] = 0.14
+    gripper = 0.
+    jump_to_cartesian_pose(
+        target_pose,
+        gripper,
+        env,
+        render=False,
+        verbose=True,
+    )
+
+    env.render()
+
+    for _ in range(3):
+        env.step(np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
+
+    env.render()
+
+    target_pose[2] = 0.4
+    gripper = 1.
+    jump_to_cartesian_pose(
+        target_pose,
+        gripper,
+        env,
+        render=True,
+        verbose=True,
+    )
+
+    env.render()
+
+    import mujoco
+
+    for _ in range(5):
+        env.unwrapped._robot.update_gripper(1.)
+        env.unwrapped._robot.data.qvel[env.unwrapped._robot.franka_joint_ids[-2]] = 10.
+        mujoco.mj_step(env.unwrapped._robot.model, env.unwrapped._robot.data, nstep=env.unwrapped._robot.frame_skip)
+        env.render()
+    env.unwrapped._robot.update_gripper(0.)
+    env.unwrapped._robot.data.qvel[env.unwrapped._robot.franka_joint_ids[-2]] = 0.
+    mujoco.mj_step(env.unwrapped._robot.model, env.unwrapped._robot.data, nstep=env.unwrapped._robot.frame_skip)
+    env.render()
+
 
     # env.set_parameters(np.array([0., 1.]))
     # env.unwrapped.get_images_and_points()

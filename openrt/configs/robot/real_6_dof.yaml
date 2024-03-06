@@ -19,7 +19,7 @@ normalize: false
 # pass IP if not running on NUC "localhost" if running on NUC None if running sim
 ip_address: "172.16.0.1"
 # specify path length if resetting after a fixed length
-max_path_length: 20
+max_path_length: 100
 # camera type to use: 'realsense' 'zed'
 camera_model: "realsense"
 camera_resolution: null  # (128 128) -> HxW

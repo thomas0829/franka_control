@@ -187,7 +187,7 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
     imgs += tmp
 
     # MOVE TO PLACE LOCATION
-    target_pose[:3] = np.array([0.4, -0.3, 0.3])
+    target_pose[:3] = np.array([0.4, -0.3, 0.35])
     target_pose[3:6] = env.unwrapped._default_angle
     target_pose[5] -= np.pi / 2
     # if not env.unwrapped.sim:
@@ -207,7 +207,8 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
     imgs += tmp
 
     # MOVE DOWN
-    target_pose[2] = 0.17
+    # target_pose[2] = 0.17
+    target_pose[2] = 0.25
     gripper = 1.0
     tmp, _ = jump_to_cartesian_pose(
         target_pose,
@@ -223,7 +224,7 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
         env.step(np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
 
     # MOVE UP
-    target_pose[2] = 0.3
+    target_pose[2] = 0.35
     gripper = 0.0
     tmp, _ = jump_to_cartesian_pose(
         target_pose,

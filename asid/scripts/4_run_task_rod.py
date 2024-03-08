@@ -3,6 +3,7 @@ import joblib
 import numpy as np
 import hydra
 import imageio
+os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
 
 from utils.logger import Video, configure_logger
 from utils.system import get_device, set_gpu_mode
@@ -33,7 +34,7 @@ def run_experiment(cfg):
     
     cfg.robot.on_screen_rendering = cfg.robot.ip_address is None
 
-    cfg.env.color_track = "yellow"
+    # cfg.env.color_track = "yellow"
     cfg.env.filter = True
     cfg.env.obs_keys = ["lowdim_ee", "lowdim_qpos"]
     
@@ -86,7 +87,7 @@ def run_experiment(cfg):
         env, action, control_hz=cfg.robot.control_hz, render=True, verbose=True
     )
 
-    imageio.mimsave(f"real_task.gif", np.stack(imgs), duration=3)
+    imageio.mimsave(os.path.join(logger.dir, "real_task.mp4"), np.stack(imgs))
 
 
 if __name__ == "__main__":

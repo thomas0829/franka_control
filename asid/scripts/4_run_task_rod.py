@@ -35,7 +35,7 @@ def run_experiment(cfg):
     cfg.robot.on_screen_rendering = cfg.robot.ip_address is None
 
     # cfg.env.color_track = "yellow"
-    cfg.env.filter = True
+    cfg.env.filter = False # -> filter is buggy / inaccurate
     cfg.env.obs_keys = ["lowdim_ee", "lowdim_qpos"]
     
     cfg.asid.obs_noise = 0.0

@@ -41,6 +41,7 @@ for camera in multi_camera_wrapper._all_cameras:
     margin = 0.0  # 0.033 + 0.02
     marker_radius = marker_size / 2
     table_length = 1.350
+    table_width = 0.809
     franka_center = 0.17
     aruco_offset = np.array(
         [

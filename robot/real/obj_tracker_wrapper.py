@@ -123,6 +123,8 @@ class ObjectTrackerWrapper(gym.Wrapper):
                     obj_pose = self.tracker.get_rod_pose(
                         cropped_points, lowpass_filter=False, show=self.verbose
                     )
+                # add mujoco height
+                obj_pose[2] = 0.02
                 # convert to mujoco quaternion
                 obj_pose[-4:] = euler_to_quat_mujoco(quat_to_euler(obj_pose[-4:]))
                 return obj_pose

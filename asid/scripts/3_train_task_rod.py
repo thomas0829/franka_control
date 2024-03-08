@@ -2,6 +2,7 @@ import argparse
 import os
 from multiprocessing import Process, Queue
 from multiprocessing import Pool
+os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
 
 import hydra
 import imageio
@@ -36,27 +37,7 @@ def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
 
     batch_size = num_samples // num_procs
     batch_size = 1
-    for _ in trange(num_iters, desc="CEM iteration"):
-        # q = Queue()
-        # with Pool(num_procs) as p:
-        #     results = p.map(
-        #         cem_rollout_worker,
-        #         [
-        #             (cfg, batch_size, action_mean, action_std, zeta, cfg.seed + i)
-        #             for i in range(num_procs)
-        #         ],
-        #     )
-
-        # procs = [
-        #     Process(target=cem_rollout_worker, args=(q, cfg, batch_size, action_mean, action_std, zeta))
-        #     for _ in range(num_procs)
-        # ]
-        
-        # for p in procs:
-        #     p.start()
-
-        # for p in procs:
-        #     p.join()
+    for j in trange(num_iters, desc="CEM iteration"):
 
         # # Update mean and std
         # results = [q.get() for _ in range(num_procs)]
@@ -70,8 +51,12 @@ def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
 
         results = []
         for i in trange(num_samples, desc="collecting rollouts..."):
-            res = cem_rollout_worker(cfg, batch_size, action_mean, action_std, zeta, obj_pose, cfg.seed + i, False, render)
+            res = cem_rollout_worker(cfg, batch_size, action_mean, action_std, zeta, obj_pose, cfg.seed + i, False, render and i == 0)
             results.append(res)
+
+            if i == 0 and not cfg.robot.on_screen_rendering:
+                imgs = np.concatenate([res["imgs"] for res in results], axis=0)
+                imageio.mimsave(os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "task", f"cem_{j}.mp4"), imgs)
 
         # Update mean and std
         actions = np.concatenate([res["act"] for res in results], axis=0)
@@ -81,8 +66,10 @@ def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
         action_mean = np.mean(elites, axis=0)
         action_std = np.std(elites, axis=0)
         print(
-            f"action_mean: {action_mean}, action_std: {action_std}, reward: {np.mean(rewards)} zeta: {zeta}"
+            f"action_mean: {action_mean}, action_std: {action_std}, reward: {np.mean(rewards)} zeta: {zeta}, best action: {actions[np.argsort(rewards)][-1]}, best reward: {rewards[np.argsort(rewards)][-1]}"
         )
+        if action_std < 3e-3:
+            break
     return action_mean, action_std
 
 
@@ -105,7 +92,6 @@ def cem_rollout_worker(
         asid_cfg_dict=hydra_to_dict(cfg.asid),
         seed=cfg.seed,
         device_id=cfg.gpu_id,
-        # TODO
         collision=False,
     )
 
@@ -123,17 +109,21 @@ def cem_rollout_worker(
         np.random.seed(seed)
         action = np.random.normal(action_mean, action_std)
 
+        # Make sure obj is grasped
+        action = np.clip(action, -0.07, 0.07)
+        
         # Collect rollout -> resets env
-        reward, _ = collect_rollout(
+        reward, imgs = collect_rollout(
             env,
             action,
             control_hz=cfg.robot.control_hz,
             verbose=verbose,
-            render=render,
+            render=render and i == 0,
         )
         actions[i] = action
         rewards[i] = reward
-    return {"act": actions, "rew": rewards}
+        # print(f"Rollout {i} reward: {reward} action: {action}")
+    return {"act": actions, "rew": rewards, "imgs": imgs}
     # q.put({"actions": actions, "rewards": rewards})
 
 
@@ -150,7 +140,7 @@ def run_experiment(cfg):
     set_gpu_mode(cfg.gpu_id >= 0, gpu_id=cfg.gpu_id)
     device = get_device()
 
-    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
+    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "task")
     logger = configure_logger(logdir, cfg.log.format_strings)
 
     # cfg.robot.on_screen_rendering = True
@@ -173,18 +163,18 @@ def run_experiment(cfg):
             sysid_dict[k] = np.array(v)
         zeta = sysid_dict["mu"]
         obj_pose = sysid_dict["final_obs"][0,-7:]
-    else:
-        zeta = np.array([0.07])
-        obj_pose = np.array([0.4, 0.3, 0.02, 0, 0, 0, 0])
+    # else:
+    #     zeta = np.array([0.02949091])
+    #     obj_pose = np.array([0.4, 0.3, 0.02, 0, 0, 0, 0])
 
     # Train policy
     if cfg.train.mode == "manual":
         action = cfg.train.action
     else:
         if cfg.train.mode == "sysid":
-            action_mean, action_std = train_cem_policy(cfg, zeta=zeta, obj_pose=obj_pose, render=cfg.robot.on_screen_rendering)
+            action_mean, action_std = train_cem_policy(cfg, zeta=zeta, obj_pose=obj_pose, render=True)
         elif cfg.train.mode == "domain_rand":
-            action_mean, action_std = train_cem_policy(cfg, zeta=None, obj_pose=obj_pose, render=cfg.robot.on_screen_rendering)
+            action_mean, action_std = train_cem_policy(cfg, zeta=None, obj_pose=obj_pose, render=True)
 
         action = np.random.normal(action_mean, action_std)
         print(
@@ -207,10 +197,10 @@ def run_experiment(cfg):
         asid_cfg_dict=hydra_to_dict(cfg.asid),
         seed=cfg.seed + 100,
         device_id=cfg.gpu_id,
-        collision=True,
+        collision=False,
     )
     eval_env.set_parameters(sysid_dict["mu"])
-    reward = collect_rollout(
+    reward, _ = collect_rollout(
         eval_env,
         action,
     )

@@ -31,8 +31,8 @@ def jump_to_cartesian_pose(
     error = 1.
     while (
         # np.linalg.norm(target_pose[:3] - env.unwrapped._robot.get_ee_pose()[:3]) > 5e-2
-        error > 3e-2
-        and ctr < 300
+        error > 2e-2
+        and ctr < 300 # 100
     ):
         ctr += 1
         # while np.linalg.norm(target_pose - env.unwrapped._robot.get_ee_pose()) > 5e-2:
@@ -61,7 +61,7 @@ def jump_to_cartesian_pose(
     return imgs, steps
 
 
-def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
+def collect_rollout(env, action, control_hz=10, render=False, verbose=False, second=False,):
 
     env.reset()
 
@@ -157,7 +157,7 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
     #     if render:
     #         imgs += [env.render()]
 
-    target_pose[2] = 0.115
+    target_pose[2] = 0.115 if env.unwrapped.sim else 0.125
     gripper = 0.0
     tmp, _ = jump_to_cartesian_pose(
         target_pose,
@@ -199,15 +199,20 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
     )
     imgs += tmp
 
-    # middle of the road reward
-    if env.unwrapped.sim:
-        rod_orn = quat_to_euler_mujoco(env.get_obj_pose()[-4:])
-        reward += -np.linalg.norm(rod_orn[0] - init_rod_pitch)
+    # # middle of the road reward
+    # if env.unwrapped.sim:
+    #     rod_orn = quat_to_euler_mujoco(env.get_obj_pose()[-4:])
+    #     reward += -np.linalg.norm(rod_orn[0] - init_rod_pitch)
 
     # MOVE TO PLACE LOCATION
     target_pose[:3] = np.array([0.4, -0.3, 0.5])
     target_pose[3:6] = env.unwrapped._default_angle
-    target_pose[5] -= np.pi / 2
+    
+    if second:
+        target_pose[5] += 0
+    else:
+        target_pose[5] -= np.pi / 2
+    
     # if not env.unwrapped.sim:
     #     target_pose[5] -= np.pi / 4
     # real robot offset
@@ -238,7 +243,7 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
     
     # MOVE DOWN
     # target_pose[2] = 0.17
-    target_pose[2] = 0.26
+    target_pose[2] = 0.31 if second else 0.27
     gripper = 1.0
     tmp, _ = jump_to_cartesian_pose(
         target_pose,
@@ -271,5 +276,10 @@ def collect_rollout(env, action, control_hz=10, render=False, verbose=False):
     if env.unwrapped.sim:
         rod_orn = quat_to_euler_mujoco(env.get_obj_pose()[-4:])
         reward += -np.linalg.norm(rod_orn[0] - init_rod_pitch)
+
+        # rod dropped
+        if env.get_obj_pose()[2] < 0.04:
+            # print("dropped", env.get_obj_pose())
+            reward += -10
 
     return reward, imgs

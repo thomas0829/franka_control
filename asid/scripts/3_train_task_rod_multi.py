@@ -23,7 +23,7 @@ from utils.transformations_mujoco import *
 from asid.utils.move import collect_rollout
 
 
-def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
+def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False, second=False):
 
     num_iters, num_samples, num_procs = (
         cfg.train.algorithm.num_iters,
@@ -42,6 +42,7 @@ def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
         asid_cfg_dict=hydra_to_dict(cfg.asid),
+        second=second,
         seed=cfg.seed,
         device_id=cfg.gpu_id,
         collision=False,
@@ -61,7 +62,7 @@ def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
 
         results = []
         for i in trange(num_samples, desc="collecting rollouts..."):
-            res = cem_rollout_worker(env, cfg, batch_size, action_mean, action_std, zeta, obj_pose, False, render and i == 0)
+            res = cem_rollout_worker(env, cfg, batch_size, action_mean, action_std, zeta, obj_pose, False, render and i == 0, second=second)
             results.append(res)
 
             if i == 0 and not cfg.robot.on_screen_rendering:
@@ -94,6 +95,7 @@ def cem_rollout_worker(
     obj_pose,
     verbose=False,
     render=False,
+    second=False,
 ):
 
     actions = np.zeros((num_rollouts), dtype=np.float32)
@@ -109,6 +111,7 @@ def cem_rollout_worker(
         # Sample action
         # np.random.seed(seed)
         action = np.random.normal(action_mean, action_std)
+        # action = -0.06
 
         # Collect rollout -> resets env
         reward, imgs = collect_rollout(
@@ -117,6 +120,7 @@ def cem_rollout_worker(
             control_hz=cfg.robot.control_hz,
             verbose=verbose,
             render=render and i == 0,
+            second=second,
         )
         actions[i] = action
         rewards[i] = reward
@@ -140,6 +144,8 @@ def run_experiment(cfg):
 
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "task")
     logger = configure_logger(logdir, cfg.log.format_strings)
+
+    second = True
 
     # cfg.robot.on_screen_rendering = True
     cfg.robot.DoF = 6
@@ -166,8 +172,8 @@ def run_experiment(cfg):
     if os.path.exists(explore_dir):
         explore_dict = joblib.load(explore_dir)
         # rod flipped -> apply inverse zeta
-        if np.abs(quat_to_euler_mujoco(sysid_dict["final_obs"][-4:])[-1]) > np.pi / 4:
-            zeta = -sysid_dict["mu"]
+        # if np.abs(quat_to_euler_mujoco(sysid_dict["final_obs"][-4:])[-1]) > np.pi / 4:
+        #     zeta = -sysid_dict["mu"]
     # else:
     #     zeta = np.array([0.02949091])
     #     obj_pose = np.array([0.4, 0.3, 0.02, 0, 0, 0, 0])
@@ -177,10 +183,9 @@ def run_experiment(cfg):
         action = cfg.train.action
     else:
         if cfg.train.mode == "sysid":
-            action_mean, action_std = train_cem_policy(cfg, zeta=zeta, obj_pose=obj_pose, render=True)
+            action_mean, action_std = train_cem_policy(cfg, zeta=zeta, obj_pose=obj_pose, render=True, second=second)
         elif cfg.train.mode == "domain_rand":
-            cfg.env.obj_pos_noise = True
-            action_mean, action_std = train_cem_policy(cfg, zeta=None, obj_pose=None, render=True)
+            action_mean, action_std = train_cem_policy(cfg, zeta=None, obj_pose=obj_pose, render=True, second=second)
 
         action = np.random.normal(action_mean, action_std)
         print(
@@ -204,6 +209,7 @@ def run_experiment(cfg):
         seed=cfg.seed + 100,
         device_id=cfg.gpu_id,
         collision=False,
+        second=second,
     )
    
     if zeta is not None:
@@ -214,6 +220,7 @@ def run_experiment(cfg):
     reward, imgs = collect_rollout(
         eval_env,
         action,
+        second=second,
         render=True,
     )   
     imageio.mimsave(os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "task", "cem_final.mp4"), np.stack(imgs))

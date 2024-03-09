@@ -116,7 +116,9 @@ def run_experiment(cfg):
                 0.5588430762290955,
             ]
         )
-    envs.reset()
+    
+    obs = envs.reset()
+    data["final_obs"] = obs
 
     if cfg.robot.ip_address is None:
         data["zeta"] = np.array(envs.get_parameters()[0])

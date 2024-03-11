@@ -185,7 +185,7 @@ class ColorTracker:
             lower = np.array([45, 100, 40])
             upper = np.array([75, 255, 255])
             full_mask = cv2.inRange(init_hsv, lower, upper)
-        elif color == "bouncy_orange":
+        elif color == "orange" or color == "bouncy_orange":
             lower1 = np.array([0, 100, 20])
             upper1 = np.array([5, 255, 255])
             lower2 = np.array([165, 100, 20])

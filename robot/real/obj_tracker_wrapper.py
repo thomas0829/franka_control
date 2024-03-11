@@ -109,7 +109,7 @@ class ObjectTrackerWrapper(gym.Wrapper):
         )
 
         # get raw or filtered rod pose
-        if self.obj_id == "rod":
+        if self.obj_id == "rod" or self.obj_id == "puck":
             try:
                 if self.filter:
                     obj_pose = self.tracker.get_rod_pose(
@@ -123,11 +123,12 @@ class ObjectTrackerWrapper(gym.Wrapper):
                     obj_pose = self.tracker.get_rod_pose(
                         cropped_points, lowpass_filter=False, show=self.verbose
                     )
+                # add mujoco height
+                obj_pose[2] = 0.02
                 # convert to mujoco quaternion
                 obj_pose[-4:] = euler_to_quat_mujoco(quat_to_euler(obj_pose[-4:]))
                 return obj_pose
             except:
                 obj_pose = np.zeros(7)
                 print("WARNING: no obj detected")
-
             

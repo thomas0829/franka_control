@@ -1,9 +1,10 @@
-obj_id: "rod"
+obj_id: "puck"
 joint_type: "free"
+# joint_type: "xy"
 obj_pose_noise_dict:
   {
     "x": { "min": 0.0, "max": 0.1 },
-    "y": { "min": -0.1, "max": 0.1 },
+    "y": { "min": -0.05, "max": 0.05 },
     "yaw": { "min": 0.0, "max": 1.57 },
   }
 obs_keys: ["lowdim_ee", "lowdim_qpos", "obj_pose"]

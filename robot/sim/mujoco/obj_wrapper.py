@@ -12,7 +12,8 @@ class ObjWrapper(gym.Wrapper):
         self,
         env,
         obj_id="rod",
-        obj_pos_noise=True,
+        obj_pose_noise_dict=None,
+        joint_type="free",
         obs_keys=None, # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
         safety_penalty=0.,
         flatten=True,
@@ -32,18 +33,25 @@ class ObjWrapper(gym.Wrapper):
         self.obj_body_id = mujoco.mj_name2id(
             self.env._robot.model, mujoco.mjtObj.mjOBJ_BODY, f"{self.obj_id}_body"
         )
-        self.obj_joint_id = mujoco.mj_name2id(
-            self.env._robot.model, mujoco.mjtObj.mjOBJ_JOINT, f"{self.obj_id}_freejoint"
-        )
+
+        self.joint_type = joint_type
+        if self.joint_type == "free":
+            self.obj_joint_id = mujoco.mj_name2id(
+                self.env._robot.model, mujoco.mjtObj.mjOBJ_JOINT, f"{self.obj_id}_freejoint"
+            )
+        elif self.joint_type == "xy":
+            self.obj_joint_ids = [
+                mujoco.mj_name2id(
+                self.env._robot.model, mujoco.mjtObj.mjOBJ_JOINT, f"{self.obj_id}_xjoint"
+            ),
+                mujoco.mj_name2id(
+                self.env._robot.model, mujoco.mjtObj.mjOBJ_JOINT, f"{self.obj_id}_yjoint"
+            )
+            ]
 
         # Object position
-        self.obj_pose_noise_dict = {
-            "x": {"min": 0.0, "max": 0.1},
-            # "x": {"min": -0.1, "max": 0.1},
-            "y": {"min": -0.1, "max": 0.1},
-            "yaw": {"min": 0.0, "max": 1.57},
-        }
-        self.obj_pos_noise = obj_pos_noise
+        self.obj_pose_noise_dict = obj_pose_noise_dict
+        self.obj_pos_noise = obj_pose_noise_dict is not None
         self.init_obj_pose = self.get_obj_pose()
         self.curr_obj_pose = None
 
@@ -60,8 +68,8 @@ class ObjWrapper(gym.Wrapper):
                 del self.env.observation_space.spaces[k]
 
         self.flatten = flatten
-        obj_pose_low = -np.inf * np.ones(7)
-        obj_pose_high = np.inf * np.ones(7)
+        obj_pose_low = -np.inf * np.ones(7) if self.joint_type == "free" else -np.inf * np.ones(2)
+        obj_pose_high = np.inf * np.ones(7) if self.joint_type == "free" else np.inf * np.ones(2)
         if self.flatten:
             low = np.concatenate([v.low for v in self.env.observation_space.values()])
             high = np.concatenate([v.high for v in self.env.observation_space.values()])
@@ -87,7 +95,7 @@ class ObjWrapper(gym.Wrapper):
         return obs
 
     def obj_on_table(self):
-        return self.get_obj_pose()[2] > 0.
+        return self.get_obj_pose()[2] > 0. if self.joint_type == "free" else True
 
     def step(self, action):
 
@@ -120,14 +128,19 @@ class ObjWrapper(gym.Wrapper):
         return self.augment_observations(obs, flatten=self.flatten)
 
     def get_obj_pose(self):
-        obj_pos = self.env._robot.data.qpos[
-            self.obj_joint_id : self.obj_joint_id + 3
-        ].copy()
-        obj_quat = self.env._robot.data.qpos[
-            self.obj_joint_id + 3 : self.obj_joint_id + 7
-        ].copy()
-        return np.concatenate((obj_pos, obj_quat))
-
+        if self.joint_type == "free":
+            obj_pos = self.env._robot.data.qpos[
+                self.obj_joint_id : self.obj_joint_id + 3
+            ].copy()
+            obj_quat = self.env._robot.data.qpos[
+                self.obj_joint_id + 3 : self.obj_joint_id + 7
+            ].copy()
+            return np.concatenate((obj_pos, obj_quat))
+        elif self.joint_type == "xy":
+            obj_x = self.env._robot.data.qpos[self.obj_joint_ids[0]].copy()
+            obj_y = self.env._robot.data.qpos[self.obj_joint_ids[1]].copy()
+            return np.array([obj_x, obj_y])
+        
     def set_obj_pose(self, obj_pose):
         self.obj_pos_noise = False
         self.init_obj_pose = obj_pose.copy()
@@ -135,6 +148,7 @@ class ObjWrapper(gym.Wrapper):
 
     def resample_obj_pose(self):
         pose = self.init_obj_pose.copy()
+        
         if self.obj_pos_noise:
             pose[0] += np.random.uniform(
                 self.obj_pose_noise_dict["x"]["min"],
@@ -144,26 +158,33 @@ class ObjWrapper(gym.Wrapper):
                 self.obj_pose_noise_dict["y"]["min"],
                 self.obj_pose_noise_dict["y"]["max"],
             )
-            pose[3:7] = euler_to_quat_mujoco(
-                [
-                    0.0,
-                    0.0,
-                    np.random.uniform(
-                        self.obj_pose_noise_dict["yaw"]["min"],
-                        self.obj_pose_noise_dict["yaw"]["max"],
-                        size=1,
-                    ).item(),
-                ]
+            if self.joint_type == "free":
+                pose[3:7] = euler_to_quat_mujoco(
+                    [
+                        0.0,
+                        0.0,
+                        np.random.uniform(
+                            self.obj_pose_noise_dict["yaw"]["min"],
+                            self.obj_pose_noise_dict["yaw"]["max"],
+                            size=1,
+                        ).item(),
+                    ]
             )
+
         if self.verbose:
             print(f"Object pose: {pose} - seed {self.env._seed}")
         self.curr_obj_pose = pose.copy()
 
     def update_obj(self, qpos):
-        self.env._robot.data.qpos[self.obj_joint_id : self.obj_joint_id + 3] = qpos[:3]
-        self.env._robot.data.qpos[self.obj_joint_id + 3 : self.obj_joint_id + 7] = qpos[
-            3:
-        ]
+        if self.joint_type == "free":
+            self.env._robot.data.qpos[self.obj_joint_id : self.obj_joint_id + 3] = qpos[:3]
+            self.env._robot.data.qpos[self.obj_joint_id + 3 : self.obj_joint_id + 7] = qpos[
+                3:
+            ]
+        elif self.joint_type == "xy":
+            self.env._robot.data.qpos[self.obj_joint_ids[0]] = qpos[0]
+            self.env._robot.data.qpos[self.obj_joint_ids[1]] = qpos[1]
+
         # could use mj_forward but physics parameters sometimes cause instabilities that move the object
         # so we want to make sure the object comes to a hold, hence, mj_step
 

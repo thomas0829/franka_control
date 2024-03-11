@@ -1,0 +1,17 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - asid: mass
+  - env: puck
+  - robot: sim_2_dof
+  - train: explore
+  - log: wandb
+
+exp_id: "collect_puck_sim"
+
+seed: 0
+gpu_id: 0
+num_workers: 32
+num_workers_eval: 8

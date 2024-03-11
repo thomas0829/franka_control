@@ -18,7 +18,19 @@ class ASIDWrapper(gym.Wrapper):
 
         self.obs_noise = obs_noise
 
-        if self.env.DoF == 2:
+        if self.DoF == 2 and self.env.obj_id == "puck":
+            self.unwrapped._reset_joint_qpos = np.array(
+                [
+                    0.36586183,
+                    0.31292763,
+                    -0.30332268,
+                    -2.77233706,
+                    0.09988396,
+                    2.89770401,
+                    0.74832614,
+                ]
+            )
+        elif self.env.DoF == 2 and self.env.obj_id == "rod":
             self.env.unwrapped._reset_joint_qpos = np.array(
                 [
                     0.85290707,
@@ -189,14 +201,18 @@ class ASIDWrapper(gym.Wrapper):
             elif key == "friction":
                 for geom_id in self.obj_geom_ids:
                     self.env.unwrapped._robot.model.geom_friction[geom_id][:2] = value
-                    self.env.unwrapped._robot.model.geom_friction[geom_id][2] = 0.
+                    self.env.unwrapped._robot.model.geom_friction[geom_id][2] = 0.0
 
             elif key == "surface_friction":
-                self.env.unwrapped._robot.model.geom_friction[self.table_geom_id][:2] = value
-                self.env.unwrapped._robot.model.geom_friction[self.table_geom_id][2] = 0.
+                self.env.unwrapped._robot.model.geom_friction[self.table_geom_id][
+                    :2
+                ] = value
+                self.env.unwrapped._robot.model.geom_friction[self.table_geom_id][
+                    2
+                ] = 0.0
             elif key == "mass":
                 self.env.unwrapped._robot.model.body_mass[self.obj_body_id] = value
-                                                          
+
         if self.verbose:
             print(
                 f"Parameters: {self.get_parameters()} - seed {self.env.unwrapped._seed}"

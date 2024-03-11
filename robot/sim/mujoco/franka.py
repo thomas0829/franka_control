@@ -110,13 +110,13 @@ class MujocoManipulatorEnv(FrankaBase):
         #     os.path.splitext(self.robot_description_path)[0] + ".mjcf"
         # )
 
-        robot_desc_mjcf_path = os.path.join(
+        self.robot_desc_mjcf_path = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), f"assets/{model_name}.xml"
         )
         assert os.path.exists(
-            robot_desc_mjcf_path
-        ), f"No MJCF file found. Create an MJCF file at {robot_desc_mjcf_path} to use the MuJoCo simulator."
-        self.model = mujoco.MjModel.from_xml_path(robot_desc_mjcf_path)
+            self.robot_desc_mjcf_path
+        ), f"No MJCF file found. Create an MJCF file at {self.robot_desc_mjcf_path} to use the MuJoCo simulator."
+        self.model = mujoco.MjModel.from_xml_path(self.robot_desc_mjcf_path)
         # self.model.opt.timestep = 1e-4 -> tried 1000hz, doesn't make a difference
         self.data = mujoco.MjData(self.model)
 

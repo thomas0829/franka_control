@@ -12,7 +12,7 @@ from utils.logger import Video, configure_logger
 from utils.system import get_device, set_gpu_mode
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
 
-@hydra.main(config_path="../configs/", config_name="sysid_rod_sim", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="sysid_puck_sim", version_base="1.1")
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
@@ -28,7 +28,7 @@ def run_experiment(cfg):
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "sysid")
     logger = configure_logger(logdir, cfg.log.format_strings)
 
-    cfg.env.obj_pos_noise = False
+    cfg.env.obj_pose_noise_dict = None
     # cfg.robot.on_screen_rendering = True
     cfg.asid.obs_noise = 0.0
     cfg.asid.reward = False

@@ -109,7 +109,7 @@ class ObjectTrackerWrapper(gym.Wrapper):
         )
 
         # get raw or filtered rod pose
-        if self.obj_id == "rod":
+        if self.obj_id == "rod" or self.obj_id == "puck":
             try:
                 if self.filter:
                     obj_pose = self.tracker.get_rod_pose(
@@ -131,5 +131,4 @@ class ObjectTrackerWrapper(gym.Wrapper):
             except:
                 obj_pose = np.zeros(7)
                 print("WARNING: no obj detected")
-
             

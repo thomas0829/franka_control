@@ -28,13 +28,15 @@ def run_experiment(cfg):
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "task")
     logger = configure_logger(logdir, cfg.log.format_strings)
 
+    second = True
+
     cfg.robot.DoF = 6
     cfg.robot.gripper = True
     cfg.robot.max_path_length = 1e5
     
     cfg.robot.on_screen_rendering = cfg.robot.ip_address is None
 
-    # cfg.env.color_track = "yellow"
+    cfg.env.color_track = "yellow"
     cfg.env.filter = False # -> filter is buggy / inaccurate
     cfg.env.obs_keys = ["lowdim_ee", "lowdim_qpos"]
     
@@ -55,7 +57,8 @@ def run_experiment(cfg):
         seed=cfg.seed,
         device_id=cfg.gpu_id,
         collision=False,
-        verbose=False
+        verbose=False,
+        second=second
     )
 
     # Load zeta parameter
@@ -85,7 +88,7 @@ def run_experiment(cfg):
     
     # Execute
     reward, imgs = collect_rollout(
-        env, action, control_hz=cfg.robot.control_hz, render=True, verbose=True
+        env, action, control_hz=cfg.robot.control_hz, render=True, verbose=True, second=second
     )
 
     imageio.mimsave(os.path.join(logger.dir, "real_task.mp4"), np.stack(imgs))

@@ -33,6 +33,7 @@ def run_experiment(cfg):
     cfg.asid.obs_noise = 0.0
     cfg.asid.reward = False
 
+    second = True
     # train env
     envs_sysid = make_vec_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
@@ -40,6 +41,7 @@ def run_experiment(cfg):
         asid_cfg_dict=hydra_to_dict(cfg.asid),
         # only use special sysid env when running on real
         sysid=True, # False if cfg.robot.ip_address is None else True,
+        second=second,
         num_workers=cfg.num_workers,
         seed=cfg.seed,
         device_id=0,

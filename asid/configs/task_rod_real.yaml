@@ -5,7 +5,7 @@ hydra:
 defaults:
   - asid: inertia
   - env: rod
-  - robot: sim_6_dof
+  - robot: real_6_dof
   - train: task
   - log: stdout
 

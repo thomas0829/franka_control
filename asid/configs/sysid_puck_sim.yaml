@@ -1,0 +1,16 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - asid: mass_friction_surface_friction.yaml
+  - env: puck
+  - robot: sim_2_dof
+  - train: sysid
+  - log: stdout
+
+exp_id: "inertia_second"
+
+seed: 0
+gpu_id: 0
+num_workers: 8

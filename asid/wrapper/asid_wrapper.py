@@ -57,6 +57,18 @@ class ASIDWrapper(gym.Wrapper):
                 f"{self.obj_id}_geom",
             )
 
+        self.obj_body_id = mujoco.mj_name2id(
+            self.env.unwrapped._robot.model,
+            mujoco.mjtObj.mjOBJ_BODY,
+            f"{self.obj_id}_body",
+        )
+
+        self.table_geom_id = mujoco.mj_name2id(
+            self.env.unwrapped._robot.model,
+            mujoco.mjtObj.mjOBJ_GEOM,
+            "vention_table",
+        )
+
         # Physics parameters
         self.parameter_dict = parameter_dict
         # {
@@ -87,8 +99,8 @@ class ASIDWrapper(gym.Wrapper):
         else:
             obs += np.random.normal(0, self.obs_noise, obs.shape)
 
-        return obs 
-    
+        return obs
+
     def step(self, action):
 
         self.last_action = action
@@ -145,12 +157,12 @@ class ASIDWrapper(gym.Wrapper):
             # use set parameter + clip
             if self.params_set:
                 value = self.parameter_dict[key]["value"]
-                if self.parameter_dict[key]["type"] == "uniform":
-                    value = np.clip(
-                        value,
-                        self.parameter_dict[key]["min"],
-                        self.parameter_dict[key]["max"],
-                    )
+                # if self.parameter_dict[key]["type"] == "uniform":
+                value = np.clip(
+                    value,
+                    self.parameter_dict[key]["min"],
+                    self.parameter_dict[key]["max"],
+                )
             # sample parameter from uniform
             elif self.parameter_dict[key]["type"] == "uniform":
                 value = np.random.uniform(
@@ -176,8 +188,15 @@ class ASIDWrapper(gym.Wrapper):
 
             elif key == "friction":
                 for geom_id in self.obj_geom_ids:
-                    self.env.unwrapped._robot.model.geom_friction[geom_id][0] = value
+                    self.env.unwrapped._robot.model.geom_friction[geom_id][:2] = value
+                    self.env.unwrapped._robot.model.geom_friction[geom_id][2] = 0.
 
+            elif key == "surface_friction":
+                self.env.unwrapped._robot.model.geom_friction[self.table_geom_id][:2] = value
+                self.env.unwrapped._robot.model.geom_friction[self.table_geom_id][2] = 0.
+            elif key == "mass":
+                self.env.unwrapped._robot.model.body_mass[self.obj_body_id] = value
+                                                          
         if self.verbose:
             print(
                 f"Parameters: {self.get_parameters()} - seed {self.env.unwrapped._seed}"

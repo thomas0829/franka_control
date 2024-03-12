@@ -82,7 +82,15 @@ def run_experiment(cfg):
     #         0.79072034,
     #     ]
     # )
-    
+
+    # TODO: set IK velocity limit higher
+    # curr = envs.unwrapped._robot.get_ee_pose()
+    # curr[0] += 0.8
+    # envs.unwrapped._update_robot(
+    #             np.concatenate((curr, [1.])),
+    #             action_space="cartesian_velocity",
+    #         )
+
     ckptdir = os.path.join(
         # logdir, "policy_step_9001" # custom ckpt
         logdir,

@@ -27,6 +27,9 @@
             quat="0.60670078 0.37513562 0.37637644 0.5912091" />
         <camera name="left" fovy="65" pos="0.5663422788968194 0.8021645313506761 0.4900356493435141"
             quat="0.05478277 0.06033676 0.56395431 0.82177482" />
+        
+        <camera name="xx" pos="2.411 0.095 1.310" xyaxes="0.004 1.000 -0.000 -0.454 0.002 0.891"/>
+
 
         <!-- Robot -->
         <body pos='0. 0. 0.' euler='0 0 0'>
@@ -43,7 +46,7 @@
             <body name="rod_com" pos="0. 0. 0." quat="1 0 0 0">
                 <inertial pos="0 0 0" mass="0.015" diaginertia="0.0002 0.0002 0.0002" />
                 <geom name="rod_geom_com" conaffinity="0" contype="0" condim="3"
-                    pos="0. 0 0" type="box" size="0.02 0.03 0.02" rgba="0 0 0 0" />
+                    pos="0. 0 0" type="box" size="0.02 0.03 0.02" rgba="0.59 0.17 0.17 1" />
                     <geom name="rod_visual_com" conaffinity="0" contype="0" condim="1"
                     pos="0. 0 0.02" type="sphere" size="0.015" rgba="0 0 1 1" />
             </body>
@@ -56,6 +59,9 @@
             <geom name="rod_geom_4" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. -0.06 0.0" type="box" size="0.02 0.03 0.02" rgba="1 0 0 1"/>
             <geom name="rod_geom_5" friction="1. 0.005 0.0001" mass="0." conaffinity="1" contype="1" condim="3" pos="0. -0.12 0.0" type="box" size="0.02 0.03 0.02" rgba="0 1 0 1"/> -->
         </body>
+
+        <!-- <geom name='vention_table' friction='0.2 0.001 0.00001' pos='0.23 0. -0.15' size='0.405 0.675 0.15'
+        conaffinity='1' contype='1' type='box' rgba="0 0 0 1" condim='3' /> -->
 
         <body pos="0.4 -0.3 0." euler="0 0 0" name="cube_body">
             <site name="cube_site" />

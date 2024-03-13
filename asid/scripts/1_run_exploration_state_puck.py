@@ -27,7 +27,7 @@ def viz_points(points):
 
 
 @hydra.main(
-    config_path="../configs/", config_name="explore_puck_real", version_base="1.1"
+    config_path="../configs/", config_name="explore_puck_sim", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -48,6 +48,12 @@ def run_experiment(cfg):
     cfg.robot.max_path_length = 10
     cfg.asid.obs_noise = 0.0
 
+    # debugging sim
+    # cfg.robot.on_screen_rendering = True
+    cfg.asid.reward = False
+    cfg.asid.parameter_dict = {}
+    cfg.env.obj_pose_noise_dict = None
+
     # real env
     envs = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
@@ -58,30 +64,19 @@ def run_experiment(cfg):
         verbose=False,
     )
 
-    envs.unwrapped._reset_joint_qpos = np.array(
-                [
-                    0.36586183,
-                    0.31292763,
-                    -0.30332268,
-                    -2.77233706,
-                    0.09988396,
-                    2.89770401,
-                    0.74832614,
-                ]
-            )
+    # envs.unwrapped._reset_joint_qpos = np.array(
+    #             [
+    #                 0.36586183,
+    #                 0.31292763,
+    #                 -0.30332268,
+    #                 -2.77233706,
+    #                 0.09988396,
+    #                 2.89770401,
+    #                 0.74832614,
+    #             ]
+    #         )
     
-    # real
-    envs.unwrapped._reset_joint_qpos = np.array(
-        [
-            0.1859751,
-            0.44320866,
-            -0.18454474,
-            -2.29086876,
-            0.01971104,
-            2.54522133,
-            0.79072034,
-        ]
-    )
+    from asid.utils.puck import pre_reset_env_mod, post_reset_env_mod
 
     # TODO: set IK velocity limit higher
     # curr = envs.unwrapped._robot.get_ee_pose()
@@ -115,26 +110,28 @@ def run_experiment(cfg):
     #     param_ood = rnd + np.sign(rnd) * 1.1
     #     env.set_parameters(param_ood)
 
+    envs.unwrapped._robot.camera_names += ["top_down"]
+
+    pre_reset_env_mod(envs, cfg)
+
     envs.seed(cfg.seed)
     obs = envs.reset()[None]
 
-    envs.unwrapped.ee_space.low[2], envs.unwrapped.ee_space.high[2] = 0.13, 0.13
-    envs.unwrapped.ee_space.high[0] = 0.8
+    images_array = envs.unwrapped.render(sn="top_down")
+    data["rgbd"].append(images_array)
 
-    envs.unwrapped.action_space.low[:] = -0.2
-    envs.unwrapped.action_space.high[:] = 10.
-    
-    from robot.real.inverse_kinematics.robot_ik_solver import RobotIKSolver
-    envs.unwrapped._robot._ik_solver = RobotIKSolver(robot_type=cfg.robot.robot_type, control_hz=cfg.robot.control_hz, SPEED=True)
+    post_reset_env_mod(envs, cfg)
 
     done = False
-    while not done:
+    # while not done:
+    for i in range(50):
         
         start = time.time()
-        images_array = envs.render()
+        images_array = envs.unwrapped.render(sn="top_down")
         data["rgbd"].append(images_array)
 
         act, _ = policy.predict(obs, deterministic=False)
+        act = np.array([[1. if i == 0 else -0.01, 0.]])
         next_obs, reward, done, info = envs.step(act[0])
 
         print(f"Time: {time.time() - start}")
@@ -162,8 +159,8 @@ def run_experiment(cfg):
     obs = envs.reset()
     data["final_obs"] = obs
 
-    if cfg.robot.ip_address is None:
-        data["zeta"] = np.array(envs.get_parameters()[0])
+    if cfg.robot.ip_address is None and not cfg.asid.parameter_dict == {}:
+        data["zeta"] = envs.get_parameters()
 
     for k, v in data.items():
         data[k] = np.stack(v)

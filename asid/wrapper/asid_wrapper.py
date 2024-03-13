@@ -75,10 +75,10 @@ class ASIDWrapper(gym.Wrapper):
             f"{self.obj_id}_body",
         )
 
-        self.table_geom_id = mujoco.mj_name2id(
+        self.surface_geom_id = mujoco.mj_name2id(
             self.env.unwrapped._robot.model,
             mujoco.mjtObj.mjOBJ_GEOM,
-            "vention_table",
+            "surface_geom",
         )
 
         # Physics parameters
@@ -204,10 +204,10 @@ class ASIDWrapper(gym.Wrapper):
                     self.env.unwrapped._robot.model.geom_friction[geom_id][2] = 0.0
 
             elif key == "surface_friction":
-                self.env.unwrapped._robot.model.geom_friction[self.table_geom_id][
+                self.env.unwrapped._robot.model.geom_friction[self.surface_geom_id][
                     :2
                 ] = value
-                self.env.unwrapped._robot.model.geom_friction[self.table_geom_id][
+                self.env.unwrapped._robot.model.geom_friction[self.surface_geom_id][
                     2
                 ] = 0.0
             elif key == "mass":

@@ -5,10 +5,10 @@ algorithm:
   algo_name: cem
 
   mu_init: 0.
-  sigma_init: 0.05
+  sigma_init: 0.15
 
   num_iters: 10
-  num_samples: 128
+  num_samples: 16
   elite_frac: 0.1
 
   num_workers: 1

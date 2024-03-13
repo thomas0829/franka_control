@@ -10,16 +10,16 @@ from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
 from utils.transformations_mujoco import *
 
-@hydra.main(config_path="../configs/", config_name="explore_bottle_sim", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="explore_puck_sim", version_base="1.1")
 def run_experiment(cfg):
 
     # cfg.robot.DoF = 2
     cfg.robot.on_screen_rendering = True
-    cfg.robot.gripper = True
+    cfg.robot.gripper = False
     # # cfg.robot.ip_address = "172.16.0.1"
     # # cfg.robot.camera_model = "zed"
 
-    cfg.env.obj_id = "bottle"
+    # cfg.env.obj_id = "puck"
     # cfg.env.flatten = True
 
     env = make_env(
@@ -31,9 +31,30 @@ def run_experiment(cfg):
         verbose=False,
     )
 
-    env.set_parameters(np.zeros(1))
+    # env.set_parameters(np.zeros(1))
     env.reset()
     rod_pose = env.get_obj_pose()
+    env.unwrapped.set_obj_pose(rod_pose)
+    # goal = np.array([0.3, 0.])
+    # while np.linalg.norm(env.unwrapped._robot.get_ee_pose()[:2] - goal) > 5e-2:
+    #     env.step(goal - env.unwrapped._robot.get_ee_pose()[:2])
+    #     env.render()
+    # print("reached init")
+
+    start = time.time()
+    for i in range(15):
+        env.seed(i)
+        env.reset()
+        for i in range(20):
+            act = env.action_space.sample()
+            act = np.zeros_like(act)
+            act[0] = 0.1 if i < 10 else -0.1
+            # act[0] = 0.3
+            obs, reward, done, info = env.step(act)
+            env.render()
+            print(env.get_parameters(), reward)
+    print(time.time() - start)
+
 
     target_pos = rod_pose.copy()[:3]
     target_euler = quat_to_euler_mujoco(rod_pose.copy()[3:])

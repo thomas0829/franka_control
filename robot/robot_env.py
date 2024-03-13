@@ -524,12 +524,13 @@ class RobotEnv(gym.Env):
         else:
             return len(self._camera_reader._all_cameras)
 
-    def render(self, mode=None):
+    def render(self, mode=None, sn=None):
         if self.sim and self._robot.has_renderer:
             self._robot.render()
         else:
             imgs = self.get_images()
-            sn = next(iter(imgs))
+            if sn is None:
+                sn = next(iter(imgs))
             return imgs[sn]["rgb"]
 
     def get_images(self):

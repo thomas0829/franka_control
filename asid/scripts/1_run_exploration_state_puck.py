@@ -71,17 +71,17 @@ def run_experiment(cfg):
             )
     
     # real
-    # envs.unwrapped._reset_joint_qpos = np.array(
-    #     [
-    #         0.1859751,
-    #         0.44320866,
-    #         -0.18454474,
-    #         -2.29086876,
-    #         0.01971104,
-    #         2.54522133,
-    #         0.79072034,
-    #     ]
-    # )
+    envs.unwrapped._reset_joint_qpos = np.array(
+        [
+            0.1859751,
+            0.44320866,
+            -0.18454474,
+            -2.29086876,
+            0.01971104,
+            2.54522133,
+            0.79072034,
+        ]
+    )
 
     # TODO: set IK velocity limit higher
     # curr = envs.unwrapped._robot.get_ee_pose()
@@ -118,10 +118,15 @@ def run_experiment(cfg):
     envs.seed(cfg.seed)
     obs = envs.reset()[None]
 
-    envs.unwrapped.ee_space.low[2], envs.unwrapped.ee_space.high[2] = 0.18, 0.18
+    envs.unwrapped.ee_space.low[2], envs.unwrapped.ee_space.high[2] = 0.13, 0.13
     envs.unwrapped.ee_space.high[0] = 0.8
+
+    envs.unwrapped.action_space.low[:] = -0.2
+    envs.unwrapped.action_space.high[:] = 10.
     
-    
+    from robot.real.inverse_kinematics.robot_ik_solver import RobotIKSolver
+    envs.unwrapped._robot._ik_solver = RobotIKSolver(robot_type=cfg.robot.robot_type, control_hz=cfg.robot.control_hz, SPEED=True)
+
     done = False
     while not done:
         

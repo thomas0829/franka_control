@@ -14,8 +14,8 @@ class RobotIKSolver:
         self.relative_max_joint_delta = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]) if not SPEED else 2.3 * np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
         self.max_joint_delta = self.relative_max_joint_delta.max()
         self.max_gripper_delta = 0.25
-        self.max_lin_delta = 0.075 if not SPEED else 10.0 
-        self.max_rot_delta = 0.15 if not SPEED else 10.0
+        self.max_lin_delta = 0.075 if not SPEED else 1.0 
+        self.max_rot_delta = 0.15 if not SPEED else 1.0
         self.control_hz = control_hz
 
         self._arm = FrankaArm(robot_type=robot_type)

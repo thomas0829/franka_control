@@ -64,7 +64,7 @@
         </body>
         <!-- Puck -->
         <!-- board height 3cm + puck height 1.27cm -->
-        <body pos="0.55 0. 0.0427" euler="0 0 0" name="puck_body">
+        <body pos="0.45 0. 0.0427" euler="0 0 0" name="puck_body">
             <site name="puck_site" />
             <joint type="free" name="puck_freejoint" damping="0.03" />
             <inertial pos="0 0 0" mass="0.04" diaginertia="0.0002 0.0002 0.0002"/>    

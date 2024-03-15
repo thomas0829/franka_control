@@ -3,7 +3,7 @@ hydra:
     chdir: false
   
 defaults:
-  - asid: mass_friction_surface_friction.yaml
+  - asid: surface_friction
   - env: puck
   - robot: sim_2_dof
   - train: sysid

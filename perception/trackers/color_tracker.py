@@ -70,14 +70,14 @@ class ColorTracker:
         return points
 
     def get_rod_pose(
-        self, points, lowpass_filter=False, cutoff_freq=1, control_hz=10, show=False
+        self, points, lowpass_filter=False, cutoff_freq=1, control_hz=10, show=False, height_max=0.05
     ):
         from utils.pointclouds import points_to_pcd, visualize_pcds
         from utils.transformations import euler_to_quat
 
         # crop to height
         points_crop = crop_points(
-            points, crop_min=[-1.0, -1.0, 0.01], crop_max=[1.0, 1.0, 0.05]
+            points, crop_min=[-1.0, -1.0, 0.01], crop_max=[1.0, 1.0, height_max]
         )
 
         # fit cuboid

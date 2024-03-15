@@ -25,63 +25,64 @@ from utils.transformations_mujoco import *
 
 
 # move to strike pose
-def move_to_puck(env, error_threshold=1e-2, max_steps=100, render=False):
+# def move_to_puck(env, error_threshold=1e-2, max_steps=100, render=False):
 
-    imgs = []
-    target_pose = env.get_obj_pose()[:2]
-    target_pose[0] -= 0.04
-    curr_pose = env.unwrapped._robot.get_ee_pose()[:2]
-    error = np.linalg.norm(target_pose - curr_pose)
+#     imgs = []
+#     target_pose = env.get_obj_pose()[:2]
+#     target_pose[0] -= 0.04
+#     curr_pose = env.unwrapped._robot.get_ee_pose()[:2]
+#     error = np.linalg.norm(target_pose - curr_pose)
 
-    steps = 0
-    while error > error_threshold and steps < max_steps:
-        steps += 1
-        print(steps, error)
-        act = target_pose - curr_pose
-        env.step(act)
-        curr_pose = env.unwrapped._robot.get_ee_pose()[:2]
-        error = np.linalg.norm(target_pose - curr_pose)
-        if render:
-            imgs.append(env.render())
+#     steps = 0
+#     while error > error_threshold and steps < max_steps:
+#         steps += 1
+#         print(steps, error)
+#         act = target_pose - curr_pose
+#         env.step(act)
+#         curr_pose = env.unwrapped._robot.get_ee_pose()[:2]
+#         error = np.linalg.norm(target_pose - curr_pose)
+#         if render:
+#             imgs.append(env.render())
 
-    return imgs
-
-
-from asid.utils.puck import pre_reset_env_mod, post_reset_env_mod
+#     return imgs
 
 
-def collect_rollout(env, cfg, action, goal_x, verbose=False, render=False):
-
-    pre_reset_env_mod(env, cfg)
-    env.reset()
-    post_reset_env_mod(env, cfg)
-
-    imgs = []
-    # move to strike pos
-    tmp = move_to_puck(env)
-    imgs.extend(tmp)
-
-    # strike
-    env.step(np.array([action, 0.0]))
-    if render:
-        tmp = [env.render()]
-        imgs.extend(tmp)
-
-    # step sim until puck stops moving
-    for i in range(20):
-        env.step(np.array([-0.01, 0.0]))
-        if render:
-            tmp = [env.render()]
-            imgs.extend(tmp)
-
-    # compute reward
-    obj_pose = env.get_obj_pose()
-    reward = -np.linalg.norm(obj_pose[0] - goal_x)
-
-    return reward, imgs
+from asid.utils.puck import pre_reset_env_mod, post_reset_env_mod, move_to_puck, collect_rollout
 
 
-def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
+# def collect_rollout(env, cfg, action, goal_x, verbose=False, render=False):
+
+#     pre_reset_env_mod(env, cfg)
+#     env.reset()
+#     post_reset_env_mod(env, cfg)
+
+#     imgs = []
+#     # move to strike pos
+#     tmp = move_to_puck(env, error_threshold=1e-2)
+#     imgs.extend(tmp)
+
+#     # strike
+#     for i in range(1):
+#         env.step(np.array([action, 0.0]))
+#         if render:
+#             tmp = [env.render()]
+#             imgs.extend(tmp)
+
+#     # step sim until puck stops moving
+#     for i in range(20):
+#         env.step(np.array([-0.01, 0.0]))
+#         if render:
+#             tmp = [env.render()]
+#             imgs.extend(tmp)
+
+#     # compute reward
+#     obj_pose = env.get_obj_pose()
+#     reward = -np.linalg.norm(obj_pose[0] - goal_x)
+
+#     return reward, imgs
+
+
+def train_cem_policy(cfg, zeta=None, obj_pose=None, goal_x=None, render=False):
 
     num_iters, num_samples, num_procs = (
         cfg.train.algorithm.num_iters,
@@ -127,6 +128,7 @@ def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
                 action_std,
                 zeta,
                 obj_pose,
+                goal_x,
                 False,
                 render and i == 0,
             )
@@ -152,8 +154,8 @@ def train_cem_policy(cfg, zeta=None, obj_pose=None, render=False):
             f"action_mean: {action_mean}, action_std: {action_std}, reward: {np.mean(rewards)} zeta: {zeta}, best action: {actions[np.argsort(rewards)][-1]}, best reward: {rewards[np.argsort(rewards)][-1]}"
         )
         # TODO put back into place
-        # if action_std < 3e-3:
-        #     break
+        if action_std < 3e-3:
+            break
     return action_mean, action_std
 
 
@@ -166,11 +168,11 @@ def cem_rollout_worker(
     action_std,
     zeta,
     obj_pose,
+    goal_x,
     verbose=False,
     render=False,
 ):
 
-    goal_x = 0.8
     actions = np.zeros((num_rollouts), dtype=np.float32)
     rewards = np.zeros((num_rollouts), dtype=np.float32)
 
@@ -225,12 +227,18 @@ def run_experiment(cfg):
 
     cfg.env.obs_keys = ["lowdim_ee", "lowdim_qpos"]
     
+    cfg.robot.control_hz = 10
+
     # debug sim
-    # cfg.env.obj_pose_noise_dict = None
-    cfg.asid.parameter_dict = {}
+    # cfg.asid.parameter_dict = {}
 
     cfg.asid.obs_noise = 0.0
     cfg.asid.reward = False
+
+    # goals
+    board_x = 0.67
+    goal_x = board_x + 0.205
+    # goal_x = board_x + 0.455
 
     # Load zeta parameter
     zeta_dir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "sysid", "zeta")
@@ -239,7 +247,14 @@ def run_experiment(cfg):
         for k, v in sysid_dict.items():
             sysid_dict[k] = np.array(v)
         zeta = sysid_dict["mu"]
-        obj_pose = sysid_dict["final_obs"][-7:]
+        # obj_pose = sysid_dict["final_obs"][-7:]
+
+        # obj_pose[2] = 0.0427
+        obj_pose = None
+        rollout = joblib.load(
+        os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore", "rollout.pkl")
+    )
+
     else:
         zeta = None
         obj_pose = None
@@ -250,7 +265,7 @@ def run_experiment(cfg):
     if os.path.exists(explore_dir):
         explore_dict = joblib.load(explore_dir)
         # rod flipped -> apply inverse zeta
-        if np.abs(quat_to_euler_mujoco(sysid_dict["final_obs"][-4:])[-1]) > np.pi / 4:
+        if cfg.env.obj_id == "rod" and  np.abs(quat_to_euler_mujoco(sysid_dict["final_obs"][-4:])[-1]) > np.pi / 4:
             zeta = -sysid_dict["mu"]
     # else:
     #     zeta = np.array([0.02949091])
@@ -261,13 +276,14 @@ def run_experiment(cfg):
         action = cfg.train.action
     else:
         if cfg.train.mode == "sysid":
+            cfg.env.obj_pose_noise_dict = None
             action_mean, action_std = train_cem_policy(
-                cfg, zeta=zeta, obj_pose=obj_pose, render=True
+                cfg, zeta=zeta, obj_pose=obj_pose, goal_x=goal_x, render=True
             )
         elif cfg.train.mode == "domain_rand":
             cfg.env.obj_pos_noise = True
             action_mean, action_std = train_cem_policy(
-                cfg, zeta=None, obj_pose=None, render=True
+                cfg, zeta=None, obj_pose=None, goal_x=goal_x, render=True
             )
 
         action = np.random.normal(action_mean, action_std)
@@ -301,7 +317,9 @@ def run_experiment(cfg):
 
     reward, imgs = collect_rollout(
         eval_env,
+        cfg,    
         action,
+        goal_x=goal_x,
         render=True,
     )
     imageio.mimsave(

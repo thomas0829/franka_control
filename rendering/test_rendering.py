@@ -11,7 +11,7 @@ from utils.transformations import *
 from utils.transformations_mujoco import *
 
 
-@hydra.main(config_path="../asid/configs/", config_name="explore_puck_sim", version_base="1.1")
+@hydra.main(config_path="../asid/configs/", config_name="explore_rod_sim", version_base="1.1")
 def run_experiment(cfg):
 
     cfg.robot.DoF = 6
@@ -40,7 +40,7 @@ def run_experiment(cfg):
     quat = rmat_to_quat(camera_extrinsic[:3,:3])
     # quat = np.array([quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]])
     
-    pos = [1.4, -0.4, 0.8]
+    pos = [1.1, 0.5, 0.8]
     viewer.set_camera_pos_quat(pos, camera_extrinsic[:3,:3])
 
     for i in range(5):

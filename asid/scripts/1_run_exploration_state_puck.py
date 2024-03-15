@@ -87,9 +87,8 @@ def run_experiment(cfg):
     #         )
 
     ckptdir = os.path.join(
-        # logdir, "policy_step_9001" # custom ckpt
-        logdir,
-        "policy",
+        logdir, "policy_step_9001" # custom ckpt
+        # logdir, "policy",
     )
 
     from stable_baselines3 import SAC
@@ -140,7 +139,7 @@ def run_experiment(cfg):
         data["rgbd"].append(images_array)
 
         act, _ = policy.predict(obs, deterministic=False)
-        # act = np.array([[0.1 if i < 1 else -0.01, 0.]])
+        # act = np.array([[0.1 if i < 2 else -0.01, 0.]])
         next_obs, reward, done, info = envs.step(act[0])
 
         print(f"Time: {time.time() - start}")

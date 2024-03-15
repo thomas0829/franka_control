@@ -47,6 +47,10 @@ def run_experiment(cfg):
     for k, v in policy_dict.items():
         policy_dict[k] = np.array(v)
 
+    # Sample action
+    action = np.random.normal(policy_dict["mu"], policy_dict["sigma"])
+    
+    # print("ALAAAARm")
     # Make environment
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
@@ -68,9 +72,6 @@ def run_experiment(cfg):
 
         env.set_parameters(zeta_dict["real_zeta"])
 
-    # # Sample action
-    action = np.random.normal(policy_dict["mu"], policy_dict["sigma"])
-
     # # clip manual action and convert weight block position to center of mass
     # def normalize(value, x0, x1, y0, y1):
     #     """
@@ -87,8 +88,13 @@ def run_experiment(cfg):
     pre_reset_env_mod(env, cfg, explore=True)
     env.reset()
 
+    # import time
+    # time.sleep(5.)
+
+    # env.reset()
+
     # Execute
-    action = 0.2 # 0.11
+    # action = 0.14 # 0.11
     board_x = 0.67
     # goal_x = board_x + 0.155
     goal_x = board_x + 0.305
@@ -98,6 +104,8 @@ def run_experiment(cfg):
     )
 
     imageio.mimsave(os.path.join(logger.dir, "real_task.mp4"), np.stack(imgs))
+
+    env.reset()
 
 
 if __name__ == "__main__":

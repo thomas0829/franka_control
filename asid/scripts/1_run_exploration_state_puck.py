@@ -27,7 +27,7 @@ def viz_points(points):
 
 
 @hydra.main(
-    config_path="../configs/", config_name="explore_puck_sim", version_base="1.1"
+    config_path="../configs/", config_name="explore_puck_real", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -110,28 +110,37 @@ def run_experiment(cfg):
     #     param_ood = rnd + np.sign(rnd) * 1.1
     #     env.set_parameters(param_ood)
 
-    envs.unwrapped._robot.camera_names += ["top_down"]
+    if cfg.robot.ip_address is None:
+        envs.unwrapped._robot.camera_names += ["top_down"]
 
-    pre_reset_env_mod(envs, cfg)
+    pre_reset_env_mod(envs, cfg, explore=True)
 
     envs.seed(cfg.seed)
     obs = envs.reset()[None]
 
-    images_array = envs.unwrapped.render(sn="top_down")
+    images_array = envs.unwrapped.render(sn="top_down" if cfg.robot.ip_address is None else None)
     data["rgbd"].append(images_array)
 
-    post_reset_env_mod(envs, cfg)
+    # post_reset_env_mod(envs, cfg)
+
+    # qvel = np.zeros(7)
+    # qvel[-2] = 7.
+    # for i in range(5):
+    #     envs.unwrapped._robot._robot.start_joint_velocity_control()
+    #     envs.unwrapped._robot._robot.update_desired_joint_velocities(qvel.tolist())
+    # qvel = np.zeros(7)
+    # envs.unwrapped._robot._robot.update_desired_joint_velocities(qvel.tolist())
 
     done = False
     # while not done:
-    for i in range(50):
+    for i in range(10):
         
         start = time.time()
-        images_array = envs.unwrapped.render(sn="top_down")
+        images_array = envs.unwrapped.render(sn="top_down" if cfg.robot.ip_address is None else None)
         data["rgbd"].append(images_array)
 
         act, _ = policy.predict(obs, deterministic=False)
-        act = np.array([[1. if i == 0 else -0.01, 0.]])
+        # act = np.array([[0.1 if i < 1 else -0.01, 0.]])
         next_obs, reward, done, info = envs.step(act[0])
 
         print(f"Time: {time.time() - start}")

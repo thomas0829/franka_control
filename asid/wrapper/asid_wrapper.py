@@ -191,12 +191,12 @@ class ASIDWrapper(gym.Wrapper):
 
             # set new parameter value
             if key == "inertia":
-                com_body_ids = mujoco.mj_name2id(
+                com_body_id = mujoco.mj_name2id(
                     self.env.unwrapped._robot.model,
                     mujoco.mjtObj.mjOBJ_BODY,
                     f"{self.obj_id}_com",
                 )
-                self.env.unwrapped._robot.model.body_pos[com_body_ids][1] = value
+                self.env.unwrapped._robot.model.body_pos[com_body_id][1] = value
 
             elif key == "friction":
                 for geom_id in self.obj_geom_ids:
@@ -212,6 +212,20 @@ class ASIDWrapper(gym.Wrapper):
                 ] = 0.0
             elif key == "mass":
                 self.env.unwrapped._robot.model.body_mass[self.obj_body_id] = value
+            elif key == "damping":
+                joint_id = mujoco.mj_name2id(
+                    self.env.unwrapped._robot.model,
+                    mujoco.mjtObj.mjOBJ_JOINT,
+                    f"{self.obj_id}_freejoint",
+                )
+                self.env.unwrapped._robot.model.dof_damping[joint_id] = value
+            elif key == "frictionloss":
+                joint_id = mujoco.mj_name2id(
+                    self.env.unwrapped._robot.model,
+                    mujoco.mjtObj.mjOBJ_JOINT,
+                    f"{self.obj_id}_freejoint",
+                )
+                self.env.unwrapped._robot.model.dof_frictionloss[joint_id] = value
 
         if self.verbose:
             print(

@@ -11,8 +11,10 @@ tqdm.monitor_interval = 0
 # from utils import logger as logger
 
 from mushroom_rl.algorithms.policy_search import REPS, ConstrainedREPS
-from mushroom_rl.distributions import (GaussianCholeskyDistribution,
-                                       GaussianDiagonalDistribution)
+from mushroom_rl.distributions import (
+    GaussianCholeskyDistribution,
+    GaussianDiagonalDistribution,
+)
 
 from utils.logger import Video
 
@@ -167,7 +169,7 @@ class SysIdentifier:
         for i in trange(self.n_epochs, disable=not self.verbose):
 
             candidates = self.sample()
-            # candidates = np.ones_like(candidates) * -0.07
+            # candidates = np.ones_like(candidates) * 0.05
             # for obs in real_obs:
             # fit += self.fitness(candidates, real_obs, real_acts, envs, render=i % self.eval_interval == 0)
 
@@ -289,6 +291,9 @@ class SysIdentifier:
         # all
         # return - np.linalg.norm(obs_real - obs_sim.astype(np.float32), axis=(0,2))
         # obj pose
+        # return -np.linalg.norm(
+        #     obs_real[..., -7:] - obs_sim.astype(np.float32)[..., -7:], axis=(0, 2)
+        # )
         return -np.linalg.norm(
             obs_real[..., -7:] - obs_sim.astype(np.float32)[..., -7:], axis=(0, 2)
         )

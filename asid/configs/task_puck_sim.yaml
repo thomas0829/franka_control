@@ -3,7 +3,7 @@ hydra:
     chdir: false
   
 defaults:
-  - asid: mass
+  - asid: surface_friction
   - env: puck
   - robot: sim_6_dof
   - train: task

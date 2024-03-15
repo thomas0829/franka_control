@@ -56,7 +56,9 @@ def make_env(
 
             if True or second:
                 import numpy as np
-                crop_min = np.array([-1, 0, -1])
+                # crop_min = np.array([-1, 0, -1])
+                # crop_max = np.array([1, 1, 1])
+                crop_min = np.array([-1, -1, -1])
                 crop_max = np.array([1, 1, 1])
                 env = ObjectTrackerWrapper(env, **env_cfg_dict, crop_min=crop_min, crop_max=crop_max, verbose=verbose)
             else:
@@ -76,6 +78,9 @@ def make_env(
                     device_id=device_id,
                 )
 
+    if env_cfg_dict["obj_id"] == "puck":
+        from asid.utils.puck import pre_reset_env_mod
+        pre_reset_env_mod(env, explore=True)
     env.seed(seed)
 
     return env

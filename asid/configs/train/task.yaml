@@ -8,7 +8,7 @@ algorithm:
   sigma_init: 0.15
 
   num_iters: 10
-  num_samples: 16
+  num_samples: 128
   elite_frac: 0.1
 
   num_workers: 1

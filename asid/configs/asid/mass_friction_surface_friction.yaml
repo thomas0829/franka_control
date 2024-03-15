@@ -1,8 +1,8 @@
 # careful when adjusting friction -> too high values cause the object to penetrate the table and give huge reward signals even if not touched
 parameter_dict: {
-    "mass": {"type": "uniform", "min": 0.005, "max": 0.03, "value": null},
-    "friction": {"type": "uniform", "min": 0.005, "max": 0.035, "value": null},
-    "surface_friction": {"type": "gaussian", "mean": 0.03, "std": 0.01, "min": 0.005, "max": 0.055, "value": null},
+    # "mass": {"type": "uniform", "min": 0.005, "max": 0.03, "value": null},
+    "friction": {"type": "uniform", "min": 0.005, "max": 0.055, "value": null},
+    "surface_friction": {"type": "uniform", "min": 0.005, "max": 0.055, "value": null},
   }
 
 reward: true

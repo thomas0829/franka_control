@@ -45,7 +45,7 @@ def run_experiment(cfg):
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
     logger = configure_logger(logdir, cfg.log.format_strings)
 
-    cfg.robot.max_path_length = 10
+    cfg.robot.max_path_length = 5
     cfg.asid.obs_noise = 0.0
 
     # real env

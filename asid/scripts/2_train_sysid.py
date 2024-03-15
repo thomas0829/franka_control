@@ -50,9 +50,10 @@ def run_experiment(cfg):
     )
 
     # set obj pose and account for conversion errors
-    rollout["obs"][..., -5:-4] = 0.02
+    rollout["obs"][..., -5:-4] = 0.02 if cfg.env.obj_id == "rod" else 0.0427 if cfg.env.obj_id == "puck" else rollout["obs"][..., -5:-4]
     rollout["obs"][..., -4:-3] = 0.93937271
     obj_pose = rollout["obs"][0, ..., -7:].copy()
+    obj_pose[...,0] -= 0.01
     obj_pose = np.repeat(obj_pose, cfg.num_workers, axis=0)
     envs_sysid.set_obj_pose(obj_pose)
 

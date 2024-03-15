@@ -1,4 +1,5 @@
 import colorsys
+import math
 import os
 from parser import Parser
 
@@ -10,11 +11,9 @@ import nvisii
 import open3d as o3d
 from base import Renderer
 
-from utils.transformations import rmat_to_quat, quat_to_rmat
-
+from utils.transformations import quat_to_rmat, rmat_to_quat
 from utils.transformations_mujoco import mat_to_quat_mujoco, quat_to_mat_mujoco
 
-import math
 EPS = np.finfo(float).eps * 4.0
 
 def mat2quat(rmat):
@@ -242,6 +241,7 @@ class NVISIIRenderer(Renderer):
         self.light_1.get_light().set_intensity(150)  # intensity of the light
         self.light_1.get_transform().set_scale(nvisii.vec3(0.3))  # scale the light down
         self.light_1.get_transform().set_position(nvisii.vec3(3, 3, 4))  # sets the position of the light
+        # self.light_1.get_transform().set_position(nvisii.vec3(3, 3, 4))  # sets the position of the light
 
     def _init_floor(self, image):
         """
@@ -366,7 +366,7 @@ class NVISIIRenderer(Renderer):
         # self.camera.get_transform().look_at(at=at_vec, up=up_vec, eye=eye_vec, previous=False)
 
         self.camera.get_transform().look_at(
-            at=(0, 0, 0), up=(0, 0, 1), eye=pos, previous=False  # look at (world coordinate)  # up vector
+            at=(0, -0.2, 0), up=(0, 0, 1), eye=pos, previous=False  # look at (world coordinate)  # up vector
         )
         # self.camera.get_transform().rotate_around(pos, quat)
         # self.camera.get_transform().set_rotation(quat)

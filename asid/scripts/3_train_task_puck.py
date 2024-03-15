@@ -237,8 +237,8 @@ def run_experiment(cfg):
 
     # goals
     board_x = 0.67
-    goal_x = board_x + 0.205
-    # goal_x = board_x + 0.455
+    # goal_x = board_x + 0.205
+    goal_x = board_x + 0.455
 
     # Load zeta parameter
     zeta_dir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "sysid", "zeta")
@@ -281,7 +281,6 @@ def run_experiment(cfg):
                 cfg, zeta=zeta, obj_pose=obj_pose, goal_x=goal_x, render=True
             )
         elif cfg.train.mode == "domain_rand":
-            cfg.env.obj_pos_noise = True
             action_mean, action_std = train_cem_policy(
                 cfg, zeta=None, obj_pose=None, goal_x=goal_x, render=True
             )

@@ -3,7 +3,7 @@
         <texture name="texplane" type="2d" height="1" width="1" file="matte_black1.png" />
         <material name='MatPlane' texture="texplane" texrepeat="1 1"
             texuniform="true" />
-    </asset>
+        </asset>
 
     <!-- <visual>
         <quality shadowsize="4048"/>
@@ -59,8 +59,8 @@
         <!-- vention table -->
         <!-- <geom name='vention_table' friction='0.2 0.001 0.00001' pos='0.23 0. -0.075' size='0.405 0.675 0.075' -->
         <!-- <body name="table"> -->
-            <geom name='vention_table' friction='0.2 0.001 0.00001' pos='0.23 0. -0.075' euler="0 0 0" size='0.405 0.675 0.075'
-    conaffinity='1' contype='1' type='box' rgba="0.12 0.12 0.12 1" condim='3' />
+        <geom name='vention_table' friction='0.2 0.001 0.00001' pos='0.23 0. -0.075' euler="0 0 0" size='0.405 0.675 0.075'
+            conaffinity='1' contype='1' type='box' material="MatPlane" condim='3' />
     <!-- material="MatPlane" -->
         <!-- </body> -->
         

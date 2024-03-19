@@ -25,9 +25,9 @@ def run_experiment(cfg):
     
     if "rod" in robot_cfg_dict["model_name"]:
 
-        cfg.robot.DoF = 6
-        cfg.robot.gripper = True 
-        cfg.env.obj_pose_noise_dict = None
+        # cfg.robot.DoF = 6
+        # cfg.robot.gripper = True 
+        # cfg.env.obj_pose_noise_dict = None
         env = make_env(
             robot_cfg_dict=hydra_to_dict(cfg.robot),
             env_cfg_dict=hydra_to_dict(cfg.env),
@@ -38,24 +38,24 @@ def run_experiment(cfg):
         )
         env.set_parameters(np.ones(1) * 0.1)
         # # explore
-        # env.set_obj_pose(np.array([0.4, 0.3, 0.02, 0.93937271, 0.0, 0.0, -0.34289781]))
+        env.set_obj_pose(np.array([0.4, 0.3, 0.02, 0.93937271, 0.0, 0.0, -0.34289781]))
      
-    elif "puck" in robot_cfg_dict["model_name"]:
-        cfg.env.obj_pose_noise_dict = None
-        cfg.robot.DoF = 2
-        cfg.robot.gripper = False 
-        cfg.robot.max_path_length = 1e5
-        env = make_env(
-            robot_cfg_dict=hydra_to_dict(cfg.robot),
-            env_cfg_dict=hydra_to_dict(cfg.env),
-            asid_cfg_dict=hydra_to_dict(cfg.asid),
-            seed=cfg.seed,
-            device_id=0,
-            verbose=True,
-        )
+    # elif "puck" in robot_cfg_dict["model_name"]:
+    #     cfg.env.obj_pose_noise_dict = None
+    #     cfg.robot.DoF = 2
+    #     cfg.robot.gripper = False 
+    #     cfg.robot.max_path_length = 1e5
+    #     env = make_env(
+    #         robot_cfg_dict=hydra_to_dict(cfg.robot),
+    #         env_cfg_dict=hydra_to_dict(cfg.env),
+    #         asid_cfg_dict=hydra_to_dict(cfg.asid),
+    #         seed=cfg.seed,
+    #         device_id=0,
+    #         verbose=True,
+    #     )
 
-    else:
-        env = RobotEnv(**robot_cfg_dict, device_id=0, verbose=True)
+    # else:
+    # env = RobotEnv(**robot_cfg_dict, device_id=0, verbose=True)
 
     if "sphere" in robot_cfg_dict["model_name"]:
         env._reset_joint_qpos = np.array(
@@ -120,30 +120,33 @@ def run_experiment(cfg):
     pos = [1.1, 0.5, 0.8]
     at = [0, -0.2, 0]
     
-    if "puck" in robot_cfg_dict["model_name"]:
-        pos = [0.9, 0.8, 0.8]
-        at = [0.6, 0.0, 0.1]
-    elif "rod" in robot_cfg_dict["model_name"]:
-        pos = [0.9, 0.5, 0.6]
-        at = [0, -0.4, 0.2]
-    elif "sphere" in robot_cfg_dict["model_name"]:
-        pos = [0.9, 0.7, 0.7]
-        at = [0.4, -0.1, 0.07]
+    # if "puck" in robot_cfg_dict["model_name"]:
+    #     pos = [0.9, 0.8, 0.8]
+    #     at = [0.6, 0.0, 0.1]
+    # elif "rod" in robot_cfg_dict["model_name"]:
+    #     pos = [0.9, 0.5, 0.6]
+    #     at = [0, -0.4, 0.2]
+    # elif "sphere" in robot_cfg_dict["model_name"]:
+    #     pos = [0.9, 0.7, 0.7]
+    #     at = [0.4, -0.1, 0.07]
 
     viewer.set_camera_pos_quat(pos, at)
 
-    if "puck" in robot_cfg_dict["model_name"]:
-        action = 0.14
-        collect_rollout_puck(env, viewer, cfg, action, 0.5, render=True)
-    elif "rod" in robot_cfg_dict["model_name"]:
-        action = 0.06
-        collect_rollout_rod(env, viewer, action, render=True)
+    # if "puck" in robot_cfg_dict["model_name"]:
+    #     action = 0.14
+    #     collect_rollout_puck(env, viewer, cfg, action, 0.5, render=True)
+    # elif "rod" in robot_cfg_dict["model_name"]:
+    #     action = 0.06
+    #     collect_rollout_rod(env, viewer, action, render=True)
 
     for i in range(10):
         viewer.update()
 
         if "rod" in robot_cfg_dict["model_name"]:
-            env.step(np.array([0.1, 0.0]))
+            env.step(np.array([0.1, 0.05]))
+            # env.reset()
+            # env.step(env.action_space.sample())
+
         elif "puck" in robot_cfg_dict["model_name"]:
             env.step(np.array([0.1 + env.action_space.sample()[0] / 3 if i < 4 else 0., 0.0]))
         else:

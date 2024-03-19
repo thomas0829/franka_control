@@ -100,39 +100,6 @@ class Parser(BaseParser):
 
         self.entity_id_class_mapping = {}
 
-        # ###
-        # geom_name="sphere"
-        # geom_pos = [0.1, 0.1, 0.1]
-        # geom_quat = [1, 0, 0, 0]
-        # obj, entity_ids = load_object(
-        #         geom=None,
-        #         geom_name=geom_name,
-        #         geom_type="sphere",
-        #         geom_quat=geom_quat,
-        #         geom_pos=geom_pos,
-        #         geom_size=[.5, .1, .1],
-        #         geom_scale=None,
-        #         geom_rgba=[1, 0, 0, 1],
-        #         geom_tex_name=None,
-        #         geom_tex_file=None,
-        #         meshes=self.meshes,
-        #     )
-
-        # geom_index = 0
-        # parent_body_name = "worldbody"
-        # dynamic = False
-        # self.components[geom_name] = Components(
-        #         obj=obj,
-        #         geom_index=geom_index,
-        #         element_id=element_id,
-        #         parent_body_name=parent_body_name,
-        #         geom_pos=geom_pos,
-        #         geom_quat=geom_quat,
-        #         dynamic=dynamic,
-        #     )
-        # return
-        # ###
-
         materials = {}
         for idx, mat in enumerate(self.xml_root.iter("material")):
             materials[mat.get("name")] = mat
@@ -191,7 +158,7 @@ class Parser(BaseParser):
 
             geom_mat = geom.get("material")
 
-            dynamic = True
+            dynamic = True if "table" not in geom_name else False
 
             geom_tex_name = None
             geom_tex_file = None

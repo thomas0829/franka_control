@@ -345,7 +345,7 @@ class NVISIIRenderer(Renderer):
 
         self.camera.get_transform().rotate_around(eye_vec, quat)
 
-    def set_camera_pos_quat(self, pos, rmat):
+    def set_camera_pos_quat(self, pos, at):
         self.camera.get_transform().set_position(pos)
         
         # def convert_to_look_at(pos, quat=None, rot_matrix=None):
@@ -366,7 +366,7 @@ class NVISIIRenderer(Renderer):
         # self.camera.get_transform().look_at(at=at_vec, up=up_vec, eye=eye_vec, previous=False)
 
         self.camera.get_transform().look_at(
-            at=(0, -0.2, 0), up=(0, 0, 1), eye=pos, previous=False  # look at (world coordinate)  # up vector
+            at=at, up=(0, 0, 1), eye=pos, previous=False  # look at (world coordinate)  # up vector
         )
         # self.camera.get_transform().rotate_around(pos, quat)
         # self.camera.get_transform().set_rotation(quat)
@@ -427,10 +427,9 @@ class NVISIIRenderer(Renderer):
         if not dynamic:
             return
 
-        self.body_tags = ["link", "finger", "hand"]#, "table"]# , "robot", "pedestal", "gripper", "peg"]
-
+        self.body_tags = ["link", "finger", "hand", "table"]#, "table"]# , "robot", "pedestal", "gripper", "peg"]
+        
         # if parent_body_name != "worldbody":
-            
         body_id = mujoco.mj_name2id(
                 self.env.model, mujoco.mjtObj.mjOBJ_BODY, parent_body_name
             )
@@ -442,6 +441,7 @@ class NVISIIRenderer(Renderer):
             )
             pos = self.env.data.geom_xpos[geom_id]
 
+        # if parent_body_name != "worldbody":
         B = self.env.data.xmat[body_id].reshape((3, 3))
         quat_xyzw_body = mat2quat(B)
         quat_wxyz_body = np.array(

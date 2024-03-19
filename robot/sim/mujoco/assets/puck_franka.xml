@@ -6,7 +6,7 @@
     </option>
     <size njmax='1000' nconmax='1000' />
 
-    <include file="basic_scene.xml" />
+    <include file="puck_scene.xml" />
     <include file="franka_assets/franka_assets.xml" />
 
     <visual>
@@ -43,6 +43,7 @@
             <include file="franka_assets/chain.xml" />
         </body>
 
+        <!-- Shuffle board -->
         <body name="shuffleboard_body" pos="0.67 0. 0.02">
 
             <!-- 113cm x 33cm -> 56.5cm x 16.5cm -->
@@ -56,9 +57,15 @@
             <geom name="surface_geom" type="box" pos="0. 0. 0." size="0.505 0.115 0.01" material="wood" condim="4" friction="0.0003 0.0003 0.0" conaffinity='1' contype='1' priority="1" />
 
             <!-- sections -->
-            <geom name="marker_0" conaffinity="0" contype="0" condim="1" pos="0.08 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" />
+            <geom name="zone_0_left" conaffinity="0" contype="0" condim="1" pos="0.1301 0.0951 0.0001" type="box" size="0.125 0.02 0.01" rgba="1 0.8 0.26 1" />
+            <geom name="zone_0_right" conaffinity="0" contype="0" condim="1" pos="0.1301 -0.0951 0.0001" type="box" size="0.125 0.02 0.01" rgba="1 0.8 0.26 1" />
+
+            <geom name="zone_1_left" conaffinity="0" contype="0" condim="1" pos="0.3801 0.0951 0.0001" type="box" size="0.125 0.02 0.01" rgba="0 0.26 0.7 1" />
+            <geom name="zone_1_right" conaffinity="0" contype="0" condim="1" pos="0.3801 -0.0951 0.0001" type="box" size="0.125 0.02 0.01" rgba="0 0.26 0.7 1" />
+
+            <!-- <geom name="marker_0" conaffinity="0" contype="0" condim="1" pos="0.08 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" />
             <geom name="marker_1" conaffinity="0" contype="0" condim="1" pos="0.32 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" />
-            <geom name="marker_2" conaffinity="0" contype="0" condim="1" pos="0.57 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" />
+            <geom name="marker_2" conaffinity="0" contype="0" condim="1" pos="0.57 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" /> -->
             <!-- <geom name="marker_3" conaffinity="0" contype="0" condim="1" pos="0.53 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" /> -->
 
         </body>

@@ -112,7 +112,8 @@ def load_object(
 
         component.get_material().set_base_color_texture(texture)
         # component.get_material().set_alpha(1)
-        component.get_material().set_alpha_texture(texture, 1)
+        # component.get_material().set_alpha_texture(texture, 1)
+        
     elif geom_rgba is not None:
 
         if isinstance(component, nvisii.scene):

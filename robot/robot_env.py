@@ -27,6 +27,7 @@ class RobotEnv(gym.Env):
         self,
         # control frequency
         control_hz=10,
+        blocking_control=False,
         DoF=3,
         gripper=True,
         # Franka model: 'panda', 'fr3'
@@ -64,6 +65,7 @@ class RobotEnv(gym.Env):
         self.DoF = DoF
         self.gripper = gripper
         self.control_hz = control_hz
+        self.blocking_control = blocking_control
 
         self._episode_count = 0
         self._max_path_length = max_path_length
@@ -337,7 +339,7 @@ class RobotEnv(gym.Env):
         # cartesian position (delta) control
         self._update_robot(
             np.concatenate((desired_pos, desired_angle, [gripper])),
-            action_space="cartesian_position",
+            action_space="cartesian_position", blocking=self.blocking_control,
         )
         # # cartesian velocity control
         # self._update_robot(

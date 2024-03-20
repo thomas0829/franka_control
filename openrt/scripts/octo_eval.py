@@ -40,6 +40,7 @@ def run_experiment(cfg):
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
+        env_cfg_dict=hydra_to_dict(cfg.env),
         seed=cfg.seed,
         device_id=0,
         verbose=False,
@@ -55,7 +56,7 @@ def run_experiment(cfg):
 
     # load models
     # model = OctoModel.load_pretrained("hf://rail-berkeley/octo-small")
-    model = OctoModel.load_pretrained("logdir/finetune_config_pick_red_same_loc_10/octo_finetune/experiment_20240305_090917")
+    model = OctoModel.load_pretrained("logdir/finetune_pick_red_cube_synthetic_sl/octo_finetune/experiment_20240320_152140")
 
     # import ipdb; ipdb.set_trace()
     # wrap the robot environment

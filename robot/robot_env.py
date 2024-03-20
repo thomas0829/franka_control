@@ -3,7 +3,7 @@ import time
 
 import gym
 import numpy as np
-import torch
+# import torch
 from gym.spaces import Box, Dict
 
 from utils.pointclouds import (
@@ -723,4 +723,4 @@ class RobotEnv(gym.Env):
     def seed(self, seed):
         self._seed = seed
         np.random.seed(seed)
-        torch.manual_seed(seed)
+        # torch.manual_seed(seed)

@@ -8,11 +8,13 @@ import imageio
 import joblib
 import numpy as np
 import torch
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from robot.controllers.motion_planner import MotionPlanner
-from robot.rlds_wrapper import (convert_rlds_to_np, load_rlds_dataset,
-                                wrap_env_in_rlds_logger)
+
+# from robot.rlds_wrapper import (convert_rlds_to_np, load_rlds_dataset,
+#                                 wrap_env_in_rlds_logger)
+from robot.rlds_wrapper import DataCollectionWrapper
 from robot.robot_env import RobotEnv
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.transformations_mujoco import *
@@ -24,12 +26,12 @@ class CartesianPDController:
         self.Kd = Kd  # Derivative gain
         self.pos_prev_error = 0
         self.quat_prev_error = 0
-        self.dt = 1/control_hz
+        self.dt = 1 / control_hz
 
     def reset(self):
         self.pos_prev_error = 0
         self.quat_prev_error = 0
-        
+
     def update(self, curr, des):
         """
         Update the PD controller.
@@ -53,7 +55,6 @@ class CartesianPDController:
         # Calculate the position control output
         u_pos = self.Kp * pos_error + self.Kd * pos_error_dot
 
-
         # Calculate the quaternion error
         # quat_error = subtract_euler_mujoco(des[3:], curr[3:])
         quat_error = des[3:] - curr[3:]
@@ -67,18 +68,25 @@ class CartesianPDController:
 
         # Calculate the quaternion control output
         u_quat = self.Kp * quat_error + self.Kd * quat_error_dot
-        
 
         # Combine the position and quaternion control outputs
         u = np.concatenate((u_pos, u_quat))
 
         return u
 
-def move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=1e-3, max_iter_per_waypoint=20, render=False, verbose=False):
-    
+
+def move_to_cartesian_pose(
+    target_pose,
+    gripper,
+    motion_planner,
+    controller,
+    env,
+    progress_threshold=1e-3,
+    max_iter_per_waypoint=20,
+):
+
     controller.reset()
 
-    # start = env.unwrapped._robot.get_joint_positions().copy()
     start = env.unwrapped._robot.get_ee_pose().copy()
     start = np.concatenate((start[:3], euler_to_quat_mujoco(start[3:])))
     target_pose = target_pose.copy()
@@ -92,58 +100,47 @@ def move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env
     qpos_plan = motion_planner.plan_motion(start, goal, return_ee_pose=True)
 
     steps = 0
-    error = []
     imgs = []
 
     for i in range(len(qpos_plan.ee_position)):
 
-        des_pose = np.concatenate((qpos_plan.ee_position[i].cpu().numpy(), quat_to_euler_mujoco(qpos_plan.ee_quaternion[i].cpu().numpy())))
-        # des_pose[5] = des_pose[5] / 2 # scale to np.pi/2
-        
-        print("des_pose", des_pose)
-        last_curr_pose = des_pose
+        des_pose = np.concatenate(
+            (
+                qpos_plan.ee_position[i].cpu().numpy(),
+                quat_to_euler_mujoco(qpos_plan.ee_quaternion[i].cpu().numpy()),
+            )
+        )
+        last_curr_pose = env.unwrapped._robot.get_ee_pose()
 
         for j in range(max_iter_per_waypoint):
-            
+
             # get current pose
             curr_pose = env.unwrapped._robot.get_ee_pose()
 
             # run PD controller
             act = controller.update(curr_pose, des_pose)
-            # act[3:] = np.arctan2(np.sin(act[3:] * 2), np.cos(act[3:] * 2)) / 2
             act = np.concatenate((act, [gripper]))
 
-            print("angle act", act[3:], "euler", curr_pose[3:])
-            # print("angle act", act[3:], "euler", curr_pose[3:])
             # step env
             obs, _, _, _ = env.step(act)
             steps += 1
-            
-            # compute error
-            if verbose:
-                curr_pose = env.unwrapped._robot.get_ee_pose()
-                err_pos = np.linalg.norm(target_pose[:3]-curr_pose[:3])
-                err_angle = np.linalg.norm(target_pose[3:] - curr_pose[3:])
-                err = err_pos # + err_angle
-                error.append(err)
 
-                # print(j, "err", err_pos, err_angle, "pose norm", np.linalg.norm(last_curr_pose-curr_pose)) # "act_max_abs", np.max(np.abs(act)), "act", act)
-
-            if render:
-                imgs.append(env.render())
-            env.render()
+            curr_pose = env.unwrapped._robot.get_ee_pose()
+            pos_diff = curr_pose[:3] - last_curr_pose[:3]
+            angle_diff = curr_pose[3:] - last_curr_pose[3:]
+            angle_diff = np.arctan2(np.sin(angle_diff), np.cos(angle_diff))
+            err = np.linalg.norm(pos_diff) + np.linalg.norm(angle_diff)
 
             # early stopping when actions don't change position anymore
-            if np.linalg.norm(target_pose[:3]-curr_pose[:3]) < progress_threshold:
+            if err < progress_threshold:
                 break
+
             last_curr_pose = curr_pose
 
     return imgs, steps
 
 
-def collect_demo_pick_up(
-    env, render=False, verbose=False,
-):
+def collect_demo_pick_up(env):
     """
     Collect a "pick up the red block" demo
 
@@ -151,20 +148,18 @@ def collect_demo_pick_up(
     - env: robot environment
     - z_waypoints: list of z waypoints for the pick up -> above, closer, down
     - noise_std: list of noise std for each waypoint
-    - render: whether to render the environment
 
     Returns:
     - success: whether the pick up was successful
-    - imgs: list of images for each action (empty if render=False)
     """
 
-    noise_std = 0 # 5e-2
+    noise_std = 0. # 5e-2
+    progress_threshold = 5e-2
 
-    motion_planner = MotionPlanner(interpolation_dt=0.5, device=torch.device("cuda:0"))
-    controller = CartesianPDController(Kp=0.7, Kd=0., control_hz=10)
-    imgs = []
-
-    progress_threshold = 0.3
+    motion_planner = MotionPlanner(interpolation_dt=0.1, device=torch.device("cuda:0"))
+    controller = CartesianPDController(
+        Kp=1.0, Kd=0.0, control_hz=env.unwrapped._robot.control_hz
+    )
 
     env.reset()
 
@@ -173,47 +168,35 @@ def collect_demo_pick_up(
     target_quat = quat_to_euler_mujoco(env.get_obj_pose().copy()[3:])
     target_pose = np.concatenate((target_pos, target_quat))
 
-    curr_pose = env.unwrapped._robot.get_ee_pose()
-    # angular_diff = np.arctan2(np.sin(target_pose[3:] - curr_pose[3:]), np.cos(target_pose[3:] - curr_pose[3:]))
-    # target_pose[3:] = curr_pose[3:] + angular_diff
-
     # overwrite x,y angle w/ gripper default
     target_pose[3:5] = env.unwrapped._default_angle[:2]
 
-    # target_pose[3:5] = env.unwrapped._default_angle[:3]
-    # target_pose[5] -= np.pi / 4
-    # target_pose[5] = np.clip(target_pose[5], -np.pi/2, np.pi/2)
-
-    # randomize grasp angle z
-    rng = np.random.randint(0, 3)
-    target_pose[5:] += np.pi / 2 if rng==2 else -np.pi / 2 if rng == 1 else 0
-    # target_pose[3:] = np.arctan2(np.sin(target_pose[3:]), np.cos(target_pose[3:]))
-
     # WARNING: real robot EE is offset by 90 deg -> target_pose[5] += np.pi / 4
 
-    target_pose[2] = 0.3 + np.random.normal(loc=0.0, scale=noise_std)
+    # lowest possible z w/ Curobo | real is 0.13
+    target_pose[2] = 0.12
     gripper = 0.0
-    tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
-    imgs += tmp
-
-    target_pose[2] = 0.13 + np.random.normal(loc=0.0, scale=noise_std/2)
-    gripper = 0.0
-    tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
-    imgs += tmp
-
-    # target_pose[2] = 0.2 + np.random.normal(loc=0.0, scale=noise_std)
-    # gripper = 1.0
-    # tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
-    # imgs += tmp
+    move_to_cartesian_pose(
+        target_pose,
+        gripper,
+        motion_planner,
+        controller,
+        env,
+        progress_threshold=progress_threshold,
+    )
 
     target_pose[2] = 0.3 + np.random.normal(loc=0.0, scale=noise_std)
     gripper = 1.0
-    tmp, _ = move_to_cartesian_pose(target_pose, gripper, motion_planner, controller, env, progress_threshold=progress_threshold, max_iter_per_waypoint=20, render=render, verbose=True)
-    imgs += tmp
+    move_to_cartesian_pose(
+        target_pose,
+        gripper,
+        motion_planner,
+        controller,
+        env,
+        progress_threshold=progress_threshold,
+    )
 
-
-    success = env.get_obj_pose()[2] > 0.1
-    return success, imgs
+    return env.get_obj_pose()[2] > 0.1
 
 
 @hydra.main(
@@ -225,50 +208,49 @@ def run_experiment(cfg):
     os.makedirs(logdir, exist_ok=True)
 
     from asid.wrapper.asid_vec import make_env, make_vec_env
-    
+
     cfg.robot.DoF = 6
     cfg.robot.gripper = True
     cfg.robot.on_screen_rendering = False
     cfg.robot.max_path_length = 100
 
     cfg.env.flatten = False
-    cfg.env.obj_pos_noise = True
+    cfg.robot.imgs = True
+    # cfg.env.obj_pose_noise_dict = None
+    
+    language_instruction = "pick up the red cube"
+
+    cfg.episodes = 100
+
+    robot_cfg_dict = hydra_to_dict(cfg.robot)
+    robot_cfg_dict["blocking_control"] = True
 
     env = make_env(
-        robot_cfg_dict=hydra_to_dict(cfg.robot),
+        robot_cfg_dict=robot_cfg_dict,
         env_cfg_dict=hydra_to_dict(cfg.env),
         seed=cfg.seed,
         device_id=0,
     )
 
+    env = DataCollectionWrapper(env, language_instruction=language_instruction, save_dir="sample_data/pick_red_cube/train")
+
     successes = []
-    # with wrap_env_in_rlds_logger(
-    #     env, cfg.exp_id, logdir, max_episodes_per_shard=1
-    # ) as rlds_env:
-    for i in range(cfg.episodes):
+    for i in trange(cfg.episodes):
 
-        obss = []
-        acts = []
+        env.reset_buffer()
 
-        # obs = rlds_env.reset()
+        success = collect_demo_pick_up(env)
 
-        success, _ = collect_demo_pick_up(
-            env,
-            # rlds_env,
-            render=False,
-        )
+        if success:
+            env.save_buffer()
+
         successes.append(success)
 
         print(f"Recorded Trajectory {i}, success {success}")
 
     env.reset()
 
-    print(np.sum(successes), "/", len(successes))
-
-    # check if dataset was saved
-    loaded_dataset = load_rlds_dataset(logdir)
-
-    print(f"Finished Collecting {i} Trajectories")
+    print(f"Finished Collecting {i} Trajectories | Success {np.sum(successes)} / {len(successes)}")
 
 
 if __name__ == "__main__":

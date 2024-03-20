@@ -1,4 +1,5 @@
 import time
+import os
 
 import dm_env
 import gym
@@ -147,3 +148,57 @@ class RLDSWrapper(gym.Wrapper, dm_env.Environment):
             minimum=self.env.action_space.low,
             maximum=self.env.action_space.high,
         )
+
+
+class DataCollectionWrapper(gym.Wrapper):
+
+    def __init__(self, env, language_instruction=None, save_dir=None):
+        super().__init__(env)
+        self.buffer = []
+        self.language_instruction = language_instruction
+        
+        self.save_dir = save_dir
+        if self.save_dir is not None:
+            os.makedirs(self.save_dir, exist_ok=True)
+        self.traj_count = 0
+
+    def reset(self):
+        
+        self.reset_buffer()
+
+        obs = self.env.reset()
+        
+        # store obs
+        self.curr_obs = obs.copy()
+        
+        return obs
+
+    def step(self, act):
+        
+        # extend obs and push to buffer
+        self.curr_obs["action"] = act
+        self.curr_obs["language_instruction"] = self.language_instruction
+
+        self.buffer.append(self.curr_obs)
+        
+        obs, reward, done, info = self.env.step(act)
+
+        self.curr_obs = obs.copy()
+
+        return obs, reward, done, info
+    
+    def get_buffer(self):
+        return self.buffer
+
+    def save_buffer(self):
+        assert self.save_dir is not None, "save_dir is not set"
+        filename = os.path.join(self.save_dir, f"episode_{self.traj_count}.npy")
+
+        self.traj_count += 1
+
+        np.save(filename, self.buffer)
+        print(f"Buffer saved to {filename}")
+
+    def reset_buffer(self):
+        self.buffer = []
+

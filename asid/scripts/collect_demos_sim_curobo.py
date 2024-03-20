@@ -216,11 +216,10 @@ def run_experiment(cfg):
 
     cfg.env.flatten = False
     cfg.robot.imgs = True
-    # cfg.env.obj_pose_noise_dict = None
+
+    cfg.env.obj_pose_noise_dict = None
     
     language_instruction = "pick up the red cube"
-
-    cfg.episodes = 100
 
     robot_cfg_dict = hydra_to_dict(cfg.robot)
     robot_cfg_dict["blocking_control"] = True
@@ -232,7 +231,7 @@ def run_experiment(cfg):
         device_id=0,
     )
 
-    env = DataCollectionWrapper(env, language_instruction=language_instruction, save_dir="sample_data/pick_red_cube/train")
+    env = DataCollectionWrapper(env, language_instruction=language_instruction, save_dir=f"data/{cfg.exp_id}/train")
 
     successes = []
     for i in trange(cfg.episodes):

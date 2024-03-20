@@ -78,7 +78,7 @@ def make_env(
                     device_id=device_id,
                 )
 
-    if env_cfg_dict["obj_id"] == "puck":
+    if env_cfg_dict is not None and env_cfg_dict["obj_id"] == "puck":
         from asid.utils.puck import pre_reset_env_mod
         pre_reset_env_mod(env, explore=True)
     env.seed(seed)

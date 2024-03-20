@@ -555,7 +555,7 @@ class MujocoManipulatorEnv(FrankaBase):
             }
 
     def _adaptive_time_to_go_polymetis(
-        self, robot_model, joint_displacement: torch.Tensor, time_to_go_default=1.0
+        self, joint_displacement: torch.Tensor, time_to_go_default=1.0
     ):
         """Compute adaptive time_to_go
         Computes the corresponding time_to_go such that the mean velocity is equal to one-eighth
@@ -566,16 +566,17 @@ class MujocoManipulatorEnv(FrankaBase):
 
         The resulting time_to_go is also clipped to a minimum value of the default time_to_go.
         """
-        joint_vel_limits = robot_model.get_joint_velocity_limits()
-        joint_pos_diff = torch.abs(joint_displacement)
+        # TODO verify those limits
+        joint_vel_limits = torch.tensor([2.62, 2.62, 2.62, 2.62, 5.26, 4.18, 5.26]).float() # robot_model.get_joint_velocity_limits()
+        joint_pos_diff = torch.abs(torch.tensor(joint_displacement)).float()
         time_to_go = torch.max(joint_pos_diff / joint_vel_limits * 8.0)
         return max(time_to_go, time_to_go_default)
 
-    def adaptive_time_to_go(self, desired_joint_position, t_min=1, t_max=4):
+    def adaptive_time_to_go(self, desired_joint_position, t_min=0, t_max=4):
         curr_joint_position = self.get_joint_positions()
         displacement = desired_joint_position - curr_joint_position
         time_to_go = self._adaptive_time_to_go_polymetis(
-            self.toco_robot_model, displacement
+            displacement
         )
         clamped_time_to_go = min(t_max, max(time_to_go, t_min))
         return clamped_time_to_go
@@ -600,7 +601,7 @@ class MujocoManipulatorEnv(FrankaBase):
             if self.torque_control:
                 time_to_go = self.adaptive_time_to_go(command)
             else:
-                time_to_go = 3.0
+                time_to_go = self.adaptive_time_to_go(command)
             self.move_to_joint_positions(command, time_to_go=time_to_go)
         # kill cartesian impedance
         elif blocking:
@@ -735,13 +736,13 @@ class MujocoManipulatorEnv(FrankaBase):
         else:
             # WARNING: actuator must be general or position
 
-            # set position -> sim only has to be stepped once
-            self.data.qpos[self.franka_joint_ids] = joint_pos_desired
-            mujoco.mj_step(self.model, self.data)
+            # # set position -> sim only has to be stepped once
+            # self.data.qpos[self.franka_joint_ids] = joint_pos_desired
+            # mujoco.mj_step(self.model, self.data)
 
-            # # use position control -> sim has to be skipped multiple times until convergence
-            # self.data.ctrl[: len(self.franka_joint_ids)] = joint_pos_desired
-            # mujoco.mj_step(self.model, self.data, nstep=self.frame_skip * 10)
+            # use position control -> skip sim for time_to_go
+            self.data.ctrl[: len(self.franka_joint_ids)] = joint_pos_desired
+            mujoco.mj_step(self.model, self.data, nstep=int(time_to_go//self.model.opt.timestep))
 
         if self.has_renderer:
             self.render()

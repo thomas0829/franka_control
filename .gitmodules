@@ -1,9 +1,9 @@
-[submodule "training/octo"]
-	path = training/octo
+[submodule "training/weird_octo"]
+	path = training/weird_octo
 	url = https://github.com/memmelma/weird_octo.git
-[submodule "training/stable-baselines3"]
-	path = training/stable-baselines3
+[submodule "training/weird_stable-baselines3"]
+	path = training/weird_stable-baselines3
 	url = https://github.com/memmelma/weird_stable-baselines3.git
-[submodule "convert/rlds_dataset_builder"]
-	path = convert/rlds_dataset_builder
+[submodule "convert/weird_rlds_dataset_builder"]
+	path = convert/weird_rlds_dataset_builder
 	url = https://github.com/memmelma/weird_rlds_dataset_builder.git

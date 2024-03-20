@@ -35,7 +35,7 @@ from octo.utils.gym_wrappers import (
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
-@hydra.main(config_path="../configs/", config_name="octo_eval", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="octo_eval_sim", version_base="1.1")
 def run_experiment(cfg):
 
     env = make_env(
@@ -46,18 +46,24 @@ def run_experiment(cfg):
     )
 
     from robot.gymnasium_wrapper import OctoPreprocessingWrapper
-    env = OctoPreprocessingWrapper(env)
+
+    env = OctoPreprocessingWrapper(
+        env,
+        img_keys=["left_rgb" if env.unwrapped.sim else "215122255213_rgb"],
+        proprio_keys=["lowdim_ee", "lowdim_qpos"],
+    )
 
     # load models
     # model = OctoModel.load_pretrained("hf://rail-berkeley/octo-small")
     model = OctoModel.load_pretrained("logdir/finetune_config_pick_red_same_loc_10/octo_finetune/experiment_20240305_090917")
-    # OctoModel.load_pretrained("../../logdir/finetune_config_pick_red_same_loc_10/octo_finetune/experiment_20240305_090917")
 
     # import ipdb; ipdb.set_trace()
     # wrap the robot environment
     env = UnnormalizeActionProprio(
         # env, model.dataset_statistics["bridge_dataset"], normalization_type="normal"
-        env, model.dataset_statistics, normalization_type="normal"
+        env,
+        model.dataset_statistics,
+        normalization_type="normal",
     )
     env = HistoryWrapper(env, horizon=cfg.inference.horizon)
     env = TemporalEnsembleWrapper(env, pred_horizon=cfg.inference.pred_horizon)

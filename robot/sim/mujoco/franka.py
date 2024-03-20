@@ -567,6 +567,7 @@ class MujocoManipulatorEnv(FrankaBase):
         The resulting time_to_go is also clipped to a minimum value of the default time_to_go.
         """
         # TODO verify those limits
+        # https://frankaemika.github.io/docs/control_parameters.html
         joint_vel_limits = torch.tensor([2.62, 2.62, 2.62, 2.62, 5.26, 4.18, 5.26]).float() # robot_model.get_joint_velocity_limits()
         joint_pos_diff = torch.abs(torch.tensor(joint_displacement)).float()
         time_to_go = torch.max(joint_pos_diff / joint_vel_limits * 8.0)

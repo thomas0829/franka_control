@@ -4,8 +4,8 @@ hydra:
   
 defaults:
   - env: cube
-  - robot: sim_2_dof
-  - log: wandb
+  - robot: sim_6_dof
+  - log: stdout
 
 exp_id: "pick_red_cube_synthetic_sl"
 

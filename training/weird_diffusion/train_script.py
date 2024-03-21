@@ -17,13 +17,13 @@ from utils.system import get_device, set_gpu_mode
 @hydra.main(version_base=None, config_path="../../configs", config_name="diffusion_policy_sim")
 def run_experiment(cfg):
 
-    # if "wandb" in cfg.log.format_strings:
-    #     run = setup_wandb(
-    #         cfg,
-    #         name=f"{cfg.exp_id}[explore][{cfg.seed}]",
-    #         entity=cfg.log.entity,
-    #         project=cfg.log.project,
-    #     )
+    if "wandb" in cfg.log.format_strings:
+        run = setup_wandb(
+            cfg,
+            name=f"{cfg.exp_id}[explore][{cfg.seed}]",
+            entity=cfg.log.entity,
+            project=cfg.log.project,
+        )
     set_random_seed(cfg.seed)
 
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
@@ -97,6 +97,11 @@ def run_experiment(cfg):
                     epoch_loss.append(loss_cpu)
                     tepoch.set_postfix(loss=loss_cpu)
             tglobal.set_postfix(loss=np.mean(epoch_loss))
+
+            logger.record("mse_loss", np.mean(epoch_loss))
+            logger.record("learning_rate", optimizer.param_groups[0]['lr'])
+            
+            logger.dump(step=epoch_idx)
 
     ema_nets = nets
     ema.copy_to(ema_nets.parameters())

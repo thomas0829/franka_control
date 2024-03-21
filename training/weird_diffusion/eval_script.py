@@ -39,6 +39,8 @@ def process_obs(obs, nets, cfg, device):
         with torch.no_grad():
             imgs = []
             for key in cfg.training.image_keys:
+                # TODO deal with cropping properly
+                img = obs[key][:, 160:, :]
                 img = torch.tensor(obs[key], dtype=torch.float32).permute(2, 0, 1).to(device)
                 imgs.append(img)
             im_stack = torch.stack(imgs, dim=0)

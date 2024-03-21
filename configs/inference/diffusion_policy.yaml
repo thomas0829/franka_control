@@ -1,0 +1,4 @@
+checkpoint_path: "..."
+
+max_steps: 100
+num_eval_episodes: 20

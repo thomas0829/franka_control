@@ -3,7 +3,7 @@ batch_size: 32
 num_epochs: 10
 
 # checkpoint_path: "${hydra:runtime.cwd}/${checkpoint_name: ${num_trajs}}"
-dataset_path: "data/pick_red_cube_synthetic/train"
+dataset_path: "data/pick_red_cube_synthetic_sl/train"
 
 pred_horizon: 12
 obs_horizon: 4

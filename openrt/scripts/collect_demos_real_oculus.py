@@ -58,7 +58,9 @@ def run_experiment(cfg):
     assert oculus.get_info()["controller_on"], "ERROR: oculus controller off"
     print("Oculus Connected")
 
-    for i in range(cfg.episodes):
+    n_traj = 0
+
+    while n_traj < cfg.episodes:
 
         # reset w/o recording obs
         env.unwrapped.reset()
@@ -81,7 +83,7 @@ def run_experiment(cfg):
         obss = []
         acts = []
 
-        for j in tqdm(range(cfg.max_episode_length), desc=f"Collecting Trajectory {i}"):
+        for j in tqdm(range(cfg.max_episode_length), desc=f"Collecting Trajectory {n_traj}/{cfg.episodes}"):
             
             # wait for controller input
             info = oculus.get_info()
@@ -138,13 +140,14 @@ def run_experiment(cfg):
         # save trajectory if success
         if save:
             env.save_buffer()
+            n_traj += 1
             print("SUCCESS")
         else:
             print("FAILURE")
 
     env.reset()
 
-    print(f"Finished Collecting {i} Trajectories")
+    print(f"Finished Collecting {n_traj} Trajectories")
 
 
 if __name__ == "__main__":

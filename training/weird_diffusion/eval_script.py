@@ -170,9 +170,9 @@ def run_experiment(cfg):
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed))
     logger = configure_logger(logdir, cfg.log.format_strings)
 
-    checkpoint = torch.load(os.path.join(logdir, "diffusion_policy"), map_location='cuda')
-
     nets, noise_scheduler, device = instantiate_model_artifacts(cfg, model_only=True)
+
+    checkpoint = torch.load(os.path.join(logdir, "diffusion_policy"), map_location='cuda')
     nets.load_state_dict(checkpoint['state_dict'])
     print('Pretrained weights loaded.')
     stats = checkpoint['stats']
@@ -182,7 +182,7 @@ def run_experiment(cfg):
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
-        env_cfg_dict=hydra_to_dict(cfg.env),
+        env_cfg_dict=hydra_to_dict(cfg.env) if cfg.robot.ip_address is None else None,
         seed=cfg.seed,
         device_id=0,
         verbose=True,

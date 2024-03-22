@@ -1,4 +1,5 @@
 control_hz: 10
+blocking_control: false
 DoF: 6
 gripper: true
 
@@ -13,7 +14,7 @@ pause_after_reset: false
 # observation space configuration
 qpos: true
 ee_pos: true
-imgs: false
+imgs: true
 normalize: false
 
 # pass IP if not running on NUC "localhost" if running on NUC None if running sim
@@ -26,4 +27,4 @@ camera_resolution: null  # (128 128) -> HxW
 calibration_file: "perception/cameras/calibration/logs/default.json" # "perception/cameras/calibration/logs/aruco/24_02_19_10_16_14.json"
 # Mujoco: model name
 model_name: "base_franka"
-on_screen_rendering: true
+on_screen_rendering: false

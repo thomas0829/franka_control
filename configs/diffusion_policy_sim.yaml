@@ -3,7 +3,7 @@ hydra:
     chdir: false
   
 defaults:
-  - log: stdout
+  - log: wandb
   - robot: sim_6_dof
   - env: cube
   - training: diffusion_policy

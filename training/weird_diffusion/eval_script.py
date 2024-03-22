@@ -158,13 +158,13 @@ def run_one_eval(env: gym.Env, nets: torch.nn.Module, config, stats, noise_sched
 
 @hydra.main(version_base=None, config_path="../../configs", config_name="diffusion_policy_sim")
 def run_experiment(cfg):
-    # if "wandb" in cfg.log.format_strings:
-    #     run = setup_wandb(
-    #         cfg,
-    #         name=f"{cfg.exp_id}[explore][{cfg.seed}]",
-    #         entity=cfg.log.entity,
-    #         project=cfg.log.project,
-    #     )
+    if "wandb" in cfg.log.format_strings:
+        run = setup_wandb(
+            cfg,
+            name=f"{cfg.exp_id}[{cfg.seed}]",
+            entity=cfg.log.entity,
+            project=cfg.log.project,
+        )
     set_random_seed(cfg.seed)
     
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
@@ -197,8 +197,14 @@ def run_experiment(cfg):
             successes += 1
 
         if render:
-            imageio.mimsave(os.path.join(logdir, f"eval_episode_{i}.mp4"), np.stack(imgs))
-        
+            video = np.stack(imgs)[None]
+            imageio.mimsave(os.path.join(logdir, f"eval_episode_{i}.gif"), video[0])
+            logger.record(
+                f"videos/eval_episode_{i}",
+                Video(video, fps=20),
+                exclude=["stdout"],
+            )
+            
     # Round to the 3rd decimal place
     success_rate = round(successes / cfg.inference.num_eval_episodes, 3)
     print(f'Success rate: {success_rate}')

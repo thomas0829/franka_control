@@ -1,9 +1,9 @@
-num_timesteps: 100
+num_timesteps: 50
 horizon: 2
 pred_horizon: 1
 im_size_x: 256
 im_size_y: 256
-step_duration: 0.4
+step_duration: 0.1
 show_image: false
 # serial number, find with realsense_test.py
 main_camera: '215122255213'

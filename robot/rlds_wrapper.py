@@ -152,11 +152,12 @@ class RLDSWrapper(gym.Wrapper, dm_env.Environment):
 
 class DataCollectionWrapper(gym.Wrapper):
 
-    def __init__(self, env, language_instruction=None, save_dir=None):
+    def __init__(self, env, language_instruction=None, fake_blocking=False, save_dir=None):
         super().__init__(env)
         self.buffer = []
         self.language_instruction = language_instruction
-        
+        self.fake_blocking = fake_blocking
+
         self.save_dir = save_dir
         if self.save_dir is not None:
             os.makedirs(self.save_dir, exist_ok=True)
@@ -176,12 +177,17 @@ class DataCollectionWrapper(gym.Wrapper):
     def step(self, act):
         
         # extend obs and push to buffer
-        self.curr_obs["action"] = act
         self.curr_obs["language_instruction"] = self.language_instruction
 
         self.buffer.append(self.curr_obs)
         
         obs, reward, done, info = self.env.step(act)
+
+        # overwrite action with actual delta
+        if self.fake_blocking:
+            act = obs["lowdim_ee"] - self.curr_obs["lowdim_ee"]
+            print("actual delta", act)
+        self.curr_obs["action"] = act
 
         self.curr_obs = obs.copy()
 

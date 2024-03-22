@@ -12,8 +12,8 @@ from tqdm import tqdm, trange
 
 from robot.controllers.motion_planner import MotionPlanner
 
-# from robot.rlds_wrapper import (convert_rlds_to_np, load_rlds_dataset,
-#                                 wrap_env_in_rlds_logger)
+from robot.sim.vec_env.vec_env import make_env
+
 from robot.rlds_wrapper import DataCollectionWrapper
 from robot.robot_env import RobotEnv
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
@@ -207,10 +207,9 @@ def run_experiment(cfg):
     logdir = os.path.join(cfg.log.dir, cfg.exp_id)
     os.makedirs(logdir, exist_ok=True)
 
-    from asid.wrapper.asid_vec import make_env, make_vec_env
-
     cfg.robot.DoF = 6
     cfg.robot.gripper = True
+    cfg.robot.blocking_control = True
     cfg.robot.on_screen_rendering = False
     cfg.robot.max_path_length = 100
 
@@ -221,17 +220,15 @@ def run_experiment(cfg):
     
     language_instruction = "pick up the red cube"
 
-    robot_cfg_dict = hydra_to_dict(cfg.robot)
-    robot_cfg_dict["blocking_control"] = True
-
     env = make_env(
-        robot_cfg_dict=robot_cfg_dict,
+        robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
         seed=cfg.seed,
         device_id=0,
     )
 
-    env = DataCollectionWrapper(env, language_instruction=language_instruction, save_dir=f"data/{cfg.exp_id}/train")
+    savedir = f"data/{cfg.exp_id}/train"
+    env = DataCollectionWrapper(env, language_instruction=language_instruction, save_dir=savedir)
 
     successes = []
     for i in trange(cfg.episodes):

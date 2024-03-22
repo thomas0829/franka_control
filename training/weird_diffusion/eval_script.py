@@ -167,7 +167,7 @@ def run_experiment(cfg):
         )
     set_random_seed(cfg.seed)
     
-    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
+    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed))
     logger = configure_logger(logdir, cfg.log.format_strings)
 
     checkpoint = torch.load(os.path.join(logdir, "diffusion_policy"), map_location='cuda')

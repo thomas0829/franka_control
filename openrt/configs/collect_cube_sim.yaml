@@ -3,9 +3,9 @@ hydra:
     chdir: false
   
 defaults:
+  - log: stdout
   - env: cube
   - robot: sim_6_dof
-  - log: stdout
 
 exp_id: "pick_red_cube_synthetic_sl"
 

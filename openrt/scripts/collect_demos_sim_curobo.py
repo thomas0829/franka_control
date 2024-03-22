@@ -204,7 +204,7 @@ def collect_demo_pick_up(env):
 )
 def run_experiment(cfg):
 
-    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "sim")
+    logdir = os.path.join(cfg.log.dir, cfg.exp_id)
     os.makedirs(logdir, exist_ok=True)
 
     from asid.wrapper.asid_vec import make_env, make_vec_env

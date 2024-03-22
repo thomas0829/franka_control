@@ -31,6 +31,8 @@ class StateImageDataset(torch.utils.data.Dataset):
         for file in tqdm(file_names[:num_trajectories]):
             data.append(np.load(file, allow_pickle=True))
         
+        assert len(data) > 1, f"WARNING: no data loaded from {dataset_path}!"
+
         actions = []
         images = []
         states = []

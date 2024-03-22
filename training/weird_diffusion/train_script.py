@@ -26,7 +26,7 @@ def run_experiment(cfg):
         )
     set_random_seed(cfg.seed)
 
-    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
+    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed))
     logger = configure_logger(logdir, cfg.log.format_strings)
 
     nets, ema, noise_scheduler, optimizer, lr_scheduler, dataloader, stats, device = instantiate_model_artifacts(cfg,

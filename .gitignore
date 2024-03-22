@@ -7,6 +7,7 @@ outputs/
 wandb/
 logdir/
 build/
+slurm/
 
 *.gif
 *.json

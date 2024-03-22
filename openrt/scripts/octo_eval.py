@@ -38,6 +38,9 @@ os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 @hydra.main(config_path="../configs/", config_name="octo_eval_sim", version_base="1.1")
 def run_experiment(cfg):
 
+    logdir = os.path.join(cfg.inference.ckpt_dir, "videos") # os.path.join(cfg.log.dir, cfg.exp_id)
+    os.makedirs(logdir, exist_ok=True)
+    
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
@@ -56,7 +59,7 @@ def run_experiment(cfg):
 
     # load models
     # model = OctoModel.load_pretrained("hf://rail-berkeley/octo-small")
-    model = OctoModel.load_pretrained("logdir/finetune_pick_red_cube_synthetic_sl/octo_finetune/experiment_20240320_152140")
+    model = OctoModel.load_pretrained(cfg.inference.ckpt_dir)
 
     # import ipdb; ipdb.set_trace()
     # wrap the robot environment
@@ -201,11 +204,11 @@ def run_experiment(cfg):
                     break
 
         # save video
-        if cfg.inference.video_save_path is not None:
-            os.makedirs(cfg.inference.video_save_path, exist_ok=True)
+        if logdir is not None:
+            os.makedirs(logdir, exist_ok=True)
             curr_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             save_path = os.path.join(
-                cfg.inference.video_save_path,
+                logdir,
                 f"{curr_time}.mp4",
             )
             video = np.concatenate([np.stack(goals), np.stack(images)], axis=1)

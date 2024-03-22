@@ -5,6 +5,7 @@ hydra:
 defaults:
   - log: stdout
   - robot: real_6_dof
+  - env: cube
   - inference: octo
 
 seed: 0

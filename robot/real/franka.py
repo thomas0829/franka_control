@@ -42,8 +42,8 @@ class FrankaHardware(FrankaBase):
 
         self._grasping = False
 
-    def reset(self):
-        self.update_joints(self._robot.home_pose, velocity=False, blocking=True)
+    # def reset(self):
+    #     self.update_joints(self._robot.home_pose, velocity=False, blocking=True)
 
     def launch_robot(self, ip_address, gripper=True):
         # self._robot = RobotInterface(ip_address=ip_address)

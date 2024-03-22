@@ -178,6 +178,7 @@ def run_experiment(cfg):
     stats = checkpoint['stats']
 
     cfg.robot.max_path_length = cfg.inference.max_steps
+    cfg.robot.blocking_control = True
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),

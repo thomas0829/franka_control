@@ -1,4 +1,5 @@
 control_hz: 10
+blocking_control: false
 DoF: 2
 gripper: false
 

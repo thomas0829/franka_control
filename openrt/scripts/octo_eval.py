@@ -2,14 +2,13 @@ import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from datetime import datetime
-from functools import partial
 import os
 import time
 from dataclasses import dataclass
+from datetime import datetime
+from functools import partial
 from typing import Optional
 
-from absl import app, flags, logging
 import click
 import cv2
 import hydra
@@ -17,20 +16,13 @@ import imageio
 import jax
 import jax.numpy as jnp
 import numpy as np
+from absl import app, flags, logging
+from octo.model.octo_model import OctoModel
+from octo.utils.gym_wrappers import (HistoryWrapper, TemporalEnsembleWrapper,
+                                     UnnormalizeActionProprio)
 
 from asid.wrapper.asid_vec import make_env
-from utils.experiment import (
-    setup_wandb,
-    hydra_to_dict,
-    set_random_seed,
-)
-from octo.model.octo_model import OctoModel
-from octo.utils.gym_wrappers import (
-    HistoryWrapper,
-    TemporalEnsembleWrapper,
-    UnnormalizeActionProprio,
-)
-
+from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
@@ -38,6 +30,9 @@ os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 @hydra.main(config_path="../configs/", config_name="octo_eval_sim", version_base="1.1")
 def run_experiment(cfg):
 
+    cfg.robot.max_path_length = cfg.inference.num_timesteps
+    cfg.robot.blocking_control = True
+    
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),

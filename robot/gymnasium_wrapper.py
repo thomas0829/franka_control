@@ -32,6 +32,9 @@ class OctoPreprocessingWrapper(gym.Wrapper):
         return self.augment_observation(obs), {}
 
     def step(self, act):
+        # TODO somehow octo flips actions ...
+        act[...,-1] = -act[...,-1]
+        print(act)
         obs, reward, done, info = self.env.step(act)
         trunc = False
         return self.augment_observation(obs), reward, done, trunc, info

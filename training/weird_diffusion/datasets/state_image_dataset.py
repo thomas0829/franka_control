@@ -26,19 +26,17 @@ class StateImageDataset(torch.utils.data.Dataset):
 
         # load the demonstration dataset:
         file_names = glob.glob(f"{dataset_path}/episode_*.npy")
-        
-        data = []
-        for file in tqdm(file_names[:num_trajectories]):
-            data.append(np.load(file, allow_pickle=True))
-        
-        assert len(data) > 1, f"WARNING: no data loaded from {dataset_path}!"
+        assert len(file_names) > 1, f"WARNING: no data in {dataset_path}!"
 
         actions = []
         images = []
         states = []
         episode_ends = []
 
-        for i, episode in enumerate(data):
+        for i, file in enumerate(file_names[:num_trajectories]):
+
+            episode = np.load(file, allow_pickle=True)
+
             for j, step in enumerate(episode):
                 if len(state_keys):
                     sts = []

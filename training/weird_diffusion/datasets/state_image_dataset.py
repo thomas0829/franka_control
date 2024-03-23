@@ -60,6 +60,10 @@ class StateImageDataset(torch.utils.data.Dataset):
                 actions.append(step['action'])
                 if j == len(episode) - 1:
                     episode_ends.append(j + 1)
+            
+            # TODO: check if this actually helps
+            # delete entry to save memory
+            data[i] = None
 
         actions = np.array(actions).astype(np.float32)
         states = np.array(states).astype(np.float32)

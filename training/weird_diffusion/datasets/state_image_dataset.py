@@ -33,7 +33,7 @@ class StateImageDataset(torch.utils.data.Dataset):
         states = []
         episode_ends = []
 
-        for i, file in enumerate(file_names[:num_trajectories]):
+        for file in tqdm(file_names[:num_trajectories]):
 
             episode = np.load(file, allow_pickle=True)
 

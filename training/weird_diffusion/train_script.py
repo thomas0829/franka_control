@@ -20,13 +20,13 @@ def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
             cfg,
-            name=f"{cfg.exp_id}[explore][{cfg.seed}]",
+            name=f"{cfg.exp_id}[{cfg.seed}]",
             entity=cfg.log.entity,
             project=cfg.log.project,
         )
     set_random_seed(cfg.seed)
 
-    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
+    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed))
     logger = configure_logger(logdir, cfg.log.format_strings)
 
     nets, ema, noise_scheduler, optimizer, lr_scheduler, dataloader, stats, device = instantiate_model_artifacts(cfg,

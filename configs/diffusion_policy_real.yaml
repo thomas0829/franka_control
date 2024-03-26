@@ -4,7 +4,7 @@ hydra:
   
 defaults:
   - log: wandb
-  - robot: sim_6_dof
+  - robot: real_6_dof
   - env: cube
   - training: diffusion_policy
   - inference: diffusion_policy

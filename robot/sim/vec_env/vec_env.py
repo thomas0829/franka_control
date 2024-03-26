@@ -5,7 +5,7 @@ from robot.robot_env import RobotEnv
 
 def make_env(
     robot_cfg_dict,
-    env_cfg_dict,
+    env_cfg_dict=None,
     seed=0,
     device_id=0,
     verbose=False,
@@ -13,22 +13,27 @@ def make_env(
 
     if verbose:
         print("robot config", robot_cfg_dict)
-
+    elif verbose and env_cfg_dict is not None:
+        print("env config", env_cfg_dict)
+    
+    # replace base mujoco xml with object specific xml
     if env_cfg_dict is not None:
         robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
             "base", env_cfg_dict["obj_id"]
         )
 
+    # initialize robot env
     env = RobotEnv(**robot_cfg_dict, device_id=device_id, verbose=verbose)
 
+    # wrap with object env
     if env_cfg_dict is not None:
+        # sim wrapper -> obj wrapper
         if robot_cfg_dict["ip_address"] is None:
             from robot.sim.mujoco.obj_wrapper import ObjWrapper
-
             env = ObjWrapper(env, **env_cfg_dict, verbose=verbose)
+        # real wrapper -> object tracker
         else:
             from robot.real.obj_tracker_wrapper import ObjectTrackerWrapper
-
             env = ObjectTrackerWrapper(env, **env_cfg_dict, verbose=verbose)
 
     env.seed(seed)

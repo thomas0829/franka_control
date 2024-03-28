@@ -39,8 +39,6 @@ def process_obs(obs, nets, cfg, device):
         with torch.no_grad():
             imgs = []
             for key in cfg.training.image_keys:
-                # TODO deal with cropping properly
-                img = obs[key][:, 160:, :]
                 img = torch.tensor(obs[key], dtype=torch.float32).permute(2, 0, 1).to(device)
                 imgs.append(img)
             im_stack = torch.stack(imgs, dim=0)
@@ -137,6 +135,9 @@ def run_one_eval(env: gym.Env, nets: torch.nn.Module, config, stats, noise_sched
         # without replanning
         for i in range(len(action)):
             # stepping env
+            print("action", action[i])
+            print("overwriting grasp")
+            action[i][-1] = 1.0 if action[i][-1] > 0.3 else 0.0
             obs, reward, done, info = env.step(action[i])
             # save observations
             obs = process_obs(obs, nets, config, device)
@@ -156,7 +157,7 @@ def run_one_eval(env: gym.Env, nets: torch.nn.Module, config, stats, noise_sched
                 return False, imgs
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="diffusion_policy_sim")
+@hydra.main(version_base=None, config_path="../../configs", config_name="diffusion_policy_real")
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
@@ -187,6 +188,9 @@ def run_experiment(cfg):
         device_id=0,
         verbose=True,
     )
+
+    from robot.crop_wrapper import CropImageWrapper
+    env = CropImageWrapper(env, y_min=160, image_keys=cfg.training.image_keys)
 
     successes = 0
     render = True

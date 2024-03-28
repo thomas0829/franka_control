@@ -120,6 +120,9 @@ def run_experiment(cfg):
     logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed))
     logger = configure_logger(logdir, cfg.log.format_strings)
 
+    cfg.robot.control_hz = 1
+    cfg.robot.blocking_control = True
+
     # real env
     # TODO move to make_env
     envs = make_vec_env(
@@ -150,6 +153,7 @@ def run_experiment(cfg):
 
         # call openrt api
         act = call_rt(img, cfg.inference.msg, cfg.inference.url, cfg.inference.minmaxlst)[None]
+        # act = envs.action_space.sample()[None]
 
         # step
         next_obs, reward, done, info = envs.step(act)

@@ -26,7 +26,7 @@ class StateImageDataset(torch.utils.data.Dataset):
 
         # load the demonstration dataset:
         file_names = glob.glob(f"{dataset_path}/episode_*.npy")
-        assert len(file_names) > 1, f"WARNING: no data in {dataset_path}!"
+        assert len(file_names) > 0, f"WARNING: no data in {dataset_path}!"
 
         actions = []
         images = []
@@ -48,7 +48,11 @@ class StateImageDataset(torch.utils.data.Dataset):
                 if len(image_keys):
                     imgs = []
                     for key in image_keys:
-                        img = step[key]
+                        try:
+                            img = step[key]
+                        except:
+                            print(step.keys())
+                            exit()
                         # TODO deal with cropping properly
                         img = img[:, 160:, :]
                         img = np.moveaxis(img, -1, 0)

@@ -28,6 +28,7 @@ def run_experiment(cfg):
     cfg.robot.max_path_length = cfg.max_episode_length
 
     cfg.robot.DoF = 6
+    cfg.robot.control_hz = 10
     cfg.robot.gripper = True
     fake_blocking = cfg.robot.blocking_control
     cfg.robot.blocking_control = False
@@ -37,7 +38,7 @@ def run_experiment(cfg):
     cfg.env.flatten = False
     cfg.robot.imgs = True
 
-    language_instruction = "pick up the red cube"
+    language_instruction = "pick up the green cube"
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
@@ -45,6 +46,18 @@ def run_experiment(cfg):
         device_id=0,
         verbose=True,
     )
+    
+    from robot.crop_wrapper import CropImageWrapper
+    env = CropImageWrapper(env, y_min=160, image_keys=cfg.training.image_keys)
+
+    # TODO check if this makes a difference -> does when replaying action
+    env.action_space.low[:-1] = -1.0
+    env.action_space.high[:-1] = 1.0
+    
+    env.action_space.low[:3] = -0.1
+    env.action_space.high[:3] = 0.1
+    env.action_space.low[3:] = -0.25
+    env.action_space.high[3:] = 0.25
 
     savedir = f"data/{cfg.exp_id}/train"
     env = DataCollectionWrapper(

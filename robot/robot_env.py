@@ -3,6 +3,7 @@ import time
 
 import gym
 import numpy as np
+
 # import torch
 from gym.spaces import Box, Dict
 
@@ -119,6 +120,7 @@ class RobotEnv(gym.Env):
 
         # action space
         # action_low, action_high = -1., 1.
+        # TODO this limits rotation (euler) -> increase for angle!
         action_low, action_high = -0.1, 0.1
         self.action_space = Box(
             np.array(
@@ -137,8 +139,8 @@ class RobotEnv(gym.Env):
         # ee_space_high = np.array([0.7, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
         # ee_space_low = np.array([0.25, -0.5, 0.12, -3.14, -3.14, -3.14, 0.00])
         # ee_space_high = np.array([0.7, 0.5, 0.8, 3.14, 3.14, 3.14, 0.085])
-        ee_space_low = np.array([0.2, -1., 0.11, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.55, 1., 0.8, 3.14, 3.14, 3.14, 0.085])
+        ee_space_low = np.array([0.2, -1.0, 0.11, -3.14, -3.14, -3.14, 0.00])
+        ee_space_high = np.array([0.55, 1.0, 0.8, 3.14, 3.14, 3.14, 0.085])
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:
@@ -319,38 +321,48 @@ class RobotEnv(gym.Env):
                 self.DoF + 1
             ), f"Expected action shape: ({self.DoF+1},) got {action.shape}"
 
-        action = np.clip(action, self.action_space.low, self.action_space.high)
+        # BLOCKING CONTROL -> for BC inference
+        if self.blocking_control:
 
-        pos_action, angle_action, gripper = self._format_action(action)
+            # keep track of desired pose in case controller drops actions
+            self._init_pos += action[:3]
+            self._init_angle += action[3:6]
+            gripper = action[6]
 
-        # clipping + any safety corrections for position
-        desired_pos = self._get_valid_pos(self._curr_pos + pos_action)
-        desired_angle = add_angles(angle_action, self._curr_angle)
+            # cartesian position control w/ blocking
+            self._update_robot(
+                np.concatenate((self._init_pos, self._init_angle, [gripper])),
+                action_space="cartesian_position",
+                blocking=True,
+            )
 
-        # if self.DoF == 4:
-        #     desired_angle[2] = desired_angle[2].clip(
-        #         self.ee_space.low[3], self.ee_space.high[3]
-        #     )
-        # elif self.DoF == 6:
-        #     desired_angle = desired_angle.clip(
-        #         self.ee_space.low[3:6], self.ee_space.high[3:6]
-        #     )
+        # NON BLOCKING CONTROL -> for everything else
+        else:
+    
+            # clip action to action space
+            action = np.clip(action, self.action_space.low, self.action_space.high)
 
-        # cartesian position (delta) control
-        self._update_robot(
-            np.concatenate((desired_pos, desired_angle, [gripper])),
-            action_space="cartesian_position", blocking=self.blocking_control,
-        )
-        # # cartesian velocity control
-        # self._update_robot(
-        #     np.concatenate((pos_action, angle_action, [gripper])),
-        #     action_space="cartesian_velocity",
-        # )
+            # formate action to DoF
+            pos_action, angle_action, gripper = self._format_action(action)
 
-        comp_time = time.time() - start_time
-        sleep_left = max(0, (1 / self.control_hz) - comp_time)
-        if not self.sim:
-            time.sleep(sleep_left)
+            # clipping + any safety corrections for position
+            desired_pos = self._get_valid_pos(self._curr_pos + pos_action)
+            desired_angle = add_angles(angle_action, self._curr_angle)
+
+            # cartesian position control
+            self._update_robot(
+                np.concatenate((desired_pos, desired_angle, [gripper])),
+                action_space="cartesian_position",
+                blocking=False,
+            )
+
+            # sleep to maintain control_hz
+            comp_time = time.time() - start_time
+            sleep_left = max(0, (1 / self.control_hz) - comp_time)
+            if not self.sim:
+                time.sleep(sleep_left)
+
+        # get observations
         obs = self.get_observation()
 
         self.curr_path_length += 1
@@ -360,6 +372,7 @@ class RobotEnv(gym.Env):
             and self.curr_path_length >= self._max_path_length
         ):
             done = True
+
         return obs, 0.0, done, {}
 
     def normalize_ee_obs(self, obs):
@@ -431,6 +444,10 @@ class RobotEnv(gym.Env):
                 # overwrite fixed z for 2DoF EE control with 0.13
                 self.ee_space.low[2] = 0.13
                 self.ee_space.high[2] = 0.13
+
+            if self.blocking_control:
+                self._init_pos = self._default_pos.copy()
+                self._init_angle = self._default_angle.copy()
 
         if self._randomize_ee_on_reset:
             self._randomize_reset_pos()

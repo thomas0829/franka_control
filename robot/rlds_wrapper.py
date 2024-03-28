@@ -185,7 +185,8 @@ class DataCollectionWrapper(gym.Wrapper):
 
         # overwrite action with actual delta
         if self.fake_blocking:
-            act = obs["lowdim_ee"] - self.curr_obs["lowdim_ee"]
+            act[:-1] = obs["lowdim_ee"][:-1] - self.curr_obs["lowdim_ee"][:-1]
+            act[-1] = act[-1]
         self.curr_obs["action"] = act
 
         self.curr_obs = obs.copy()

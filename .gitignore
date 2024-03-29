@@ -1,6 +1,5 @@
 __pycache__/
 results/
-models/
 caldata.pkl
 data/
 outputs/

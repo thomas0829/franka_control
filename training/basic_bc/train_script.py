@@ -96,7 +96,7 @@ def run_experiment(cfg):
                     tepoch.set_postfix(loss=loss_cpu)
             tglobal.set_postfix(loss=np.mean(epoch_loss))
 
-            logger.record("mse_loss", np.mean(epoch_loss))
+            logger.record("nll_loss", np.mean(epoch_loss))
             logger.record("learning_rate", optimizer.param_groups[0]["lr"])
 
             logger.dump(step=epoch_idx)

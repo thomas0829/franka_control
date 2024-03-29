@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import gym
 import hydra
 import imageio
+import os
+os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
 import numpy as np
 import torch
 from tqdm.auto import tqdm
@@ -51,7 +53,7 @@ def pre_process_obs(obs, cfg, stats, device):
 
 
 @hydra.main(
-    version_base=None, config_path="../../configs", config_name="bc_policy_real"
+    version_base=None, config_path="../../configs", config_name="bc_policy_sim"
 )
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
@@ -98,7 +100,6 @@ def run_experiment(cfg):
 
     obs = env.reset()
 
-    obs = env.reset()
     done = False
     imgs = []
 
@@ -106,7 +107,7 @@ def run_experiment(cfg):
         img, state = pre_process_obs(obs, cfg, stats, device)
         with torch.no_grad():
             act = policy.forward(img[None], state[None])[0].detach().cpu().numpy()
-
+        print("action", act)
         obs, reward, done, _ = env.step(act)
         imgs.append(env.render())
 

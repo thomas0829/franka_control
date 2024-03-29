@@ -39,7 +39,7 @@ def run_experiment(cfg):
 
     dataset = StateImageDataset(
         cfg.training.dataset_path,
-        num_trajectories=-1,
+        num_trajectories=cfg.training.num_trajectories,
         image_keys=cfg.training.image_keys,
         state_keys=cfg.training.state_keys,
     )
@@ -53,8 +53,8 @@ def run_experiment(cfg):
     )
 
     policy = MixedGaussianPolicy(
-        img_shape=stats["image"]["max"].shape[1:],
-        state_shape=stats["state"]["max"].shape,
+        img_shape=stats["image"]["max"].shape[1:] if len(cfg.training.image_keys) else None,
+        state_shape=stats["state"]["max"].shape if len(cfg.training.state_keys) else None,
         act_shape=stats["action"]["max"].shape,
         hidden_dim=128,
     ).to(device)
@@ -78,12 +78,16 @@ def run_experiment(cfg):
                     # data normalized in dataset
                     # device transfer
 
-                    imgs = batch["image"].to(device)
-                    states = batch["state"].to(device)
+                    imgs = None
+                    states = None
                     acts = batch["action"].to(device)
 
                     # forward pass
-                    loss = policy.compute_loss(imgs, states, acts)
+                    if len(cfg.training.state_keys):
+                        states = batch["state"].to(device)
+                    if len(cfg.training.image_keys):
+                        imgs = batch["image"].to(device)
+                    loss = policy.compute_loss(acts, imgs, states)
 
                     # optimize
                     loss.backward()

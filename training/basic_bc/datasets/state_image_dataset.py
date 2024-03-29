@@ -41,7 +41,11 @@ class StateImageDataset(torch.utils.data.Dataset):
                 if len(state_keys):
                     sts = []
                     for key in state_keys:
-                        st = step[key]
+                        try:
+                            st = step[key]
+                        except:
+                            print(f"WARNING: {key} not in {step.keys()}!")
+                            exit()
                         sts.append(st)
                     state = np.concatenate(sts, axis=0)
                     states.append(state)
@@ -51,7 +55,7 @@ class StateImageDataset(torch.utils.data.Dataset):
                         try:
                             img = step[key]
                         except:
-                            print(step.keys())
+                            print(f"WARNING: {key} not in {step.keys()}!")
                             exit()
                         # TODO deal with cropping properly
                         img = img[:, 160:, :]

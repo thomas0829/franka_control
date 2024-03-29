@@ -30,6 +30,8 @@ def pre_process_obs(obs, cfg, stats, device):
         state = np.concatenate(sts, axis=0)
         # normalize
         state = normalize_data(state, stats["state"])
+        # to tensor to gpu
+        state = torch.tensor(state[None], dtype=torch.float32).to(device)
 
     image = None
     if len(cfg.training.image_keys):
@@ -45,9 +47,8 @@ def pre_process_obs(obs, cfg, stats, device):
         img_max = stats["image"]["max"].mean()
         image = (image - img_min) / (img_max - img_min)
         image = image * 2 - 1
-
-    image = torch.tensor(image, dtype=torch.float32).to(device)
-    state = torch.tensor(state, dtype=torch.float32).to(device)
+        # to tensor to gpu
+        image = torch.tensor(image[None], dtype=torch.float32).to(device)
 
     return image, state
 
@@ -75,8 +76,8 @@ def run_experiment(cfg):
     stats = checkpoint["stats"]
 
     policy = MixedGaussianPolicy(
-        img_shape=stats["image"]["max"].shape[1:],
-        state_shape=stats["state"]["max"].shape,
+        img_shape=stats["image"]["max"].shape[1:] if len(cfg.training.image_keys) else None,
+        state_shape=stats["state"]["max"].shape if len(cfg.training.state_keys) else None,
         act_shape=stats["action"]["max"].shape,
         hidden_dim=128,
     ).to(device)
@@ -106,7 +107,8 @@ def run_experiment(cfg):
     while not done:
         img, state = pre_process_obs(obs, cfg, stats, device)
         with torch.no_grad():
-            act = policy.forward(img[None], state[None])[0].detach().cpu().numpy()
+            print(img, state)
+            act = policy.forward(img, state)[0].detach().cpu().numpy()
         print("action", act)
         obs, reward, done, _ = env.step(act)
         imgs.append(env.render())

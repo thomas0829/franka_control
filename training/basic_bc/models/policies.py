@@ -11,7 +11,7 @@ from training.basic_bc.models.mlps import MLP, GaussianMLP
 from training.weird_diffusion.models.networks import get_resnet
 
 class MixedGaussianPolicy(nn.Module):
-    def __init__(self, img_shape, state_shape, act_shape, hidden_dim):
+    def __init__(self, act_shape, img_shape=None, state_shape=None, hidden_dim=128):
         super().__init__()
         
         input_dim = 0
@@ -28,24 +28,32 @@ class MixedGaussianPolicy(nn.Module):
         # input_dim += hidden_dim
         
         # Img ResNet18
-        self.visual_encoder = get_resnet("resnet18")
-        with torch.no_grad():
-            input_dim += self.visual_encoder(torch.zeros(1, *img_shape)).shape[1]
+        self.img_shape = img_shape
+        if self.img_shape is not None:
+            self.visual_encoder = get_resnet("resnet18")
+            with torch.no_grad():
+                input_dim += self.visual_encoder(torch.zeros(1, *self.img_shape)).shape[1]
 
         # State MLP
-        self.state_encoder = MLP(input_dim=state_shape[0], hidden_dims=[hidden_dim], output_dim=hidden_dim, act="ReLU", output_act="ReLU")
-        input_dim += hidden_dim
+        self.state_shape = state_shape
+        if self.state_shape is not None:
+            self.state_encoder = MLP(input_dim=self.state_shape[0], hidden_dims=[hidden_dim], output_dim=hidden_dim, act="ReLU", output_act="ReLU")
+            input_dim += hidden_dim
 
         # Head MLP
         hidden_dims = [hidden_dim for _ in range(2)]
         self.head = GaussianMLP(input_dim, hidden_dims, np.prod(act_shape))
 
-    def forward_dist(self, imgs, states):
-        visual_feat = self.visual_encoder(imgs.reshape((imgs.shape[0]*imgs.shape[1], *imgs.shape[2:])))
-        state_feat = self.state_encoder(states)
-        return self.head.forward_dist(torch.cat([visual_feat, state_feat], dim=-1))
+    def forward_dist(self, imgs=None, states=None):
+        assert (self.img_shape is not None and imgs is not None) or (self.state_shape is not None and states is not None), "WARNING: input not configured correctly!"
+        feat = []
+        if self.img_shape:
+            feat.append(self.visual_encoder(imgs.reshape((imgs.shape[0]*imgs.shape[1], *imgs.shape[2:]))))
+        if self.state_shape:
+            feat.append(self.state_encoder(states))
+        return self.head.forward_dist(torch.cat(feat, dim=-1))
 
-    def forward(self, imgs, states, deterministic=False):
+    def forward(self, imgs=None, states=None, deterministic=False):
         # Return action and log prob
         dist = self.forward_dist(imgs, states)
         if deterministic:
@@ -56,15 +64,15 @@ class MixedGaussianPolicy(nn.Module):
             log_prob = dist.log_prob(act).sum(-1, True)
         return act
 
-    def evaluate(self, imgs, states, act):
+    def evaluate(self, act, imgs=None, states=None):
         # Return log prob
         dist = self.forward_dist(imgs, states)
         log_prob = dist.log_prob(act).sum(-1, True)
         return log_prob
     
-    def compute_loss(self, imgs, states, actions):
+    def compute_loss(self, actions, imgs=None, states=None):
         
-        log_probs = self.evaluate(imgs, states, actions)
+        log_probs = self.evaluate(actions, imgs, states)
 
         loss = -log_probs.mean()
         return loss

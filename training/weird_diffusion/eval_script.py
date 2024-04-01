@@ -157,7 +157,7 @@ def run_one_eval(env: gym.Env, nets: torch.nn.Module, config, stats, noise_sched
                 return False, imgs
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="diffusion_policy_real")
+@hydra.main(version_base=None, config_path="../../configs", config_name="diffusion_policy_sim")
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
@@ -202,7 +202,7 @@ def run_experiment(cfg):
 
         if render:
             video = np.stack(imgs)[None]
-            imageio.mimsave(os.path.join(logdir, f"eval_episode_{i}.gif"), video[0])
+            imageio.mimsave(os.path.join(logdir, f"eval_episode_{i}.mp4"), video[0])
             logger.record(
                 f"videos/eval_episode_{i}",
                 Video(video, fps=20),

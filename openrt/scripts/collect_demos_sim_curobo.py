@@ -17,6 +17,7 @@ from robot.sim.vec_env.vec_env import make_env
 
 from robot.data_wrapper import DataCollectionWrapper
 from robot.crop_wrapper import CropImageWrapper
+from robot.resize_wrapper import ResizeImageWrapper
 
 from robot.robot_env import RobotEnv
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
@@ -239,7 +240,8 @@ def run_experiment(cfg):
     env.action_space.high[3:] = 0.25
 
     env = CropImageWrapper(env, y_min=160, image_keys=["left_rgb"])
-
+    env = ResizeImageWrapper(env, size=(224, 224), image_keys=["left_rgb"])
+    
     savedir = f"data/{cfg.exp_id}/train"
     env = DataCollectionWrapper(
         env,

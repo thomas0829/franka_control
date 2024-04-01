@@ -11,6 +11,8 @@ from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
 
+from robot.crop_wrapper import CropImageWrapper
+from robot.resize_wrapper import ResizeImageWrapper
 
 @hydra.main(
     config_path="../configs/", config_name="collect_cube_sim", version_base="1.1"
@@ -40,13 +42,13 @@ def run_experiment(cfg):
         verbose=True,
     )
 
-
-    from robot.crop_wrapper import CropImageWrapper
     env = CropImageWrapper(env, y_min=160, image_keys=["left_rgb"])
+    env = ResizeImageWrapper(env, size=(224, 224), image_keys=["left_rgb"])
 
-    # TODO check if this makes a difference -> does when replaying action
-    # env.action_space.low[:-1] = -1.0
-    # env.action_space.high[:-1] = 1.0
+    env.action_space.low[:3] = -0.1
+    env.action_space.high[:3] = 0.1
+    env.action_space.low[3:] = -0.25
+    env.action_space.high[3:] = 0.25
 
     dataset_path = f"data/{cfg.exp_id}/train"
     file_names = glob.glob(f"{dataset_path}/episode_*.npy")

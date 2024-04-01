@@ -84,11 +84,13 @@ class StateImageDataset(torch.utils.data.Dataset):
 
         # compute statistics and normalize data to [-1,1]
         if len(image_keys):
+            img_min = images.min()
+            img_max = images.max()
             stats["image"] = {
-                "min": images.min() * np.ones(images.shape[1:]),
-                "max": images.max() * np.ones(images.shape[1:]),
+                "min": img_min * np.ones(images.shape[1:]),
+                "max": img_max * np.ones(images.shape[1:]),
             }
-            images = (images - images.min()) / (images.max() - images.min())
+            images = (images - img_min) / (img_max - img_min)
             images = images * 2 - 1
             normalized_train_data["image"] = images
 

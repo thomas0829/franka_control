@@ -5,6 +5,7 @@ data/
 outputs/
 wandb/
 logdir/
+logdir_dep/
 build/
 slurm/
 

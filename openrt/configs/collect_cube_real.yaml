@@ -13,3 +13,4 @@ seed: 0
 gpu_id: 0
 episodes: 10
 max_episode_length: 100
+act_noise_std: 0.005

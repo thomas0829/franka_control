@@ -152,11 +152,12 @@ class RLDSWrapper(gym.Wrapper, dm_env.Environment):
 
 class DataCollectionWrapper(gym.Wrapper):
 
-    def __init__(self, env, language_instruction=None, fake_blocking=False, save_dir=None):
+    def __init__(self, env, language_instruction=None, fake_blocking=False, act_noise_std=0., save_dir=None):
         super().__init__(env)
         self.buffer = []
         self.language_instruction = language_instruction
         self.fake_blocking = fake_blocking
+        self.act_noise_std = act_noise_std
 
         self.save_dir = save_dir
         if self.save_dir is not None:
@@ -181,7 +182,11 @@ class DataCollectionWrapper(gym.Wrapper):
 
         self.buffer.append(self.curr_obs)
         
-        obs, reward, done, info = self.env.step(act)
+        # apply noise to executed action, not to saved one
+        act_noisy = act.copy()
+        act_noisy[:-1] += np.random.normal(loc=0.0, scale=self.act_noise_std, size=act_noisy[:-1].shape)
+        
+        obs, reward, done, info = self.env.step(act_noisy)
 
         # overwrite action with actual delta
         if self.fake_blocking:

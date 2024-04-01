@@ -49,8 +49,8 @@ def run_experiment(cfg):
     )
     
     # TODO check if this makes a difference -> does when replaying action
-    env.action_space.low[:-1] = -1.0
-    env.action_space.high[:-1] = 1.0
+    # env.action_space.low[:-1] = -1.0
+    # env.action_space.high[:-1] = 1.0
     
     env.action_space.low[:3] = -0.1
     env.action_space.high[:3] = 0.1

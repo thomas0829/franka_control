@@ -266,8 +266,8 @@ def run_experiment(cfg):
     # dump statistics
     np.save(os.path.join(savedir, "obj_poses"), {"obj_poses": obj_poses, "successes": successes})
     # plot statistics
-    plt.scatter(obj_poses[successes, 1], obj_poses[successes, 1], label="success", color="green")
-    plt.scatter(obj_poses[~successes, 0], obj_poses[~successes, 0], label="failure", color="red")
+    plt.scatter(obj_poses[successes, 0], obj_poses[successes, 1], label="success", color="green")
+    plt.scatter(obj_poses[~successes, 0], obj_poses[~successes, 1], label="failure", color="red")
     plt.ylabel("x")
     plt.xlabel("y")
     plt.legend()

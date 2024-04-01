@@ -5,9 +5,10 @@ from tqdm import tqdm
 import hydra
 
 from robot.controllers.oculus import VRController
-from robot.rlds_wrapper import DataCollectionWrapper
+from robot.crop_wrapper import CropImageWrapper
+from robot.data_wrapper import DataCollectionWrapper
 
-from robot.rlds_wrapper import (
+from robot.data_wrapper import (
     convert_rlds_to_np,
     load_rlds_dataset,
     wrap_env_in_rlds_logger,
@@ -47,9 +48,6 @@ def run_experiment(cfg):
         verbose=True,
     )
     
-    from robot.crop_wrapper import CropImageWrapper
-    env = CropImageWrapper(env, y_min=160, image_keys=cfg.training.image_keys)
-
     # TODO check if this makes a difference -> does when replaying action
     env.action_space.low[:-1] = -1.0
     env.action_space.high[:-1] = 1.0
@@ -59,11 +57,14 @@ def run_experiment(cfg):
     env.action_space.low[3:] = -0.25
     env.action_space.high[3:] = 0.25
 
+    env = CropImageWrapper(env, y_min=160, image_keys=cfg.training.image_keys)
+
     savedir = f"data/{cfg.exp_id}/train"
     env = DataCollectionWrapper(
         env,
         language_instruction=language_instruction,
         fake_blocking=fake_blocking,
+        act_noise_std=cfg.act_noise_std,
         save_dir=savedir,
     )
 

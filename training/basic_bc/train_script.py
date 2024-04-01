@@ -56,7 +56,7 @@ def run_experiment(cfg):
         img_shape=stats["image"]["max"].shape[1:] if len(cfg.training.image_keys) else None,
         state_shape=stats["state"]["max"].shape if len(cfg.training.state_keys) else None,
         act_shape=stats["action"]["max"].shape,
-        hidden_dim=128,
+        hidden_dim=cfg.training.hidden_dim,
     ).to(device)
 
     optimizer = torch.optim.AdamW(

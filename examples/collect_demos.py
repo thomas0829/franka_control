@@ -5,7 +5,7 @@ from tqdm import tqdm
 import hydra
 
 from robot.controllers.oculus import VRController
-from robot.rlds_wrapper import (
+from robot.data_wrapper import (
     convert_rlds_to_np,
     load_rlds_dataset,
     wrap_env_in_rlds_logger,

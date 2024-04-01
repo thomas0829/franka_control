@@ -9,12 +9,15 @@ import joblib
 import numpy as np
 import torch
 from tqdm import tqdm, trange
+import matplotlib.pyplot as plt
 
 from robot.controllers.motion_planner import MotionPlanner
 
 from robot.sim.vec_env.vec_env import make_env
 
-from robot.rlds_wrapper import DataCollectionWrapper
+from robot.data_wrapper import DataCollectionWrapper
+from robot.crop_wrapper import CropImageWrapper
+
 from robot.robot_env import RobotEnv
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.transformations_mujoco import *
@@ -216,7 +219,7 @@ def run_experiment(cfg):
     cfg.env.flatten = False
     cfg.robot.imgs = True
 
-    cfg.env.obj_pose_noise_dict = None
+    # cfg.env.obj_pose_noise_dict = None
     
     language_instruction = "pick up the red cube"
 
@@ -227,26 +230,59 @@ def run_experiment(cfg):
         device_id=0,
     )
 
+    image_keys = [cn + "_rgb" for cn in env.unwrapped._robot.camera_names]
+    env = CropImageWrapper(env, y_min=160, image_keys=image_keys)
+
     savedir = f"data/{cfg.exp_id}/train"
-    env = DataCollectionWrapper(env, language_instruction=language_instruction, save_dir=savedir)
+    env = DataCollectionWrapper(env, language_instruction=language_instruction, act_noise_std=cfg.act_noise_std, save_dir=savedir)
 
     successes = []
-    for i in trange(cfg.episodes):
+    obj_poses = []
 
+    n_traj = 0
+
+    # for n_traj in trange(cfg.episodes):
+    while n_traj < cfg.episodes:
         env.reset_buffer()
 
-        success = collect_demo_pick_up(env)
+        try:
+            success = collect_demo_pick_up(env)
+            if success:
+                env.save_buffer()
+                n_traj += 1
+            tmp_pose = env.buffer[0]["obj_pose"].copy()
+            obj_poses.append(np.concatenate((tmp_pose[:3], quat_to_euler_mujoco(tmp_pose[3:]))))
+            successes.append(success)
+            print(f"Recorded Trajectory {n_traj}, success {success}")
 
-        if success:
-            env.save_buffer()
+        # catch Curobo ValueError
+        except ValueError as e:
+            success = False
+            print(e)
 
-        successes.append(success)
+    obj_poses = np.stack(obj_poses)
+    successes = np.array(successes)
 
-        print(f"Recorded Trajectory {i}, success {success}")
+    # dump statistics
+    np.save(os.path.join(savedir, "obj_poses"), {"obj_poses": obj_poses, "successes": successes})
+    # plot statistics
+    plt.scatter(obj_poses[successes, 1], obj_poses[successes, 1], label="success", color="green")
+    plt.scatter(obj_poses[~successes, 0], obj_poses[~successes, 0], label="failure", color="red")
+    plt.ylabel("x")
+    plt.xlabel("y")
+    plt.legend()
+    plt.savefig(os.path.join(savedir, "obj_pos.png"))
+    plt.close()
+    plt.scatter(obj_poses[successes, 4], obj_poses[successes, 5], label="success", color="green")
+    plt.scatter(obj_poses[~successes, 4], obj_poses[~successes, 5], label="failure", color="red")
+    plt.xlabel("pitch")
+    plt.ylabel("yaw")
+    plt.legend()
+    plt.savefig(os.path.join(savedir, "obj_ori.png"))
 
     env.reset()
 
-    print(f"Finished Collecting {i} Trajectories | Success {np.sum(successes)} / {len(successes)}")
+    print(f"Finished Collecting {n_traj} Trajectories | Success {np.sum(successes)} / {len(successes)}")
 
 
 if __name__ == "__main__":

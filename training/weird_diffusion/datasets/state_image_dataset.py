@@ -53,8 +53,6 @@ class StateImageDataset(torch.utils.data.Dataset):
                         except:
                             print(step.keys())
                             exit()
-                        # TODO deal with cropping properly
-                        img = img[:, 160:, :]
                         img = np.moveaxis(img, -1, 0)
                         imgs.append(img)
                     image = np.stack(imgs, axis=0)

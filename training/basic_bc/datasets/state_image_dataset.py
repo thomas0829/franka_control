@@ -17,7 +17,6 @@ class StateImageDataset(torch.utils.data.Dataset):
         image_keys: list = ["left_rgb"],
         state_keys: str = ["lowdim_ee", "lowdim_qpos"],
     ):
-
         self.image_keys = image_keys
         self.state_keys = state_keys
         assert len(image_keys) or len(
@@ -67,7 +66,7 @@ class StateImageDataset(torch.utils.data.Dataset):
 
         actions = np.array(actions).astype(np.float32)
         states = np.array(states).astype(np.float32)
-        episode_ends = np.array(episode_ends)
+        self.episode_ends = np.array(episode_ends)
         images = np.array(images).astype(np.float32)
 
         # (N, D)

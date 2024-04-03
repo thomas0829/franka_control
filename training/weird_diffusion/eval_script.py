@@ -9,6 +9,8 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
+from robot.crop_wrapper import CropImageWrapper
+from robot.resize_wrapper import ResizeImageWrapper
 from robot.sim.vec_env.vec_env import make_env
 from training.weird_diffusion.datasets.utils import (normalize_data,
                                                      unnormalize_data)
@@ -189,9 +191,22 @@ def run_experiment(cfg):
         verbose=True,
     )
 
-    from robot.crop_wrapper import CropImageWrapper
-    env = CropImageWrapper(env, y_min=160, image_keys=cfg.training.image_keys)
+    camera_names = env.unwrapped._robot.camera_names.copy()
+    env.action_space.low[:3] = -0.1
+    env.action_space.high[:3] = 0.1
+    env.action_space.low[3:] = -0.25
+    env.action_space.high[3:] = 0.25
 
+    env = CropImageWrapper(
+        env,
+        y_min=80,
+        y_max=-80,
+        image_keys=[camera_names[0] + "_rgb"],
+        crop_render=True,
+    )
+    env = ResizeImageWrapper(
+        env, size=(224, 224), image_keys=[camera_names[0] + "_rgb"]
+    )
     successes = 0
     render = True
     for i in tqdm(range(cfg.inference.num_eval_episodes), desc='Evaluating'):

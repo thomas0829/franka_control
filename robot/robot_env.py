@@ -46,6 +46,10 @@ class RobotEnv(gym.Env):
         ip_address=None,
         # specify path length if resetting after a fixed length
         max_path_length=None,
+        # cameras to use in sim
+        camera_names=["front"],
+        camera_rgb=True,
+        camera_depth=False,
         # camera type to use: 'realsense', 'zed'
         camera_model="realsense",
         camera_resolution=None,  # (128, 128) -> HxW
@@ -257,6 +261,9 @@ class RobotEnv(gym.Env):
                 has_renderer=on_screen_rendering,
                 has_offscreen_renderer=not on_screen_rendering,
                 calib_dict=calib_dict,
+                use_rgb=camera_rgb,
+                use_depth=camera_depth,
+                camera_names=camera_names,
             )
 
             # TODO move to MujocoManipulatorEnv

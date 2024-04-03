@@ -304,30 +304,30 @@ class MujocoManipulatorEnv(FrankaBase):
         elif self.has_offscreen_renderer:
             for camera in self.camera_names:
                 self.viewer.update_scene(self.data, camera=camera)
+                
+                color_image = None
+                if self.use_rgb:
+                    color_image = self.viewer.render().copy()
+                    dict_1 = {
+                    "serial_number": camera,
+                    "array": color_image,
+                    "shape": color_image.shape if color_image is not None else None,
+                    "type": "rgb",
+                }
+                    imgs.append(dict_1)
+                    
+                depth = None
                 if self.use_depth:
                     self.viewer.enable_depth_rendering()
                     depth = self.viewer.render().copy()
                     self.viewer.disable_depth_rendering()
-
-                if not self.use_rgb and self.use_depth:
-                    color_image = np.zeros((depth.shape[0], depth.shape[1], 3))
-                else:
-                    color_image = self.viewer.render().copy()
-
-                dict_1 = {
-                    "serial_number": camera,
-                    "array": color_image,
-                    "shape": color_image.shape,
-                    "type": "rgb",
-                }
-                dict_2 = {
-                    "serial_number": camera,
-                    "array": depth,
-                    "shape": depth.shape,
-                    "type": "depth",
-                }
-                imgs.append(dict_1)
-                imgs.append(dict_2)
+                    dict_2 = {
+                        "serial_number": camera,
+                        "array": depth,
+                        "shape": depth.shape if depth is not None else None,
+                        "type": "depth",
+                    }
+                    imgs.append(dict_2)
 
         return imgs
 

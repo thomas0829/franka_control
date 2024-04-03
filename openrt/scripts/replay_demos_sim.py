@@ -1,18 +1,19 @@
+import glob
 import os
 import time
+
+import hydra
+import imageio
+import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-import imageio
-import hydra
-import glob
-import matplotlib.pyplot as plt
 
+from robot.crop_wrapper import CropImageWrapper
+from robot.resize_wrapper import ResizeImageWrapper
 from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
 
-from robot.crop_wrapper import CropImageWrapper
-from robot.resize_wrapper import ResizeImageWrapper
 
 @hydra.main(
     config_path="../configs/", config_name="collect_cube_sim", version_base="1.1"
@@ -42,13 +43,22 @@ def run_experiment(cfg):
         verbose=True,
     )
 
-    env = CropImageWrapper(env, y_min=160, image_keys=["left_rgb"])
-    env = ResizeImageWrapper(env, size=(224, 224), image_keys=["left_rgb"])
-
+    camera_names = env.unwrapped._robot.camera_names.copy()
     env.action_space.low[:3] = -0.1
     env.action_space.high[:3] = 0.1
     env.action_space.low[3:] = -0.25
     env.action_space.high[3:] = 0.25
+
+    env = CropImageWrapper(
+        env,
+        y_min=80,
+        y_max=-80,
+        image_keys=[camera_names[0] + "_rgb"],
+        crop_render=True,
+    )
+    env = ResizeImageWrapper(
+        env, size=(224, 224), image_keys=[camera_names[0] + "_rgb"]
+    )
 
     dataset_path = f"data/{cfg.exp_id}/train"
     file_names = glob.glob(f"{dataset_path}/episode_*.npy")
@@ -95,9 +105,9 @@ def run_experiment(cfg):
         env.reset()
 
         # visualize traj
-        img_obs = np.stack([obs["left_rgb"] for obs in obss])
+        img_obs = np.stack([obs["front_rgb"] for obs in obss])
         imageio.mimsave(os.path.join(logdir, "replay.mp4"), img_obs)
-        img_demo = np.stack([step["left_rgb"] for step in episode])
+        img_demo = np.stack([step["front_rgb"] for step in episode])
         imageio.mimsave(os.path.join(logdir, "demo.mp4"), img_demo)
 
         # plot difference between demo and replay

@@ -1,5 +1,5 @@
-import time
 import os
+import time
 
 import dm_env
 import gym
@@ -186,6 +186,9 @@ class DataCollectionWrapper(gym.Wrapper):
         act_noisy = act.copy()
         act_noisy[:-1] += np.random.normal(loc=0.0, scale=self.act_noise_std, size=act_noisy[:-1].shape)
         
+        # binarize gripper
+        act_noisy[-1] = 1. if act_noisy[-1] > 0. else 0.
+
         obs, reward, done, info = self.env.step(act_noisy)
 
         # overwrite action with actual delta

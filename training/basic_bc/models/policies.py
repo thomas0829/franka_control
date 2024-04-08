@@ -32,7 +32,9 @@ class MixedGaussianPolicy(nn.Module):
         # Img ResNet18
         self.img_shape = img_shape
         if self.img_shape is not None:
-            self.visual_encoder = get_resnet("resnet18")
+            self.visual_encoder = get_resnet("resnet18")# , weights="IMAGENET1K_V1")
+            # for param in self.visual_encoder.parameters():
+            #     param.requires_grad = False
             with torch.no_grad():
                 input_dim += self.visual_encoder(torch.zeros(1, *self.img_shape)).shape[1]
 

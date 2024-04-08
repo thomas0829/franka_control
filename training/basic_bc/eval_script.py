@@ -77,12 +77,8 @@ def run_experiment(cfg):
     stats = checkpoint["stats"]
 
     policy = MixedGaussianPolicy(
-        img_shape=(
-            stats["image"]["max"].shape[1:] if len(cfg.training.image_keys) else None
-        ),
-        state_shape=(
-            stats["state"]["max"].shape if len(cfg.training.state_keys) else None
-        ),
+        img_shape=stats["image"]["max"].shape[1:] if len(cfg.training.image_keys) else None,
+        state_shape=stats["state"]["max"].shape if len(cfg.training.state_keys) else None,
         act_shape=stats["action"]["max"].shape,
         hidden_dim=cfg.training.hidden_dim,
     ).to(device)
@@ -95,7 +91,7 @@ def run_experiment(cfg):
     cfg.robot.gripper = True
     cfg.robot.blocking_control = True
     cfg.robot.on_screen_rendering = False
-    cfg.robot.max_path_length = 100
+    cfg.robot.max_path_length = 65
 
     cfg.env.flatten = False
     # cfg.env.obj_pose_noise_dict = None
@@ -133,21 +129,20 @@ def run_experiment(cfg):
     while not done:
         img, state = pre_process_obs(obs, cfg, stats, device)
         # np.save("process_obs", {"img": img.cpu().detach().numpy(), "state": state.cpu().detach().numpy()})
-        # imgs.append(img[0].detach().cpu().numpy())
-        imgs.append(env.render())
+        imgs.append(img[0].detach().cpu().numpy())
+        # imgs.append(env.render())
         with torch.no_grad():
-            act = (
-                policy.forward(img, state, deterministic=False)[0].detach().cpu().numpy()
-            )
+            act = policy.forward(img, state, deterministic=True)[0].detach().cpu().numpy()
+            acts.append(act)
             act = unnormalize_data(act, stats["action"])
-            act[-1] = 0 if act[-1] < 0.7 else 1
-        acts.append(act)
+            act[-1] = 1. if act[-1] > 0.5 else 0.
         obs, reward, done, _ = env.step(act)
 
     plot_img = plot_trajectory(
         pred_actions=np.stack(acts),
         true_actions=None,
-        imgs=np.stack(imgs).transpose(0, 3, 1, 2),
+        imgs=np.concatenate(imgs),
+        # imgs=np.stack(imgs).transpose(0, 3, 1, 2),
     )
     logger.record(
         f"images/eval",
@@ -155,8 +150,9 @@ def run_experiment(cfg):
         exclude=["stdout"],
     )
 
-    video = np.stack(imgs)
-    imageio.mimsave(os.path.join(logdir, f"eval.mp4"), video)
+    # video = np.stack(imgs)[None]
+    video = np.concatenate(imgs).transpose(0,2,3,1)[None]
+    imageio.mimsave(os.path.join(logdir, f"eval.mp4"), video[0])
     logger.record(
         f"videos/eval",
         Video(video, fps=20),

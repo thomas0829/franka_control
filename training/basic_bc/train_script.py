@@ -89,11 +89,14 @@ def evaluate(policy, dataloader, cfg, device, n_traj=5):
             imgs_torch = torch.tensor(imgs).to(device) if imgs is not None else None
             states_torch = torch.tensor(states).to(device) if states is not None else None
             acts = policy.forward(imgs=imgs_torch, states=states_torch, deterministic=False)
+
+            mse = nn.functional.mse_loss(acts, torch.tensor(true_actions).to(device)).item()
+
             pred_actions = acts.cpu().numpy()
 
         plot_imgs.append(plot_trajectory(pred_actions, true_actions=true_actions, imgs=imgs))
 
-    return plot_imgs
+    return mse, plot_imgs
         
 
 @hydra.main(
@@ -116,25 +119,39 @@ def run_experiment(cfg):
     set_gpu_mode(cfg.gpu_id >= 0, gpu_id=cfg.gpu_id)
     device = get_device()
 
-    dataset = StateImageDataset(
-        cfg.training.dataset_path,
+    train_dataset = StateImageDataset(
+        os.path.join(cfg.training.dataset_path, "train"),
         num_trajectories=cfg.training.num_trajectories,
         image_keys=cfg.training.image_keys,
         state_keys=cfg.training.state_keys,
     )
-    stats = dataset.stats
+    train_stats = train_dataset.stats
 
-    dataloader = DataLoader(
-        dataset,
+    train_dataloader = DataLoader(
+        train_dataset,
+        batch_size=cfg.training.batch_size,
+        shuffle=True,
+        generator=torch.Generator("cuda"),
+    )
+
+    eval_dataset = StateImageDataset(
+        os.path.join(cfg.training.dataset_path, "eval"),
+        num_trajectories=cfg.training.num_trajectories,
+        image_keys=cfg.training.image_keys,
+        state_keys=cfg.training.state_keys,
+    )
+
+    eval_dataloader = DataLoader(
+        eval_dataset,
         batch_size=cfg.training.batch_size,
         shuffle=True,
         generator=torch.Generator("cuda"),
     )
 
     policy = MixedGaussianPolicy(
-        img_shape=stats["image"]["max"].shape[1:] if len(cfg.training.image_keys) else None,
-        state_shape=stats["state"]["max"].shape if len(cfg.training.state_keys) else None,
-        act_shape=stats["action"]["max"].shape,
+        img_shape=train_stats["image"]["max"].shape[1:] if len(cfg.training.image_keys) else None,
+        state_shape=train_stats["state"]["max"].shape if len(cfg.training.state_keys) else None,
+        act_shape=train_stats["action"]["max"].shape,
         hidden_dim=cfg.training.hidden_dim,
     )
 
@@ -155,7 +172,7 @@ def run_experiment(cfg):
             epoch_mse = list()
             epoch_grad_norm = list()
             # batch loop
-            with tqdm(dataloader, desc="Batch", leave=False) as tepoch:
+            with tqdm(train_dataloader, desc="Batch", leave=False) as tepoch:
                 for batch in tepoch:
                    
                     states = None
@@ -171,13 +188,15 @@ def run_experiment(cfg):
 
                     # backward pass                    
                     loss.backward()
-                    if cfg.training.clip_grad_norm > 0:
-                        nn.utils.clip_grad_norm_(policy.parameters(), cfg.training.clip_grad_norm)
 
                     # compute metrics
                     with torch.no_grad():
                         mse_cpu = nn.functional.mse_loss(dist.mean, acts).item()
                     grad_norm_cpu = torch.cat([p.grad.flatten() for p in policy.parameters() if p.grad is not None]).norm().item()
+
+                    # clip gradients
+                    if cfg.training.clip_grad_norm > 0:
+                        nn.utils.clip_grad_norm_(policy.parameters(), cfg.training.clip_grad_norm)
                     
                     # optimize
                     optimizer.step()
@@ -196,16 +215,24 @@ def run_experiment(cfg):
             logger.record("nll_loss", np.mean(epoch_loss))
             logger.record("mse_loss", np.mean(epoch_mse))
             logger.record("learning_rate", optimizer.param_groups[0]["lr"])
-            logger.record("grad_norm", np.mean(epoch_grad_norm))
+            logger.record("grad_norm (unclipped)", np.mean(epoch_grad_norm))
             logger.record("policy_mean (batch)", torch.mean(dist.mean).item())
             logger.record("policy_std (batch)", torch.mean(dist.stddev).item())
             
             # Visualize policy
-            if epoch_idx % 250 == 0:
-                plot_imgs = evaluate(policy, dataloader, cfg, device, n_traj=10)
+            if epoch_idx % cfg.training.eval_interval == 0:
+                n_traj = 10
+                train_mse, plot_imgs = evaluate(policy, train_dataloader, cfg, device, n_traj=n_traj)
                 if plot_imgs is not None:
                     for i, plot_img in enumerate(plot_imgs):
-                        logger.record(f"trajectory_{i}", Image(plot_img, dataformats="HWC"), exclude=["stdout"])
+                        logger.record(f"train/trajectory_{i}", Image(plot_img, dataformats="HWC"), exclude=["stdout"])
+                logger.record(f"train/mse_loss ({n_traj} samples)", train_mse)
+
+                eval_mse, plot_imgs = evaluate(policy, eval_dataloader, cfg, device, n_traj=n_traj)
+                if plot_imgs is not None:
+                    for i, plot_img in enumerate(plot_imgs):
+                        logger.record(f"eval/trajectory_{i}", Image(plot_img, dataformats="HWC"), exclude=["stdout"])
+                logger.record(f"eval/mse_loss ({n_traj} samples)", eval_mse)
 
             # Dump logs
             logger.dump(step=epoch_idx)
@@ -213,7 +240,7 @@ def run_experiment(cfg):
             # Save checkpoint
             checkpoint = {
                 "state_dict": policy.state_dict(),
-                "stats": stats,
+                "stats": train_stats,
                 "config": cfg,
             }
             # Always save the best model
@@ -221,7 +248,7 @@ def run_experiment(cfg):
                 min_loss = np.mean(epoch_loss)
                 torch.save(checkpoint, os.path.join(logdir, f"bc_policy"))
             # Sometimes save the ckpt model
-            if epoch_idx % 100 == 0:
+            if epoch_idx % cfg.training.save_interval == 0:
                 torch.save(checkpoint, os.path.join(logdir, f"bc_policy_{epoch_idx}"))
 
 if __name__ == "__main__":

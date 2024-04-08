@@ -183,13 +183,11 @@ class DataCollectionWrapper(gym.Wrapper):
         self.buffer.append(self.curr_obs)
         
         # apply noise to executed action, not to saved one
-        act_noisy = act.copy()
-        act_noisy[:-1] += np.random.normal(loc=0.0, scale=self.act_noise_std, size=act_noisy[:-1].shape)
-        
+        act[:-1] += np.random.normal(loc=0.0, scale=self.act_noise_std, size=act[:-1].shape)
         # binarize gripper
-        act_noisy[-1] = 1. if act_noisy[-1] > 0. else 0.
+        act[-1] = 1. if act[-1] > 0. else 0.
 
-        obs, reward, done, info = self.env.step(act_noisy)
+        obs, reward, done, info = self.env.step(act)
 
         # overwrite action with actual delta
         if self.fake_blocking:

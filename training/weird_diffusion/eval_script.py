@@ -125,8 +125,9 @@ def run_one_eval(env: gym.Env, nets: torch.nn.Module, config, stats, noise_sched
         naction = naction.detach().to('cpu').numpy()
         # (B, pred_horizon, action_dim)
         naction = naction[0]
+        grasp = 1. if naction[...,-1] > 0. else 0.
         action_pred = unnormalize_data(naction, stats=stats['action'])
-
+        action_pred[...,-1] = grasp
         # only take action_horizon number of actions
         start = config.training.obs_horizon - 1
         end = start + config.training.action_horizon
@@ -137,9 +138,6 @@ def run_one_eval(env: gym.Env, nets: torch.nn.Module, config, stats, noise_sched
         # without replanning
         for i in range(len(action)):
             # stepping env
-            print("action", action[i])
-            print("overwriting grasp")
-            action[i][-1] = 1.0 if action[i][-1] > 0.3 else 0.0
             obs, reward, done, info = env.step(action[i])
             # save observations
             obs = process_obs(obs, nets, config, device)

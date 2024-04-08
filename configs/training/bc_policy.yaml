@@ -1,15 +1,18 @@
 num_trajectories: -1
 batch_size: 512
-num_epochs: 5000
+num_epochs: 1500
 
 learning_rate: 0.0003
 weight_decay: 0.0
 clip_grad_norm: 1.
 
-hidden_dim: 256
+hidden_dim: 128
 
 # checkpoint_path: "${hydra:runtime.cwd}/${checkpoint_name: ${num_trajs}}"
-dataset_path: "data/pick_red_cube_synthetic/train"
+dataset_path: "data/pick_red_cube_synthetic/"
 
 image_keys: ["front_rgb"]
 state_keys: ["lowdim_ee", "lowdim_qpos"]
+
+eval_interval: 50
+save_interval: 50

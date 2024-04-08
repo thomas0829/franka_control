@@ -23,6 +23,7 @@ ip_address: null
 max_path_length: 20
 # camera type to use: 'realsense' 'zed'
 camera_model: null
+camera_names: ["front", "wrist"]
 camera_resolution: [480, 640]  # (128 128) -> HxW
 calibration_file: null # "perception/cameras/calibration/logs/default.json" # "perception/cameras/calibration/logs/aruco/24_02_19_10_16_14.json"
 # Mujoco: model name

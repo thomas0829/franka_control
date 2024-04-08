@@ -154,7 +154,7 @@ def collect_demo_pick_up(env):
     - success: whether the pick up was successful
     """
 
-    noise_std = 5e-2
+    noise_std = 0. #  5e-2
     progress_threshold = 5e-2
 
     motion_planner = MotionPlanner(
@@ -249,93 +249,96 @@ def run_experiment(cfg):
         env,
         y_min=80,
         y_max=-80,
-        image_keys=[camera_names[0] + "_rgb"],
+        image_keys=[cn + "_rgb"for cn in camera_names],
+        # image_keys=[camera_names[0] + "_rgb"],
         crop_render=True,
     )
     env = ResizeImageWrapper(
-        env, size=(224, 224), image_keys=[camera_names[0] + "_rgb"]
+        env, size=(224, 224), image_keys=[cn + "_rgb"for cn in camera_names]
+        # env, size=(224, 224), image_keys=[camera_names[0] + "_rgb"]
     )
-
-    savedir = f"data/{cfg.exp_id}/train"
-    env = DataCollectionWrapper(
-        env,
-        language_instruction=language_instruction,
-        fake_blocking=fake_blocking,
-        act_noise_std=cfg.act_noise_std,
-        save_dir=savedir,
-    )
-    successes = []
-    obj_poses = []
-
-    n_traj = 0
     
-    # for n_traj in trange(cfg.episodes):
-    while n_traj < cfg.episodes:
-        env.reset_buffer()
+    for split, n_episodes in zip(["train", "eval"], [cfg.episodes, int(cfg.episodes//10)]):
+        savedir = f"data/{cfg.exp_id}/{split}"
+        env = DataCollectionWrapper(
+            env,
+            language_instruction=language_instruction,
+            fake_blocking=fake_blocking,
+            act_noise_std=cfg.act_noise_std,
+            save_dir=savedir,
+        )
+        successes = []
+        obj_poses = []
 
-        try:
-            success = collect_demo_pick_up(env)
-            if success:
-                env.save_buffer()
-                n_traj += 1
-                print(f"Recorded Trajectory {n_traj}, success {success}")
-            tmp_pose = env.buffer[0]["obj_pose"].copy()
-            obj_poses.append(
-                np.concatenate((tmp_pose[:3], quat_to_euler_mujoco(tmp_pose[3:])))
-            )
-            successes.append(success)
+        n_traj = 0
+        
+        # for n_traj in trange(cfg.episodes):
+        while n_traj < n_episodes:
+            env.reset_buffer()
 
-        # catch Curobo ValueError
-        except ValueError as e:
-            success = False
-            print(e)
+            try:
+                success = collect_demo_pick_up(env)
+                if success:
+                    env.save_buffer()
+                    n_traj += 1
+                    print(f"Recorded Trajectory {n_traj}, success {success}")
+                tmp_pose = env.buffer[0]["obj_pose"].copy()
+                obj_poses.append(
+                    np.concatenate((tmp_pose[:3], quat_to_euler_mujoco(tmp_pose[3:])))
+                )
+                successes.append(success)
 
-    obj_poses = np.stack(obj_poses)
-    successes = np.array(successes)
+            # catch Curobo ValueError
+            except ValueError as e:
+                success = False
+                print(e)
 
-    # dump statistics
-    np.save(
-        os.path.join(savedir, "obj_poses"),
-        {"obj_poses": obj_poses, "successes": successes},
-    )
+        obj_poses = np.stack(obj_poses)
+        successes = np.array(successes)
 
-    # plot position stats
-    poss = [pos for pos in obj_poses[:, :3]]
-    poss = np.stack(poss)
-    plt.scatter(poss[successes, 1], poss[successes, 0], color="green", label="success")
-    plt.scatter(poss[~successes, 1], poss[~successes, 0], color="red", label="failure")
-    plt.legend()
-    plt.xlabel("y")
-    plt.ylabel("x")
-    plt.savefig(os.path.join(savedir, "obj_pos.png"))
-    plt.close()
+        # dump statistics
+        np.save(
+            os.path.join(savedir, f"obj_poses_{split}"),
+            {"obj_poses": obj_poses, "successes": successes},
+        )
 
-    # plot orientation stats
-    oris = [ori for ori in obj_poses[:, 3:]]
-    oris = np.stack(oris)
-    plt.figure(figsize=(20, 2))
-    plt.scatter(
-        oris[successes, 2],
-        np.zeros_like(oris[successes, 0]),
-        color="green",
-        label="success",
-    )
-    plt.scatter(
-        oris[~successes, 2],
-        np.zeros_like(oris[~successes, 0]),
-        color="red",
-        label="failure",
-    )
-    plt.legend()
-    plt.xlabel("yaw")
-    plt.savefig(os.path.join(savedir, "obj_ori.png"))
-    plt.close()
+        # plot position stats
+        poss = [pos for pos in obj_poses[:, :3]]
+        poss = np.stack(poss)
+        plt.scatter(poss[successes, 1], poss[successes, 0], color="green", label="success")
+        plt.scatter(poss[~successes, 1], poss[~successes, 0], color="red", label="failure")
+        plt.legend()
+        plt.xlabel("y")
+        plt.ylabel("x")
+        plt.savefig(os.path.join(savedir, f"obj_pos_{split}.png"))
+        plt.close()
 
-    env.reset()
+        # plot orientation stats
+        oris = [ori for ori in obj_poses[:, 3:]]
+        oris = np.stack(oris)
+        plt.figure(figsize=(20, 2))
+        plt.scatter(
+            oris[successes, 2],
+            np.zeros_like(oris[successes, 0]),
+            color="green",
+            label="success",
+        )
+        plt.scatter(
+            oris[~successes, 2],
+            np.zeros_like(oris[~successes, 0]),
+            color="red",
+            label="failure",
+        )
+        plt.legend()
+        plt.xlabel("yaw")
+        plt.savefig(os.path.join(savedir, f"obj_ori_{split}.png"))
+        plt.close()
 
-    print(
-        f"Finished Collecting {n_traj} Trajectories | Success {np.sum(successes)} / {len(successes)}"
-    )
+        env.reset()
+
+        print(
+            f"Finished Collecting {n_traj} Trajectories | Success {np.sum(successes)} / {len(successes)} | {split}"
+        )
 
 
 if __name__ == "__main__":

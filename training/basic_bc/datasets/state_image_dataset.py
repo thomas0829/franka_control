@@ -67,7 +67,8 @@ class StateImageDataset(torch.utils.data.Dataset):
         actions = np.array(actions).astype(np.float32)
         states = np.array(states).astype(np.float32)
         self.episode_ends = np.array(episode_ends)
-        images = np.array(images).astype(np.float32)
+        images = np.array(images).astype(np.uint8)
+        # images = np.array(images).astype(np.float32)
 
         # (N, D)
         train_data = {"action": actions}
@@ -83,14 +84,20 @@ class StateImageDataset(torch.utils.data.Dataset):
 
         # compute statistics and normalize data to [-1,1]
         if len(image_keys):
-            img_min = images.min()
-            img_max = images.max()
+            # img_min = images.min()
+            # img_max = images.max()
+            # stats["image"] = {
+            #     "min": img_min * np.ones(images.shape[1:]),
+            #     "max": img_max * np.ones(images.shape[1:]),
+            # }
+            # images = (images - img_min) / (img_max - img_min)
+            # images = images * 2 - 1
+            
             stats["image"] = {
-                "min": img_min * np.ones(images.shape[1:]),
-                "max": img_max * np.ones(images.shape[1:]),
+                "min": 0 * np.ones(images.shape[1:], dtype=np.uint8),
+                "max": 255 * np.ones(images.shape[1:], dtype=np.uint8),
             }
-            images = (images - img_min) / (img_max - img_min)
-            images = images * 2 - 1
+
             normalized_train_data["image"] = images
 
         self.stats = stats

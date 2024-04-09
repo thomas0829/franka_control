@@ -15,7 +15,6 @@ from robot.controllers.motion_planner import MotionPlanner
 from robot.crop_wrapper import CropImageWrapper
 from robot.data_wrapper import DataCollectionWrapper
 from robot.resize_wrapper import ResizeImageWrapper
-from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.transformations_mujoco import *
@@ -221,13 +220,10 @@ def run_experiment(cfg):
     # cfg.robot.blocking_control = False
     fake_blocking = False
     cfg.robot.blocking_control = True
-
     cfg.robot.on_screen_rendering = False
     cfg.robot.max_path_length = 100
-
     cfg.env.flatten = False
     cfg.robot.imgs = True
-
     cfg.robot.calibration_file = None
 
     language_instruction = "pick up the red cube"

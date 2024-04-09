@@ -19,7 +19,7 @@ from utils.system import get_device, set_gpu_mode
 
 
 def plot_trajectory(pred_actions, true_actions=None, imgs=None):
-    # expecting imgs T, C, H, W
+    # expecting imgs T, N, C, H, W where N is the number of images
 
     # https://github.com/octo-models/octo/blob/main/examples/01_inference_pretrained.ipynb
     ACTION_DIM_LABELS = ['x', 'y', 'z', 'yaw', 'pitch', 'roll', 'grasp']
@@ -94,7 +94,7 @@ def evaluate(policy, dataloader, cfg, device, n_traj=5):
 
             pred_actions = acts.cpu().numpy()
 
-        plot_imgs.append(plot_trajectory(pred_actions, true_actions=true_actions, imgs=imgs))
+        plot_imgs.append(plot_trajectory(pred_actions, true_actions=true_actions, imgs=imgs[:,0]))
 
     return mse, plot_imgs
         
@@ -107,7 +107,7 @@ def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
             cfg,
-            name=f"{cfg.exp_id}[{cfg.seed}]",
+            name=f"{cfg.exp_id}[{cfg.seed}][train]",
             entity=cfg.log.entity,
             project=cfg.log.project,
         )
@@ -149,7 +149,7 @@ def run_experiment(cfg):
     )
 
     policy = MixedGaussianPolicy(
-        img_shape=train_stats["image"]["max"].shape[1:] if len(cfg.training.image_keys) else None,
+        img_shape=train_stats["image"]["max"].shape if len(cfg.training.image_keys) else None,
         state_shape=train_stats["state"]["max"].shape if len(cfg.training.state_keys) else None,
         act_shape=train_stats["action"]["max"].shape,
         hidden_dim=cfg.training.hidden_dim,

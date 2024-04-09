@@ -18,25 +18,35 @@ class MixedGaussianPolicy(nn.Module):
         
         input_dim = 0
 
-        # # Custom CNN
-        # visual_cnn = CNN(
-        #     input_chn=img_shape[0],
-        #     output_dim=hidden_dim,
-        #     output_act="ReLU",
-        # )
+        # Custom CNN
+        visual_cnn = CNN(
+            input_chn=img_shape[1],
+            output_dim=hidden_dim,
+            output_act="ReLU",
+        )
         # visual_feat_dim = visual_cnn(torch.zeros(1, *img_shape)).shape[1]
-        # visual_mlp = MLP(input_dim=visual_feat_dim, hidden_dims=[hidden_dim], output_dim=hidden_dim, act="ReLU", output_act="ReLU")
+        # hidden_dims = [hidden_dim for _ in range(2)]
+        # visual_mlp = MLP(input_dim=visual_feat_dim, hidden_dims=hidden_dims, output_dim=hidden_dim, act="ReLU", output_act="ReLU")
         # self.visual_encoder = nn.Sequential(visual_cnn, visual_mlp)
+        self.visual_encoder = visual_cnn
         # input_dim += hidden_dim
         
         # Img ResNet18
         self.img_shape = img_shape
         if self.img_shape is not None:
-            self.visual_encoder = get_resnet("resnet18")# , weights="IMAGENET1K_V1")
+            if len(self.img_shape) == 3:
+                self.img_shape = (1, 1, *self.img_shape)
+            elif len(self.img_shape) == 4:
+                self.img_shape = (1, *self.img_shape)
+            # self.visual_encoder = get_resnet("resnet18")# , weights="IMAGENET1K_V1")
             # for param in self.visual_encoder.parameters():
             #     param.requires_grad = False
             with torch.no_grad():
-                input_dim += self.visual_encoder(torch.zeros(1, *self.img_shape)).shape[1]
+                imgs = torch.zeros(self.img_shape)
+                # reshaping to deal with multi img
+                vis_feat = self.visual_encoder(imgs.reshape((imgs.shape[0]*imgs.shape[1], *imgs.shape[2:])))
+                vis_feat = vis_feat.reshape((imgs.shape[0], -1))
+                input_dim += vis_feat.shape[1]
 
         # State MLP
         self.state_shape = state_shape
@@ -56,7 +66,12 @@ class MixedGaussianPolicy(nn.Module):
         assert (self.img_shape is not None and imgs is not None) or (self.state_shape is not None and states is not None), "WARNING: input not configured correctly!"
         feat = []
         if self.img_shape:
-            feat.append(self.visual_encoder(imgs.reshape((imgs.shape[0]*imgs.shape[1], *imgs.shape[2:]))))
+            # normalize
+            imgs = imgs.float() / 255.0
+            # reshaping to deal with multi img
+            vis_feat = self.visual_encoder(imgs.reshape((imgs.shape[0]*imgs.shape[1], *imgs.shape[2:])))
+            vis_feat = vis_feat.reshape((imgs.shape[0], -1))
+            feat.append(vis_feat)
         if self.state_shape:
             feat.append(self.state_encoder(states))
         return self.head.forward_dist(torch.cat(feat, dim=-1))

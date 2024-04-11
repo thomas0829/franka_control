@@ -301,8 +301,8 @@ def run_experiment(cfg):
         # plot position stats
         poss = [pos for pos in obj_poses[:, :3]]
         poss = np.stack(poss)
-        plt.scatter(poss[successes, 1], poss[successes, 0], color="green", label="success")
-        plt.scatter(poss[~successes, 1], poss[~successes, 0], color="red", label="failure")
+        plt.scatter(poss[successes, 1], poss[successes, 0], color="tab:blue", label="success")
+        plt.scatter(poss[~successes, 1], poss[~successes, 0], color="tab:orange", marker="X", label="failure")
         plt.legend()
         plt.xlabel("y")
         plt.ylabel("x")
@@ -316,13 +316,14 @@ def run_experiment(cfg):
         plt.scatter(
             oris[successes, 2],
             np.zeros_like(oris[successes, 0]),
-            color="green",
+            color="tab:blue",
             label="success",
         )
         plt.scatter(
             oris[~successes, 2],
             np.zeros_like(oris[~successes, 0]),
-            color="red",
+            color="tab:orange",
+            marker="X",
             label="failure",
         )
         plt.legend()

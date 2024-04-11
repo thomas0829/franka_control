@@ -132,7 +132,7 @@ def run_experiment(cfg):
 
     obj_poses = []
     
-    for i in trange(10):
+    for i in trange(100):
 
         obs = env.reset()
 

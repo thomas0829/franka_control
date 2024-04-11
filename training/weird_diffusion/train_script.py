@@ -115,7 +115,7 @@ def run_experiment(cfg):
 
             # Save checkpoint
             # Create a state dict with the paramaters of the model, and the stats of the dataset
-            if epoch_idx % 10 == 0:
+            if epoch_idx % 1000 == 0:
                 ema_nets = nets
                 ema.copy_to(ema_nets.parameters())
                 checkpoint = {

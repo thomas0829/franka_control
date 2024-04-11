@@ -1,18 +1,15 @@
 import os
 import time
+
+import hydra
 import numpy as np
 from tqdm import tqdm
-import hydra
 
 from robot.controllers.oculus import VRController
 from robot.crop_wrapper import CropImageWrapper
-from robot.data_wrapper import DataCollectionWrapper
-
-from robot.data_wrapper import (
-    convert_rlds_to_np,
-    load_rlds_dataset,
-    wrap_env_in_rlds_logger,
-)
+from robot.data_wrapper import (DataCollectionWrapper, convert_rlds_to_np,
+                                load_rlds_dataset, wrap_env_in_rlds_logger)
+from robot.resize_wrapper import ResizeImageWrapper
 from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
@@ -49,8 +46,8 @@ def run_experiment(cfg):
     )
     
     # TODO check if this makes a difference -> does when replaying action
-    env.action_space.low[:-1] = -1.0
-    env.action_space.high[:-1] = 1.0
+    # env.action_space.low[:-1] = -1.0
+    # env.action_space.high[:-1] = 1.0
     
     env.action_space.low[:3] = -0.1
     env.action_space.high[:3] = 0.1
@@ -58,6 +55,7 @@ def run_experiment(cfg):
     env.action_space.high[3:] = 0.25
 
     env = CropImageWrapper(env, y_min=160, image_keys=cfg.training.image_keys)
+    env = ResizeImageWrapper(env, size=(224, 224), image_keys=["left_rgb"])
 
     savedir = f"data/{cfg.exp_id}/train"
     env = DataCollectionWrapper(

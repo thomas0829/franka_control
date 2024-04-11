@@ -6,19 +6,16 @@ import time
 import hydra
 import imageio
 import joblib
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from tqdm import tqdm, trange
-import matplotlib.pyplot as plt
 
 from robot.controllers.motion_planner import MotionPlanner
-
-from robot.sim.vec_env.vec_env import make_env
-
-from robot.data_wrapper import DataCollectionWrapper
 from robot.crop_wrapper import CropImageWrapper
-
-from robot.robot_env import RobotEnv
+from robot.data_wrapper import DataCollectionWrapper
+from robot.resize_wrapper import ResizeImageWrapper
+from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.transformations_mujoco import *
 
@@ -156,10 +153,12 @@ def collect_demo_pick_up(env):
     - success: whether the pick up was successful
     """
 
-    noise_std = 0. # 5e-2
+    noise_std = 0. #  5e-2
     progress_threshold = 5e-2
 
-    motion_planner = MotionPlanner(interpolation_dt=0.1, device=torch.device("cuda:0"))
+    motion_planner = MotionPlanner(
+        interpolation_dt=0.1, random_obstacle=False, device=torch.device("cuda:0")
+    )
     controller = CartesianPDController(
         Kp=1.0, Kd=0.0, control_hz=env.unwrapped._robot.control_hz
     )
@@ -188,7 +187,9 @@ def collect_demo_pick_up(env):
         progress_threshold=progress_threshold,
     )
 
-    target_pose[2] = 0.3 + np.random.normal(loc=0.0, scale=noise_std)
+    target_pose[2] = 0.3
+    # randomize lift up position
+    target_pose += np.random.normal(loc=0.0, scale=noise_std, size=target_pose.shape)
     gripper = 1.0
     move_to_cartesian_pose(
         target_pose,
@@ -210,17 +211,21 @@ def run_experiment(cfg):
     logdir = os.path.join(cfg.log.dir, cfg.exp_id)
     os.makedirs(logdir, exist_ok=True)
 
+    cfg.robot.max_path_length = cfg.max_episode_length
+
     cfg.robot.DoF = 6
+    cfg.robot.control_hz = 10
     cfg.robot.gripper = True
+    # fake_blocking = cfg.robot.blocking_control
+    # cfg.robot.blocking_control = False
+    fake_blocking = False
     cfg.robot.blocking_control = True
     cfg.robot.on_screen_rendering = False
     cfg.robot.max_path_length = 100
-
     cfg.env.flatten = False
     cfg.robot.imgs = True
+    cfg.robot.calibration_file = None
 
-    # cfg.env.obj_pose_noise_dict = None
-    
     language_instruction = "pick up the red cube"
 
     env = make_env(
@@ -228,61 +233,109 @@ def run_experiment(cfg):
         env_cfg_dict=hydra_to_dict(cfg.env),
         seed=cfg.seed,
         device_id=0,
+        verbose=True,
     )
+    camera_names = env.unwrapped._robot.camera_names.copy()
+    env.action_space.low[:3] = -0.1
+    env.action_space.high[:3] = 0.1
+    env.action_space.low[3:] = -0.25
+    env.action_space.high[3:] = 0.25
 
-    image_keys = [cn + "_rgb" for cn in env.unwrapped._robot.camera_names]
-    env = CropImageWrapper(env, y_min=160, image_keys=image_keys)
+    env = CropImageWrapper(
+        env,
+        y_min=80,
+        y_max=-80,
+        image_keys=[cn + "_rgb"for cn in camera_names],
+        # image_keys=[camera_names[0] + "_rgb"],
+        crop_render=True,
+    )
+    env = ResizeImageWrapper(
+        env, size=(224, 224), image_keys=[cn + "_rgb"for cn in camera_names]
+        # env, size=(224, 224), image_keys=[camera_names[0] + "_rgb"]
+    )
+    
+    for split, n_episodes in zip(["train", "eval"], [cfg.episodes, int(cfg.episodes//10)]):
+        savedir = f"data/{cfg.exp_id}/{split}"
+        env = DataCollectionWrapper(
+            env,
+            language_instruction=language_instruction,
+            fake_blocking=fake_blocking,
+            act_noise_std=cfg.act_noise_std,
+            save_dir=savedir,
+        )
+        successes = []
+        obj_poses = []
 
-    savedir = f"data/{cfg.exp_id}/train"
-    env = DataCollectionWrapper(env, language_instruction=language_instruction, act_noise_std=cfg.act_noise_std, save_dir=savedir)
+        n_traj = 0
+        
+        # for n_traj in trange(cfg.episodes):
+        while n_traj < n_episodes:
+            env.reset_buffer()
 
-    successes = []
-    obj_poses = []
+            try:
+                success = collect_demo_pick_up(env)
+                if success:
+                    env.save_buffer()
+                    n_traj += 1
+                    print(f"Recorded Trajectory {n_traj}, success {success}")
+                tmp_pose = env.buffer[0]["obj_pose"].copy()
+                obj_poses.append(
+                    np.concatenate((tmp_pose[:3], quat_to_euler_mujoco(tmp_pose[3:])))
+                )
+                successes.append(success)
 
-    n_traj = 0
+            # catch Curobo ValueError
+            except ValueError as e:
+                success = False
+                print(e)
 
-    # for n_traj in trange(cfg.episodes):
-    while n_traj < cfg.episodes:
-        env.reset_buffer()
+        obj_poses = np.stack(obj_poses)
+        successes = np.array(successes)
 
-        try:
-            success = collect_demo_pick_up(env)
-            if success:
-                env.save_buffer()
-                n_traj += 1
-            tmp_pose = env.buffer[0]["obj_pose"].copy()
-            obj_poses.append(np.concatenate((tmp_pose[:3], quat_to_euler_mujoco(tmp_pose[3:]))))
-            successes.append(success)
-            print(f"Recorded Trajectory {n_traj}, success {success}")
+        # dump statistics
+        np.save(
+            os.path.join(savedir, f"obj_poses_{split}"),
+            {"obj_poses": obj_poses, "successes": successes},
+        )
 
-        # catch Curobo ValueError
-        except ValueError as e:
-            success = False
-            print(e)
+        # plot position stats
+        poss = [pos for pos in obj_poses[:, :3]]
+        poss = np.stack(poss)
+        plt.scatter(poss[successes, 1], poss[successes, 0], color="tab:blue", label="success")
+        plt.scatter(poss[~successes, 1], poss[~successes, 0], color="tab:orange", marker="X", label="failure")
+        plt.legend()
+        plt.xlabel("y")
+        plt.ylabel("x")
+        plt.savefig(os.path.join(savedir, f"obj_pos_{split}.png"))
+        plt.close()
 
-    obj_poses = np.stack(obj_poses)
-    successes = np.array(successes)
+        # plot orientation stats
+        oris = [ori for ori in obj_poses[:, 3:]]
+        oris = np.stack(oris)
+        plt.figure(figsize=(20, 2))
+        plt.scatter(
+            oris[successes, 2],
+            np.zeros_like(oris[successes, 0]),
+            color="tab:blue",
+            label="success",
+        )
+        plt.scatter(
+            oris[~successes, 2],
+            np.zeros_like(oris[~successes, 0]),
+            color="tab:orange",
+            marker="X",
+            label="failure",
+        )
+        plt.legend()
+        plt.xlabel("yaw")
+        plt.savefig(os.path.join(savedir, f"obj_ori_{split}.png"))
+        plt.close()
 
-    # dump statistics
-    np.save(os.path.join(savedir, "obj_poses"), {"obj_poses": obj_poses, "successes": successes})
-    # plot statistics
-    plt.scatter(obj_poses[successes, 0], obj_poses[successes, 1], label="success", color="green")
-    plt.scatter(obj_poses[~successes, 0], obj_poses[~successes, 1], label="failure", color="red")
-    plt.ylabel("x")
-    plt.xlabel("y")
-    plt.legend()
-    plt.savefig(os.path.join(savedir, "obj_pos.png"))
-    plt.close()
-    plt.scatter(obj_poses[successes, 4], obj_poses[successes, 5], label="success", color="green")
-    plt.scatter(obj_poses[~successes, 4], obj_poses[~successes, 5], label="failure", color="red")
-    plt.xlabel("pitch")
-    plt.ylabel("yaw")
-    plt.legend()
-    plt.savefig(os.path.join(savedir, "obj_ori.png"))
+        env.reset()
 
-    env.reset()
-
-    print(f"Finished Collecting {n_traj} Trajectories | Success {np.sum(successes)} / {len(successes)}")
+        print(
+            f"Finished Collecting {n_traj} Trajectories | Success {np.sum(successes)} / {len(successes)} | {split}"
+        )
 
 
 if __name__ == "__main__":

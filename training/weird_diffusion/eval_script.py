@@ -9,6 +9,8 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
+from robot.crop_wrapper import CropImageWrapper
+from robot.resize_wrapper import ResizeImageWrapper
 from robot.sim.vec_env.vec_env import make_env
 from training.weird_diffusion.datasets.utils import (normalize_data,
                                                      unnormalize_data)
@@ -123,8 +125,9 @@ def run_one_eval(env: gym.Env, nets: torch.nn.Module, config, stats, noise_sched
         naction = naction.detach().to('cpu').numpy()
         # (B, pred_horizon, action_dim)
         naction = naction[0]
+        grasp = 1. if naction[...,-1] > 0. else 0.
         action_pred = unnormalize_data(naction, stats=stats['action'])
-
+        action_pred[...,-1] = grasp
         # only take action_horizon number of actions
         start = config.training.obs_horizon - 1
         end = start + config.training.action_horizon
@@ -135,9 +138,6 @@ def run_one_eval(env: gym.Env, nets: torch.nn.Module, config, stats, noise_sched
         # without replanning
         for i in range(len(action)):
             # stepping env
-            print("action", action[i])
-            print("overwriting grasp")
-            action[i][-1] = 1.0 if action[i][-1] > 0.3 else 0.0
             obs, reward, done, info = env.step(action[i])
             # save observations
             obs = process_obs(obs, nets, config, device)
@@ -157,7 +157,7 @@ def run_one_eval(env: gym.Env, nets: torch.nn.Module, config, stats, noise_sched
                 return False, imgs
 
 
-@hydra.main(version_base=None, config_path="../../configs", config_name="diffusion_policy_real")
+@hydra.main(version_base=None, config_path="../../configs", config_name="diffusion_policy_sim")
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:
         run = setup_wandb(
@@ -189,9 +189,22 @@ def run_experiment(cfg):
         verbose=True,
     )
 
-    from robot.crop_wrapper import CropImageWrapper
-    env = CropImageWrapper(env, y_min=160, image_keys=cfg.training.image_keys)
+    camera_names = env.unwrapped._robot.camera_names.copy()
+    env.action_space.low[:3] = -0.1
+    env.action_space.high[:3] = 0.1
+    env.action_space.low[3:] = -0.25
+    env.action_space.high[3:] = 0.25
 
+    env = CropImageWrapper(
+        env,
+        y_min=80,
+        y_max=-80,
+        image_keys=[camera_names[0] + "_rgb"],
+        crop_render=True,
+    )
+    env = ResizeImageWrapper(
+        env, size=(224, 224), image_keys=[camera_names[0] + "_rgb"]
+    )
     successes = 0
     render = True
     for i in tqdm(range(cfg.inference.num_eval_episodes), desc='Evaluating'):
@@ -202,7 +215,7 @@ def run_experiment(cfg):
 
         if render:
             video = np.stack(imgs)[None]
-            imageio.mimsave(os.path.join(logdir, f"eval_episode_{i}.gif"), video[0])
+            imageio.mimsave(os.path.join(logdir, f"eval_episode_{i}.mp4"), video[0])
             logger.record(
                 f"videos/eval_episode_{i}",
                 Video(video, fps=20),

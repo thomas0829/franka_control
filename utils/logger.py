@@ -307,7 +307,11 @@ class WANDBOutputFormat(KVWriter):
                 wandb_dict[key] = wandb.Histogram(value)
 
             if isinstance(value, Video):
+                # T, C, H, W
                 wandb_dict[key] = wandb.Video(value.frames, fps=value.fps, format="gif")
+
+            if isinstance(value, Image):
+                wandb_dict[key] = wandb.Image(value.image)
 
         # Log to wandb
         wandb.log(wandb_dict)

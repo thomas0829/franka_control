@@ -1,6 +1,6 @@
 num_trajectories: -1
 batch_size: 512
-num_epochs: 2500
+num_epochs: 3000
 
 learning_rate: 0.0003
 weight_decay: 0.0

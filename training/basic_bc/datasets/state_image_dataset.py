@@ -40,7 +40,7 @@ class StateImageDataset(torch.utils.data.Dataset):
         image_size = img_tmp.shape
         image_size = [approx_n_samples, len(self.image_keys), *image_size]
         # get state size
-        state_size = [approx_n_samples, np.sum([len(tmp[0][k]) for k in self.state_keys])]
+        state_size = [approx_n_samples, np.sum([len(tmp[0][k]) for k in self.state_keys]).astype(np.uint8)]
         # get action size
         act_size = [approx_n_samples, len(tmp[0]["action"])]
         # initializing full numpy arrays vs stack/concatenate them saves memory!
@@ -112,6 +112,7 @@ class StateImageDataset(torch.utils.data.Dataset):
 
         self.stats = stats
         self.normalized_train_data = normalized_train_data
+        self.episode_ends = np.array(episode_ends)
 
     def __len__(self):
         return len(self.normalized_train_data["action"])

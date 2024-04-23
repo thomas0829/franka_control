@@ -153,14 +153,14 @@ def collect_demo_pick_up(env):
     - success: whether the pick up was successful
     """
 
-    noise_std = 0. #  5e-2
+    target_noise_std = 5e-3
     progress_threshold = 5e-2
 
     motion_planner = MotionPlanner(
         interpolation_dt=0.1, random_obstacle=False, device=torch.device("cuda:0")
     )
     controller = CartesianPDController(
-        Kp=1.0, Kd=0.0, control_hz=env.unwrapped._robot.control_hz
+        Kp=1., Kd=0.0, control_hz=env.unwrapped._robot.control_hz
     )
 
     env.reset()
@@ -177,9 +177,10 @@ def collect_demo_pick_up(env):
 
     # lowest possible z w/ Curobo | real is 0.13
     target_pose[2] = 0.12
+    target_pose_noisy = target_pose + np.random.normal(loc=0.0, scale=target_noise_std, size=target_pose.shape)
     gripper = 0.0
     move_to_cartesian_pose(
-        target_pose,
+        target_pose_noisy,
         gripper,
         motion_planner,
         controller,
@@ -189,10 +190,10 @@ def collect_demo_pick_up(env):
 
     target_pose[2] = 0.3
     # randomize lift up position
-    target_pose += np.random.normal(loc=0.0, scale=noise_std, size=target_pose.shape)
+    target_pose_noisy = target_pose + np.random.normal(loc=0.0, scale=target_noise_std, size=target_pose.shape)
     gripper = 1.0
     move_to_cartesian_pose(
-        target_pose,
+        target_pose_noisy,
         gripper,
         motion_planner,
         controller,
@@ -216,10 +217,11 @@ def run_experiment(cfg):
     cfg.robot.DoF = 6
     cfg.robot.control_hz = 10
     cfg.robot.gripper = True
-    # fake_blocking = cfg.robot.blocking_control
-    # cfg.robot.blocking_control = False
-    fake_blocking = False
     cfg.robot.blocking_control = True
+    fake_blocking = cfg.robot.blocking_control
+    cfg.robot.blocking_control = not cfg.robot.blocking_control
+    # fake_blocking = False
+    # cfg.robot.blocking_control = True
     cfg.robot.on_screen_rendering = False
     cfg.robot.max_path_length = 100
     cfg.env.flatten = False
@@ -245,16 +247,20 @@ def run_experiment(cfg):
         env,
         y_min=80,
         y_max=-80,
-        image_keys=[cn + "_rgb"for cn in camera_names],
+        image_keys=[cn + "_rgb" for cn in camera_names],
         # image_keys=[camera_names[0] + "_rgb"],
         crop_render=True,
     )
     env = ResizeImageWrapper(
-        env, size=(224, 224), image_keys=[cn + "_rgb"for cn in camera_names]
+        env,
+        size=(224, 224),
+        image_keys=[cn + "_rgb" for cn in camera_names],
         # env, size=(224, 224), image_keys=[camera_names[0] + "_rgb"]
     )
-    
-    for split, n_episodes in zip(["train", "eval"], [cfg.episodes, int(cfg.episodes//10)]):
+
+    for split, n_episodes in zip(
+        ["train", "eval"], [cfg.episodes, int(cfg.episodes // 10)]
+    ):
         savedir = f"data/{cfg.exp_id}/{split}"
         env = DataCollectionWrapper(
             env,
@@ -267,7 +273,7 @@ def run_experiment(cfg):
         obj_poses = []
 
         n_traj = 0
-        
+
         # for n_traj in trange(cfg.episodes):
         while n_traj < n_episodes:
             env.reset_buffer()
@@ -301,8 +307,16 @@ def run_experiment(cfg):
         # plot position stats
         poss = [pos for pos in obj_poses[:, :3]]
         poss = np.stack(poss)
-        plt.scatter(poss[successes, 1], poss[successes, 0], color="tab:blue", label="success")
-        plt.scatter(poss[~successes, 1], poss[~successes, 0], color="tab:orange", marker="X", label="failure")
+        plt.scatter(
+            poss[successes, 1], poss[successes, 0], color="tab:blue", label="success"
+        )
+        plt.scatter(
+            poss[~successes, 1],
+            poss[~successes, 0],
+            color="tab:orange",
+            marker="X",
+            label="failure",
+        )
         plt.legend()
         plt.xlabel("y")
         plt.ylabel("x")

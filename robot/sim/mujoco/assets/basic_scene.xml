@@ -64,7 +64,7 @@
         <!-- <geom name='vention_table' friction='0.2 0.001 0.00001' pos='0.23 0. -0.075' size='0.405 0.675 0.075' -->
         <!-- <body name="table"> -->
         <geom name='vention_table' friction='0.2 0.001 0.00001' pos='0.23 0. -0.075' euler="0 0 0" size='0.405 0.675 0.075'
-            conaffinity='1' contype='1' type='box' material="MatPlaneGray" condim='3' />
+            conaffinity='1' contype='1' type='box' material="MatPlaneBlack" condim='3' />
     <!-- material="MatPlaneBlack" -->
         <!-- </body> -->
         

@@ -3,19 +3,13 @@ import time
 
 import gym
 import numpy as np
-
 # import torch
 from gym.spaces import Box, Dict
 
-from utils.pointclouds import (
-    compute_camera_extrinsic,
-    compute_camera_intrinsic,
-    crop_points,
-    depth_to_points,
-    points_to_pcd,
-    read_calibration_file,
-    visualize_pcds,
-)
+from utils.pointclouds import (compute_camera_extrinsic,
+                               compute_camera_intrinsic, crop_points,
+                               depth_to_points, points_to_pcd,
+                               read_calibration_file, visualize_pcds)
 from utils.transformations import add_angles, angle_diff
 
 
@@ -34,7 +28,7 @@ class RobotEnv(gym.Env):
         # Franka model: 'panda', 'fr3'
         robot_type="panda",
         # randomize arm position on reset
-        randomize_ee_on_reset=False,
+        randomize_ee_on_reset=0.0,
         # allows user to pause to reset reset of the environment
         pause_after_reset=False,
         # observation space configuration
@@ -77,7 +71,11 @@ class RobotEnv(gym.Env):
         self.curr_path_length = 0
 
         # resetting configuration
-        self._randomize_ee_on_reset = randomize_ee_on_reset
+        self._randomize_ee_on_reset = randomize_ee_on_reset > 0.
+        self.xy_min_max = randomize_ee_on_reset
+        self.z_min_max = randomize_ee_on_reset
+        self.random_rot_min = randomize_ee_on_reset
+
         self._pause_after_reset = pause_after_reset
         # polymetis _robot.home_pose
         self._reset_joint_qpos = np.array(
@@ -143,8 +141,10 @@ class RobotEnv(gym.Env):
         # ee_space_high = np.array([0.7, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
         # ee_space_low = np.array([0.25, -0.5, 0.12, -3.14, -3.14, -3.14, 0.00])
         # ee_space_high = np.array([0.7, 0.5, 0.8, 3.14, 3.14, 3.14, 0.085])
-        ee_space_low = np.array([0.2, -1.0, 0.11, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.55, 1.0, 0.8, 3.14, 3.14, 3.14, 0.085])
+        # ee_space_low = np.array([0.1, -1.0, 0.11, -2*np.pi, -2*np.pi, -2*np.pi, 0.00])
+        # ee_space_high = np.array([1.0, 1.0, 1., 2*np.pi, 2*np.pi, 2*np.pi, 0.085])
+        ee_space_low = np.array([0.1, -1.0, 0.11, np.pi, np.pi, np.pi, 0.00])
+        ee_space_high = np.array([1.0, 1.0, 0.7, np.pi, np.pi, np.pi, 0.085])
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:
@@ -217,7 +217,8 @@ class RobotEnv(gym.Env):
             )
 
             if camera_model == "realsense":
-                from perception.cameras.realsense_camera import gather_realsense_cameras
+                from perception.cameras.realsense_camera import \
+                    gather_realsense_cameras
 
                 cameras = gather_realsense_cameras(hardware_reset=False)
             elif camera_model == "zed":
@@ -228,7 +229,8 @@ class RobotEnv(gym.Env):
             else:
                 cameras = []
 
-            from perception.cameras.multi_camera_wrapper import MultiCameraWrapper
+            from perception.cameras.multi_camera_wrapper import \
+                MultiCameraWrapper
 
             self._camera_reader = MultiCameraWrapper(cameras)
 
@@ -330,11 +332,20 @@ class RobotEnv(gym.Env):
 
         # BLOCKING CONTROL -> for BC inference
         if self.blocking_control:
+            
+            # self._update_robot(
+            #     np.concatenate((action[:3], action[3:6], [action[-1]])),
+            #     action_space="cartesian_position",
+            #     blocking=True,
+            # )
 
             # keep track of desired pose in case controller drops actions
-            self._init_pos += action[:3]
-            self._init_angle += action[3:6]
-            gripper = action[6]
+            pos_action, angle_action, gripper = self._format_action(action)
+            
+            self._init_pos += pos_action
+            self._init_angle = add_angles(angle_action, self._init_angle) # 
+            
+            gripper = gripper
 
             # cartesian position control w/ blocking
             self._update_robot(
@@ -342,6 +353,23 @@ class RobotEnv(gym.Env):
                 action_space="cartesian_position",
                 blocking=True,
             )
+
+            # # clip action to action space
+            # action = np.clip(action, self.action_space.low, self.action_space.high)
+
+            # # formate action to DoF
+            # pos_action, angle_action, gripper = self._format_action(action)
+
+            # # clipping + any safety corrections for position
+            # desired_pos = self._curr_pos + pos_action
+            # desired_angle = self._curr_angle + angle_action # add_angles(angle_action, self._curr_angle)
+
+            # # cartesian position control w/ blocking
+            # self._update_robot(
+            #     np.concatenate((desired_pos, desired_angle, [gripper])),
+            #     action_space="cartesian_position",
+            #     blocking=False,
+            # )
 
         # NON BLOCKING CONTROL -> for everything else
         else:
@@ -652,17 +680,18 @@ class RobotEnv(gym.Env):
 
     def _randomize_reset_pos(self):
         """takes random action along x-y plane, no change to z-axis / gripper"""
-        random_xy = np.random.uniform(-0.5, 0.5, (2,))
-        random_z = np.random.uniform(-0.2, 0.2, (1,))
+        random_xy = np.random.uniform(-self.xy_min_max, self.xy_min_max, (2,))
+        random_z = np.random.uniform(-self.z_min_max, self.z_min_max, (1,))
+        
         if self.DoF == 4:
-            random_rot = np.random.uniform(-0.5, 0.0, (1,))
+            random_rot = np.random.uniform(-self.random_rot_min, 0.0, (1,))
             act_delta = np.concatenate(
                 [random_xy, random_z, random_rot, np.zeros((1,))]
             )
         elif self.DoF == 6:
-            random_rot = np.random.uniform(-0.5, 0.0, (3,))
+            random_rot = np.random.uniform(-self.random_rot_min, 0.0, (3,))
             act_delta = np.concatenate(
-                [random_xy, random_z, *random_rot, np.zeros((1,))]
+                [random_xy, random_z, random_rot, np.zeros((1,))]
             )
         else:
             act_delta = np.concatenate([random_xy, random_z, np.zeros((1,))])

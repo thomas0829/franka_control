@@ -3,19 +3,13 @@ import time
 
 import gym
 import numpy as np
-
 # import torch
 from gym.spaces import Box, Dict
 
-from utils.pointclouds import (
-    compute_camera_extrinsic,
-    compute_camera_intrinsic,
-    crop_points,
-    depth_to_points,
-    points_to_pcd,
-    read_calibration_file,
-    visualize_pcds,
-)
+from utils.pointclouds import (compute_camera_extrinsic,
+                               compute_camera_intrinsic, crop_points,
+                               depth_to_points, points_to_pcd,
+                               read_calibration_file, visualize_pcds)
 from utils.transformations import add_angles, angle_diff
 
 
@@ -34,7 +28,7 @@ class RobotEnv(gym.Env):
         # Franka model: 'panda', 'fr3'
         robot_type="panda",
         # randomize arm position on reset
-        randomize_ee_on_reset=False,
+        randomize_ee_on_reset=0.0,
         # allows user to pause to reset reset of the environment
         pause_after_reset=False,
         # observation space configuration
@@ -77,7 +71,11 @@ class RobotEnv(gym.Env):
         self.curr_path_length = 0
 
         # resetting configuration
-        self._randomize_ee_on_reset = randomize_ee_on_reset
+        self._randomize_ee_on_reset = randomize_ee_on_reset > 0.
+        self.xy_min_max = randomize_ee_on_reset
+        self.z_min_max = randomize_ee_on_reset
+        self.random_rot_min = randomize_ee_on_reset
+
         self._pause_after_reset = pause_after_reset
         # polymetis _robot.home_pose
         self._reset_joint_qpos = np.array(
@@ -219,7 +217,8 @@ class RobotEnv(gym.Env):
             )
 
             if camera_model == "realsense":
-                from perception.cameras.realsense_camera import gather_realsense_cameras
+                from perception.cameras.realsense_camera import \
+                    gather_realsense_cameras
 
                 cameras = gather_realsense_cameras(hardware_reset=False)
             elif camera_model == "zed":
@@ -230,7 +229,8 @@ class RobotEnv(gym.Env):
             else:
                 cameras = []
 
-            from perception.cameras.multi_camera_wrapper import MultiCameraWrapper
+            from perception.cameras.multi_camera_wrapper import \
+                MultiCameraWrapper
 
             self._camera_reader = MultiCameraWrapper(cameras)
 
@@ -680,17 +680,18 @@ class RobotEnv(gym.Env):
 
     def _randomize_reset_pos(self):
         """takes random action along x-y plane, no change to z-axis / gripper"""
-        random_xy = np.random.uniform(-0.5, 0.5, (2,))
-        random_z = np.random.uniform(-0.2, 0.2, (1,))
+        random_xy = np.random.uniform(-self.xy_min_max, self.xy_min_max, (2,))
+        random_z = np.random.uniform(-self.z_min_max, self.z_min_max, (1,))
+        
         if self.DoF == 4:
-            random_rot = np.random.uniform(-0.5, 0.0, (1,))
+            random_rot = np.random.uniform(-self.random_rot_min, 0.0, (1,))
             act_delta = np.concatenate(
                 [random_xy, random_z, random_rot, np.zeros((1,))]
             )
         elif self.DoF == 6:
-            random_rot = np.random.uniform(-0.5, 0.0, (3,))
+            random_rot = np.random.uniform(-self.random_rot_min, 0.0, (3,))
             act_delta = np.concatenate(
-                [random_xy, random_z, *random_rot, np.zeros((1,))]
+                [random_xy, random_z, random_rot, np.zeros((1,))]
             )
         else:
             act_delta = np.concatenate([random_xy, random_z, np.zeros((1,))])

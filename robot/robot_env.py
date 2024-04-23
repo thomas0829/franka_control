@@ -143,8 +143,10 @@ class RobotEnv(gym.Env):
         # ee_space_high = np.array([0.7, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
         # ee_space_low = np.array([0.25, -0.5, 0.12, -3.14, -3.14, -3.14, 0.00])
         # ee_space_high = np.array([0.7, 0.5, 0.8, 3.14, 3.14, 3.14, 0.085])
-        ee_space_low = np.array([0.2, -1.0, 0.11, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.55, 1.0, 0.8, 3.14, 3.14, 3.14, 0.085])
+        # ee_space_low = np.array([0.1, -1.0, 0.11, -2*np.pi, -2*np.pi, -2*np.pi, 0.00])
+        # ee_space_high = np.array([1.0, 1.0, 1., 2*np.pi, 2*np.pi, 2*np.pi, 0.085])
+        ee_space_low = np.array([0.1, -1.0, 0.11, np.pi, np.pi, np.pi, 0.00])
+        ee_space_high = np.array([1.0, 1.0, 1., np.pi, np.pi, np.pi, 0.085])
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:
@@ -330,11 +332,20 @@ class RobotEnv(gym.Env):
 
         # BLOCKING CONTROL -> for BC inference
         if self.blocking_control:
+            
+            # self._update_robot(
+            #     np.concatenate((action[:3], action[3:6], [action[-1]])),
+            #     action_space="cartesian_position",
+            #     blocking=True,
+            # )
 
             # keep track of desired pose in case controller drops actions
-            self._init_pos += action[:3]
-            self._init_angle += action[3:6]
-            gripper = action[6]
+            pos_action, angle_action, gripper = self._format_action(action)
+            
+            self._init_pos += pos_action
+            self._init_angle = add_angles(angle_action, self._init_angle) # 
+            
+            gripper = gripper
 
             # cartesian position control w/ blocking
             self._update_robot(
@@ -342,6 +353,23 @@ class RobotEnv(gym.Env):
                 action_space="cartesian_position",
                 blocking=True,
             )
+
+            # # clip action to action space
+            # action = np.clip(action, self.action_space.low, self.action_space.high)
+
+            # # formate action to DoF
+            # pos_action, angle_action, gripper = self._format_action(action)
+
+            # # clipping + any safety corrections for position
+            # desired_pos = self._curr_pos + pos_action
+            # desired_angle = self._curr_angle + angle_action # add_angles(angle_action, self._curr_angle)
+
+            # # cartesian position control w/ blocking
+            # self._update_robot(
+            #     np.concatenate((desired_pos, desired_angle, [gripper])),
+            #     action_space="cartesian_position",
+            #     blocking=False,
+            # )
 
         # NON BLOCKING CONTROL -> for everything else
         else:

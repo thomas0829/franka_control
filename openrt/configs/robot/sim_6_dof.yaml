@@ -7,7 +7,7 @@ gripper: true
 robot_type: "panda"
 
 # randomize arm position on reset
-randomize_ee_on_reset: false
+randomize_ee_on_reset: 0.0
 # allows user to pause to reset reset of the environment
 pause_after_reset: false
 

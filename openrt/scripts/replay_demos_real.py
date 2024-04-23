@@ -92,7 +92,8 @@ def run_experiment(cfg):
         # visualize traj
         img_obs = np.stack([obs["215122255213_rgb"] for obs in obss])
         imageio.mimsave(os.path.join(logdir, "replay.mp4"), img_obs)
-        img_demo = np.stack([step["215122255213_rgb"] for step in episode])
+        # ugly hack to get the demo images
+        img_demo = np.stack([step["215122255213_rgb"] if "215122255213_rgb" in step.keys() else step["front_rgb"] for step in episode])
         imageio.mimsave(os.path.join(logdir, "demo.mp4"), img_demo)
 
         # plot difference between demo and replay
@@ -123,7 +124,7 @@ def run_experiment(cfg):
 
         plt.legend()
         plt.show()
-        
+
         time.sleep(5)
 
     env.reset()

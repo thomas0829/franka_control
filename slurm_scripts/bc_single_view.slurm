@@ -10,7 +10,7 @@
 #SBATCH --ntasks-per-node=3
 #SBATCH --cpus-per-task=6
 #SBATCH --gpus-per-task=1
-#SBATCH --mem-per-gpu=200G
+#SBATCH --mem-per-gpu=300G
 #SBATCH --time=24:00:00
 
 #SBATCH --chdir=/gscratch/weirdlab/memmelma/polymetis_franka

@@ -226,7 +226,7 @@ def run_experiment(cfg):
     cfg.robot.max_path_length = 100
     cfg.env.flatten = False
     cfg.robot.imgs = True
-    cfg.robot.calibration_file = None
+    # cfg.robot.calibration_file = None
 
     language_instruction = "pick up the red cube"
 
@@ -245,8 +245,9 @@ def run_experiment(cfg):
 
     env = CropImageWrapper(
         env,
-        y_min=80,
-        y_max=-80,
+        # y_min=80,
+        # y_max=-80,
+        y_min=160,
         image_keys=[cn + "_rgb" for cn in camera_names],
         # image_keys=[camera_names[0] + "_rgb"],
         crop_render=True,

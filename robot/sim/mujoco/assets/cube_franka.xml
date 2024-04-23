@@ -40,7 +40,7 @@
             <freejoint name="cube_freejoint" />
             <inertial pos="0 0 0" mass="0.01" diaginertia="0.0002 0.0002 0.0002" />
             <geom name="cube_geom_0" friction="1. 0.005 0.0001" conaffinity="1" contype="1"
-                condim="3" pos="0. 0. 0.0" type="box" size="0.025 0.025 0.025" rgba="1. 0. 0. 1." />
+                condim="3" pos="0. 0. 0.0" type="box" size="0.025 0.025 0.025" rgba="0.28 0.43 0.29 1." />
         </body>
 
         <!-- franka's reachable workspace -->

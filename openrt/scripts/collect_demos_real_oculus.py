@@ -25,8 +25,8 @@ def run_experiment(cfg):
 
     cfg.robot.max_path_length = cfg.max_episode_length
 
-    cfg.robot.DoF = 6
-    cfg.robot.control_hz = 10
+    # cfg.robot.DoF = 6
+    # cfg.robot.control_hz = 15
     cfg.robot.gripper = True
     fake_blocking = cfg.robot.blocking_control
     cfg.robot.blocking_control = False
@@ -54,10 +54,14 @@ def run_experiment(cfg):
     env.action_space.low[3:] = -0.25
     env.action_space.high[3:] = 0.25
 
-    env = CropImageWrapper(env, y_min=160, image_keys=cfg.training.image_keys)
-    env = ResizeImageWrapper(env, size=(224, 224), image_keys=["left_rgb"])
+    camera_names = [k + "_rgb" for k in env.get_images().keys()]
+    env = CropImageWrapper(env, y_min=160, image_keys=camera_names)
+    env = ResizeImageWrapper(env, size=(224, 224), image_keys=camera_names)
 
-    savedir = f"data/{cfg.exp_id}/train"
+    obs = env.reset()
+    print("Observation keys", obs.keys())
+
+    savedir = f"data/{cfg.exp_id}/{cfg.split}"
     env = DataCollectionWrapper(
         env,
         language_instruction=language_instruction,
@@ -70,7 +74,8 @@ def run_experiment(cfg):
     assert oculus.get_info()["controller_on"], "ERROR: oculus controller off"
     print("Oculus Connected")
 
-    n_traj = 0
+    n_traj = int(cfg.start_traj)
+    env.traj_count = n_traj
 
     while n_traj < cfg.episodes:
 

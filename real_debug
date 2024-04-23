@@ -1,0 +1,9 @@
+python openrt/scripts/collect_demos_real_oculus.py exp_id=green_block_sl_50 episodes=50
+
+python training/weird_bc/train_script.py exp_id=green_block_sl_50 training.dataset_path=data/green_block_sl_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=green_block_sl_50 training.dataset_path=data/green_block_sl_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+
+
+python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=debug_50 training.dataset_path=data/synth_sl_100 training.image_keys=["shoulder_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+

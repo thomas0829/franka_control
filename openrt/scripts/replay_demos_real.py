@@ -23,9 +23,9 @@ def run_experiment(cfg):
     cfg.robot.max_path_length = cfg.max_episode_length
 
     cfg.robot.DoF = 6
-    cfg.robot.control_hz = 1
+    cfg.robot.control_hz = 1 # 15
     cfg.robot.gripper = True
-    cfg.robot.blocking_control = True
+    cfg.robot.blocking_control =  True # False
     cfg.robot.on_screen_rendering = False
     cfg.robot.max_path_length = 100
 

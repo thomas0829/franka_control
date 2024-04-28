@@ -5,6 +5,7 @@ hydra:
 defaults:
   - log: wandb
   - robot: real_6_dof
+  - aug: crop_resize
   - env: cube
   - training: bc_policy
   - inference: diffusion_policy

@@ -484,9 +484,9 @@ class RobotEnv(gym.Env):
                 self.ee_space.low[2] = 0.13
                 self.ee_space.high[2] = 0.13
 
-            if self.blocking_control:
-                self._init_pos = self._default_pos.copy()
-                self._init_angle = self._default_angle.copy()
+        if self.blocking_control:
+            self._init_pos = self._default_pos.copy()
+            self._init_angle = self._default_angle.copy()
 
         if self._randomize_ee_on_reset:
             self._randomize_reset_pos()

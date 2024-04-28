@@ -170,7 +170,7 @@ class DataCollectionWrapper(gym.Wrapper):
 
         obs = self.env.reset()
         
-        self.gripper_state = self.env.unwrapped._robot.get_gripper_state()
+        # self.gripper_state = self.env.unwrapped._robot.get_gripper_state()
 
         # store obs
         self.curr_obs = obs.copy()

@@ -21,4 +21,4 @@ image_pixel_shift: 4
 image_resize: [224,224]
 
 eval_interval: 100
-save_interval: 500
+save_interval: 50

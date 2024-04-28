@@ -20,5 +20,5 @@ image_color_jitter_scale: 0.1
 image_pixel_shift: 4
 image_resize: [224,224]
 
-eval_interval: 25
+eval_interval: 100
 save_interval: 500

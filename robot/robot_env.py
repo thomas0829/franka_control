@@ -331,6 +331,7 @@ class RobotEnv(gym.Env):
         # BLOCKING CONTROL -> for BC inference
         if self.blocking_control:
             
+            self.control_hz = 1
             # self._update_robot(
             #     np.concatenate((action[:3], action[3:6], [action[-1]])),
             #     action_space="cartesian_position",
@@ -349,8 +350,13 @@ class RobotEnv(gym.Env):
             self._update_robot(
                 np.concatenate((self._init_pos, self._init_angle, [gripper])),
                 action_space="cartesian_position",
-                blocking=True,
+                blocking=False,
             )
+            
+            comp_time = time.time() - start_time
+            sleep_left = max(0, (1 / self.control_hz) - comp_time)
+            if not self.sim:
+                time.sleep(sleep_left)
 
             # # clip action to action space
             # action = np.clip(action, self.action_space.low, self.action_space.high)

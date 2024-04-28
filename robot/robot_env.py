@@ -71,10 +71,8 @@ class RobotEnv(gym.Env):
         self.curr_path_length = 0
 
         # resetting configuration
-        self._randomize_ee_on_reset = randomize_ee_on_reset > 0.
-        self.xy_min_max = randomize_ee_on_reset
-        self.z_min_max = randomize_ee_on_reset
-        self.random_rot_min = randomize_ee_on_reset
+        self._randomize_ee_on_reset = randomize_ee_on_reset
+        self._set_randomize_ee_on_reset(randomize_ee_on_reset)
 
         self._pause_after_reset = pause_after_reset
         # polymetis _robot.home_pose
@@ -143,7 +141,7 @@ class RobotEnv(gym.Env):
         # ee_space_high = np.array([0.7, 0.5, 0.8, 3.14, 3.14, 3.14, 0.085])
         # ee_space_low = np.array([0.1, -1.0, 0.11, -2*np.pi, -2*np.pi, -2*np.pi, 0.00])
         # ee_space_high = np.array([1.0, 1.0, 1., 2*np.pi, 2*np.pi, 2*np.pi, 0.085])
-        ee_space_low = np.array([0.1, -1.0, 0.11, np.pi, np.pi, np.pi, 0.00])
+        ee_space_low = np.array([0.1, -1.0, 0.11, -np.pi, -np.pi, -np.pi, 0.00])
         ee_space_high = np.array([1.0, 1.0, 0.7, np.pi, np.pi, np.pi, 0.085])
 
         # EE position (x, y, fixed z)
@@ -677,6 +675,11 @@ class RobotEnv(gym.Env):
         # points.append(zero)
 
         visualize_pcds(points)
+
+    def _set_randomize_ee_on_reset(self, randomize_ee_on_reset):
+        self.xy_min_max = randomize_ee_on_reset
+        self.z_min_max = randomize_ee_on_reset
+        self.random_rot_min = randomize_ee_on_reset
 
     def _randomize_reset_pos(self):
         """takes random action along x-y plane, no change to z-axis / gripper"""

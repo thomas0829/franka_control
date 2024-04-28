@@ -6,7 +6,7 @@ import hydra
 import imageio
 import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from robot.crop_wrapper import CropImageWrapper
 from robot.resize_wrapper import ResizeImageWrapper
@@ -16,59 +16,54 @@ from utils.experiment import hydra_to_dict
 
 
 @hydra.main(
-    config_path="../configs/", config_name="collect_cube_sim", version_base="1.1"
+    config_path="../../configs/", config_name="collect_cube_sim", version_base="1.1"
 )
 def run_experiment(cfg):
 
     logdir = os.path.join(cfg.log.dir, cfg.exp_id)
     os.makedirs(logdir, exist_ok=True)
 
-    cfg.robot.max_path_length = cfg.max_episode_length
-
-    cfg.robot.DoF = 6
-    cfg.robot.control_hz = 1
-    cfg.robot.gripper = True
     cfg.robot.blocking_control = True
-    cfg.robot.on_screen_rendering = False
-    cfg.robot.max_path_length = 100
-
-    cfg.env.flatten = False
-    cfg.env.obj_pose_noise_dict = None
-
-    env = make_env(
-        robot_cfg_dict=hydra_to_dict(cfg.robot),
-        env_cfg_dict=hydra_to_dict(cfg.env),
-        seed=cfg.seed,
-        device_id=0,
-        verbose=True,
-    )
-
-    camera_names = env.unwrapped._robot.camera_names.copy()
-    env.action_space.low[:3] = -0.1
-    env.action_space.high[:3] = 0.1
-    env.action_space.low[3:] = -0.25
-    env.action_space.high[3:] = 0.25
-
-    env = CropImageWrapper(
-        env,
-        y_min=80,
-        y_max=-80,
-        image_keys=[camera_names[0] + "_rgb"],
-        crop_render=True,
-    )
-    env = ResizeImageWrapper(
-        env, size=(224, 224), image_keys=[camera_names[0] + "_rgb"]
-    )
 
     dataset_path = f"data/{cfg.exp_id}/train"
     file_names = glob.glob(f"{dataset_path}/episode_*.npy")
     assert len(file_names) > 0, f"WARNING: no data in {dataset_path}!"
 
-    num_trajectories = 1
+    num_trajectories = 10
 
-    for file in tqdm(file_names[:num_trajectories]):
+    for i in trange(num_trajectories):
+    
+        episode = np.load(file_names[i], allow_pickle=True)
 
-        episode = np.load(file, allow_pickle=True)
+        cfg.robot.max_path_length = len(episode)
+
+        env = make_env(
+            robot_cfg_dict=hydra_to_dict(cfg.robot),
+            env_cfg_dict=hydra_to_dict(cfg.env),
+            seed=cfg.seed,
+            device_id=0,
+            verbose=True,
+        )
+
+        camera_names = env.unwrapped._robot.camera_names.copy()
+
+        if cfg.aug.camera_crop is not None:
+            env = CropImageWrapper(
+                env,
+                x_min=cfg.aug.camera_crop[0],
+                x_max=cfg.aug.camera_crop[1],
+                y_min=cfg.aug.camera_crop[2],
+                y_max=cfg.aug.camera_crop[3],
+                image_keys=[cn + "_rgb" for cn in camera_names],
+                crop_render=True,
+            )
+        
+        if cfg.aug.camera_resize is not None:
+            env = ResizeImageWrapper(
+                env,
+                size=cfg.aug.camera_resize,
+                image_keys=[cn + "_rgb" for cn in camera_names],
+            )
 
         obs = env.reset()
 
@@ -106,41 +101,23 @@ def run_experiment(cfg):
 
         # visualize traj
         img_obs = np.stack([obs["front_rgb"] for obs in obss])
-        imageio.mimsave(os.path.join(logdir, "replay.mp4"), img_obs)
         img_demo = np.stack([step["front_rgb"] for step in episode])
-        imageio.mimsave(os.path.join(logdir, "demo.mp4"), img_demo)
+        imageio.mimsave(os.path.join(logdir, f"demo_replay_{i}.mp4"), np.concatenate((img_demo, img_obs), axis=2))
 
         # plot difference between demo and replay
-        plt.close()
         ee_obs = np.stack([obs["lowdim_ee"] for obs in obss])
-        ee_act = []
-        init_pos = env._curr_pos
-        init_angle = env._curr_angle
-        for step in episode:
-            init_pos += step["action"][:3]
-            init_angle += step["action"][3:6]
-            ee_act.append(np.concatenate((init_pos.copy(), init_angle.copy())))
-        ee_act = np.stack(ee_act)
+        ee_act = np.stack([obs["lowdim_ee"][:6] for obs in obss])
 
-        labels = ["x", "y", "z"]
-        colors = ["tab:orange", "tab:blue", "tab:green"]
-
-        for i, (l,c) in enumerate(zip(labels, colors)):
-            plt.plot(ee_act[:,i], color=c, label=f"{l} demo")
-            plt.plot(ee_obs[:,i], color=c, linestyle="dashed", label=f"{l} replay")
-
-        # labels = ["x", "y", "z", "roll", "pitch", "yaw"]
-        # colors = ["tab:orange", "tab:blue", "tab:green", "red", "blue", "green"]
-
-        # for i, (l,c) in enumerate(zip(labels, colors)):
-        #     plt.plot(ee_act[:,i], color=c, label=f"{l} demo")
-        #     plt.plot(ee_obs[:,i], color=c, linestyle="dashed", label=f"{l} replay")
-
+        labels = ["x", "y", "z", "r", "p", "y"]
+        colors = ["tab:orange", "tab:blue", "tab:green", "tab:red", "tab:purple", "tab:brown"]
+        n = 3
+        for j, (l,c) in enumerate(zip(labels[:n], colors[:n])):
+            plt.plot(ee_act[:,j], color=c, label=f"{l} demo")
+            plt.plot(ee_obs[:,j], color=c, linestyle="dashed", label=f"{l} replay")
         plt.legend()
-        plt.show()
-        
-        time.sleep(5)
-
+        plt.savefig(os.path.join(logdir, f"poses_{i}.png"))
+        plt.close()
+    
     env.reset()
 
 

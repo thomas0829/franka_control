@@ -170,6 +170,8 @@ class DataCollectionWrapper(gym.Wrapper):
 
         obs = self.env.reset()
         
+        self.gripper_state = self.env.unwrapped._robot.get_gripper_state()
+
         # store obs
         self.curr_obs = obs.copy()
         
@@ -193,6 +195,27 @@ class DataCollectionWrapper(gym.Wrapper):
         if self.fake_blocking:
             act[:-1] = obs["lowdim_ee"][:-1] - self.curr_obs["lowdim_ee"][:-1]
             act[-1] = act[-1]
+            
+            ############################
+            # pause until gripper is done
+            max_gripper_width = 0.08 if act[-1] == 1. else 0.0
+            
+            start = time.time()
+            while True:
+                gripper_state_curr = self.env.unwrapped._robot.get_gripper_state()
+                # print("States", self.gripper_state, gripper_state_curr, np.abs(self.gripper_state - gripper_state_curr))
+                # if gripper is moving, sleep for control cycle
+                # print("Gripper is moving", np.abs(self.gripper_state - gripper_state_curr))
+                if np.abs(self.gripper_state - gripper_state_curr) > 1e-4:
+                    self.gripper_state = gripper_state_curr
+                    time.sleep(0.2)
+                else:
+                    break
+            # print(f"Waited for gripper for {time.time() - start} seconds")
+            # get new observation
+            obs = self.env.unwrapped.get_observation()
+            ############################
+
         self.curr_obs["action"] = act
 
         self.curr_obs = obs.copy()

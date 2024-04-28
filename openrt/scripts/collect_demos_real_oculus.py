@@ -79,8 +79,11 @@ def run_experiment(cfg):
 
     while n_traj < cfg.episodes:
 
-        # reset w/o recording obs
+        # reset w/o recording obs and w/o randomizing ee pos
+        randomize_ee_on_reset = env.unwrapped._randomize_ee_on_reset
+        env.unwrapped._set_randomize_ee_on_reset(0.)
         env.unwrapped.reset()
+        env.unwrapped._set_randomize_ee_on_reset(randomize_ee_on_reset)
 
         # make sure at least 1 camera is connected
         assert env.unwrapped._num_cameras > 0, "ERROR: not camera(s) connected!"

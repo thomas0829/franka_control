@@ -63,7 +63,7 @@ class MujocoManipulatorEnv(FrankaBase):
         camera_names=["front", "left"],
         calib_dict=None,
         use_rgb=True,
-        use_depth=True,
+        use_depth=False,
         img_height=480,
         img_width=640,
     ):

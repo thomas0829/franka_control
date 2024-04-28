@@ -205,7 +205,7 @@ def collect_demo_pick_up(env):
 
 
 @hydra.main(
-    config_path="../configs/", config_name="collect_cube_sim", version_base="1.1"
+    config_path="../../configs/", config_name="collect_cube_sim", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -214,20 +214,10 @@ def run_experiment(cfg):
 
     cfg.robot.max_path_length = cfg.max_episode_length
 
-    cfg.robot.DoF = 6
-    cfg.robot.control_hz = 10
-    cfg.robot.gripper = True
     cfg.robot.blocking_control = True
     fake_blocking = cfg.robot.blocking_control
     cfg.robot.blocking_control = not cfg.robot.blocking_control
-    # fake_blocking = False
-    # cfg.robot.blocking_control = True
-    cfg.robot.on_screen_rendering = False
-    cfg.robot.max_path_length = 100
-    cfg.env.flatten = False
-    cfg.robot.imgs = True
-    # cfg.robot.calibration_file = None
-
+    
     language_instruction = "pick up the red cube"
 
     env = make_env(
@@ -238,26 +228,24 @@ def run_experiment(cfg):
         verbose=True,
     )
     camera_names = env.unwrapped._robot.camera_names.copy()
-    env.action_space.low[:3] = -0.1
-    env.action_space.high[:3] = 0.1
-    env.action_space.low[3:] = -0.25
-    env.action_space.high[3:] = 0.25
 
-    env = CropImageWrapper(
-        env,
-        # y_min=80,
-        # y_max=-80,
-        y_min=160,
-        image_keys=[cn + "_rgb" for cn in camera_names],
-        # image_keys=[camera_names[0] + "_rgb"],
-        crop_render=True,
-    )
-    env = ResizeImageWrapper(
-        env,
-        size=(224, 224),
-        image_keys=[cn + "_rgb" for cn in camera_names],
-        # env, size=(224, 224), image_keys=[camera_names[0] + "_rgb"]
-    )
+    if cfg.aug.camera_crop is not None:
+        env = CropImageWrapper(
+            env,
+            x_min=cfg.aug.camera_crop[0],
+            x_max=cfg.aug.camera_crop[1],
+            y_min=cfg.aug.camera_crop[2],
+            y_max=cfg.aug.camera_crop[3],
+            image_keys=[cn + "_rgb" for cn in camera_names],
+            crop_render=True,
+        )
+    
+    if cfg.aug.camera_resize is not None:
+        env = ResizeImageWrapper(
+            env,
+            size=cfg.aug.camera_resize,
+            image_keys=[cn + "_rgb" for cn in camera_names],
+        )
 
     for split, n_episodes in zip(
         ["train", "eval"], [cfg.episodes, int(cfg.episodes // 10)]

@@ -16,7 +16,7 @@ from utils.experiment import hydra_to_dict
 
 
 @hydra.main(
-    config_path="../configs/", config_name="collect_cube_real", version_base="1.1"
+    config_path="../../configs/", config_name="collect_cube_real", version_base="1.1"
 )
 def run_experiment(cfg):
 

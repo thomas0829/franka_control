@@ -63,7 +63,7 @@ class MujocoManipulatorEnv(FrankaBase):
         camera_names=["front", "left"],
         calib_dict=None,
         use_rgb=True,
-        use_depth=True,
+        use_depth=False,
         img_height=480,
         img_width=640,
     ):
@@ -110,13 +110,13 @@ class MujocoManipulatorEnv(FrankaBase):
         #     os.path.splitext(self.robot_description_path)[0] + ".mjcf"
         # )
 
-        robot_desc_mjcf_path = os.path.join(
+        self.robot_desc_mjcf_path = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), f"assets/{model_name}.xml"
         )
         assert os.path.exists(
-            robot_desc_mjcf_path
-        ), f"No MJCF file found. Create an MJCF file at {robot_desc_mjcf_path} to use the MuJoCo simulator."
-        self.model = mujoco.MjModel.from_xml_path(robot_desc_mjcf_path)
+            self.robot_desc_mjcf_path
+        ), f"No MJCF file found. Create an MJCF file at {self.robot_desc_mjcf_path} to use the MuJoCo simulator."
+        self.model = mujoco.MjModel.from_xml_path(self.robot_desc_mjcf_path)
         # self.model.opt.timestep = 1e-4 -> tried 1000hz, doesn't make a difference
         self.data = mujoco.MjData(self.model)
 
@@ -304,30 +304,30 @@ class MujocoManipulatorEnv(FrankaBase):
         elif self.has_offscreen_renderer:
             for camera in self.camera_names:
                 self.viewer.update_scene(self.data, camera=camera)
+                
+                color_image = None
+                if self.use_rgb:
+                    color_image = self.viewer.render().copy()
+                    dict_1 = {
+                    "serial_number": camera,
+                    "array": color_image,
+                    "shape": color_image.shape if color_image is not None else None,
+                    "type": "rgb",
+                }
+                    imgs.append(dict_1)
+                    
+                depth = None
                 if self.use_depth:
                     self.viewer.enable_depth_rendering()
                     depth = self.viewer.render().copy()
                     self.viewer.disable_depth_rendering()
-
-                if not self.use_rgb and self.use_depth:
-                    color_image = np.zeros((depth.shape[0], depth.shape[1], 3))
-                else:
-                    color_image = self.viewer.render().copy()
-
-                dict_1 = {
-                    "serial_number": camera,
-                    "array": color_image,
-                    "shape": color_image.shape,
-                    "type": "rgb",
-                }
-                dict_2 = {
-                    "serial_number": camera,
-                    "array": depth,
-                    "shape": depth.shape,
-                    "type": "depth",
-                }
-                imgs.append(dict_1)
-                imgs.append(dict_2)
+                    dict_2 = {
+                        "serial_number": camera,
+                        "array": depth,
+                        "shape": depth.shape if depth is not None else None,
+                        "type": "depth",
+                    }
+                    imgs.append(dict_2)
 
         return imgs
 
@@ -555,7 +555,7 @@ class MujocoManipulatorEnv(FrankaBase):
             }
 
     def _adaptive_time_to_go_polymetis(
-        self, robot_model, joint_displacement: torch.Tensor, time_to_go_default=1.0
+        self, joint_displacement: torch.Tensor, time_to_go_default=1.0
     ):
         """Compute adaptive time_to_go
         Computes the corresponding time_to_go such that the mean velocity is equal to one-eighth
@@ -566,16 +566,18 @@ class MujocoManipulatorEnv(FrankaBase):
 
         The resulting time_to_go is also clipped to a minimum value of the default time_to_go.
         """
-        joint_vel_limits = robot_model.get_joint_velocity_limits()
-        joint_pos_diff = torch.abs(joint_displacement)
+        # TODO verify those limits
+        # https://frankaemika.github.io/docs/control_parameters.html
+        joint_vel_limits = torch.tensor([2.62, 2.62, 2.62, 2.62, 5.26, 4.18, 5.26]).float() # robot_model.get_joint_velocity_limits()
+        joint_pos_diff = torch.abs(torch.tensor(joint_displacement)).float()
         time_to_go = torch.max(joint_pos_diff / joint_vel_limits * 8.0)
         return max(time_to_go, time_to_go_default)
 
-    def adaptive_time_to_go(self, desired_joint_position, t_min=1, t_max=4):
+    def adaptive_time_to_go(self, desired_joint_position, t_min=0, t_max=4):
         curr_joint_position = self.get_joint_positions()
         displacement = desired_joint_position - curr_joint_position
         time_to_go = self._adaptive_time_to_go_polymetis(
-            self.toco_robot_model, displacement
+            displacement
         )
         clamped_time_to_go = min(t_max, max(time_to_go, t_min))
         return clamped_time_to_go
@@ -600,7 +602,7 @@ class MujocoManipulatorEnv(FrankaBase):
             if self.torque_control:
                 time_to_go = self.adaptive_time_to_go(command)
             else:
-                time_to_go = 3.0
+                time_to_go = self.adaptive_time_to_go(command)
             self.move_to_joint_positions(command, time_to_go=time_to_go)
         # kill cartesian impedance
         elif blocking:
@@ -626,7 +628,11 @@ class MujocoManipulatorEnv(FrankaBase):
                         self._robot.start_cartesian_impedance()
                 if self.custom_controller:
                     # run controller loop for int((1/self.control_hz) / self.model.opt.timestep) instead of time.sleep(1/self.control_hz)
-                    for _ in range(self.frame_skip):
+                    
+                    if self.torque_control:
+                        for _ in range(self.frame_skip):
+                            self.update_desired_joint_positions(command)
+                    else:
                         self.update_desired_joint_positions(command)
                         # self.update_desired_joint_positions(command + torch.normal(mean=0., std=1e-1, size=command.shape))
                 else:
@@ -676,6 +682,7 @@ class MujocoManipulatorEnv(FrankaBase):
                 "joint_pos_desired"
             ]
             # TODO: check if nstep messes up sim2real
+            # mujoco.mj_step(self.model, self.data)
             mujoco.mj_step(self.model, self.data, nstep=self.frame_skip)
 
     def move_to_joint_positions(self, joint_pos_desired=None, time_to_go=3):
@@ -730,18 +737,18 @@ class MujocoManipulatorEnv(FrankaBase):
         else:
             # WARNING: actuator must be general or position
 
-            # set position -> sim only has to be stepped once
-            self.data.qpos[self.franka_joint_ids] = joint_pos_desired
-            mujoco.mj_step(self.model, self.data)
+            # # set position -> sim only has to be stepped once
+            # self.data.qpos[self.franka_joint_ids] = joint_pos_desired
+            # mujoco.mj_step(self.model, self.data)
 
-            # # use position control -> sim has to be skipped multiple times until convergence
-            # self.data.ctrl[: len(self.franka_joint_ids)] = joint_pos_desired
-            # mujoco.mj_step(self.model, self.data, nstep=self.frame_skip * 10)
+            # use position control -> skip sim for time_to_go
+            self.data.ctrl[: len(self.franka_joint_ids)] = joint_pos_desired
+            mujoco.mj_step(self.model, self.data, nstep=int(time_to_go//self.model.opt.timestep))
 
         if self.has_renderer:
             self.render()
 
-    def update_gripper(self, command, velocity=True, blocking=False):
+    def update_gripper(self, command, velocity=False, blocking=False):
         # 1. -> close, 0. -> open
         if velocity:
             gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)

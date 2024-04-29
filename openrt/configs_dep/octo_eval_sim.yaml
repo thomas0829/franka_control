@@ -1,0 +1,16 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - log: stdout
+  - robot: sim_6_dof
+  - env: cube
+  - inference: octo
+
+seed: 0
+gpu_id: 0
+
+exp_id: "octo_eval"
+
+num_workers: 1

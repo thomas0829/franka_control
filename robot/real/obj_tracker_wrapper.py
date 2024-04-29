@@ -7,12 +7,13 @@ from utils.pointclouds import crop_points
 from utils.transformations import quat_to_euler
 from utils.transformations_mujoco import euler_to_quat_mujoco, quat_to_euler_mujoco
 
+
 class ObjectTrackerWrapper(gym.Wrapper):
     def __init__(
         self,
         env,
         obj_id="rod",
-        obs_keys=None, # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
+        obs_keys=None,  # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
         # tracking
         color_track="red",
         # crop_min=[0.0, -0.4, -0.1],
@@ -23,26 +24,28 @@ class ObjectTrackerWrapper(gym.Wrapper):
         cutoff_freq=1,
         flatten=True,
         verbose=False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(env)
 
         if verbose:
             print(f"WARNING: ObjectTrackerWrapper doesn't take {kwargs}!")
-        
+
         self.obj_id = obj_id
 
         # Tracking
         self.crop_min = crop_min
         self.crop_max = crop_max
-        self.tracker = ColorTracker(outlier_removal=True)
+        self.tracker = ColorTracker(outlier_removal=False)
         self.color_track = color_track
         self.verbose = verbose
         self.filter = filter
         self.cutoff_freq = cutoff_freq
 
         # Observations
-        self.obs_keys = obs_keys if obs_keys is not None else self.env.observation_space.keys()
+        self.obs_keys = (
+            obs_keys if obs_keys is not None else self.env.observation_space.keys()
+        )
         # obs space dict to array
         for k in copy.deepcopy(self.env.observation_space.keys()):
             if k not in self.obs_keys:
@@ -78,11 +81,11 @@ class ObjectTrackerWrapper(gym.Wrapper):
     def step(self, action):
 
         obs, reward, done, info = self.env.step(action)
-        
+
         return self.augment_observations(obs, flatten=self.flatten), reward, done, info
 
     def reset(self, *args, **kwargs):
-        
+
         # reset tracker history
         self.tracker.reset()
 
@@ -123,6 +126,8 @@ class ObjectTrackerWrapper(gym.Wrapper):
                     obj_pose = self.tracker.get_rod_pose(
                         cropped_points, lowpass_filter=False, show=self.verbose
                     )
+                # add mujoco height
+                obj_pose[2] = 0.02
                 # convert to mujoco quaternion
                 obj_pose[-4:] = euler_to_quat_mujoco(quat_to_euler(obj_pose[-4:]))
                 return obj_pose
@@ -130,4 +135,29 @@ class ObjectTrackerWrapper(gym.Wrapper):
                 obj_pose = np.zeros(7)
                 print("WARNING: no obj detected")
 
-            
+        elif self.obj_id == "puck":
+            try:
+                if self.filter:
+                    obj_pose = self.tracker.get_rod_pose(
+                        cropped_points,
+                        lowpass_filter=True,
+                        cutoff_freq=self.cutoff_freq,
+                        control_hz=self.env.control_hz,
+                        show=self.verbose,
+                        height_max=0.1,
+                    )
+                else:
+                    obj_pose = self.tracker.get_rod_pose(
+                        cropped_points,
+                        lowpass_filter=False,
+                        show=self.verbose,
+                        height_max=0.1,
+                    )
+                # add mujoco height
+                obj_pose[2] = 0.0427
+                # convert to mujoco quaternion
+                obj_pose[-4:] = euler_to_quat_mujoco(quat_to_euler(obj_pose[-4:]))
+                return obj_pose
+            except:
+                obj_pose = np.zeros(7)
+                print("WARNING: no obj detected")

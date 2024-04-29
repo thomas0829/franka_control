@@ -1,15 +1,18 @@
 __pycache__/
 results/
-models/
 caldata.pkl
 data/
 outputs/
 wandb/
 logdir/
+logdir_dep/
 build/
+slurm/
 
 *.gif
 *.json
 *.png
 *.zip
 *.egg-info/
+
+tmp

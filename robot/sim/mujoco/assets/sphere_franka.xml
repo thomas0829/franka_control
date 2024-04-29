@@ -1,0 +1,114 @@
+<mujoco model="rod_franka">
+
+    <option>
+        <flag multiccd="enable" />
+    </option>
+    <size njmax='1000' nconmax='1000' />
+
+    <include file="sphere_scene.xml" />
+    <include file="franka_assets/franka_assets.xml" />
+
+    <visual>
+        <!-- <global offwidth="2560" offheight="1920" />
+        <quality shadowsize="4096" offsamples="8" />
+        <map force="0.1" fogend="5" /> -->
+        <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+        <rgba haze="0.15 0.25 0.35 1"/>
+        <global azimuth="120" elevation="-20"/>
+    </visual>
+
+    <compiler inertiafromgeom='auto' inertiagrouprange='0 5' angle="radian" texturedir="texture"
+        meshdir="franka_assets/meshes" />
+    <worldbody>
+
+        <!-- Cameras -->
+        <camera name="front" fovy="65"
+            pos="1.3420383158842424 -0.037408864541261 0.5281817817238226"
+            quat="0.60670078 0.37513562 0.37637644 0.5912091" />
+        <camera name="left" fovy="65" pos="0.5663422788968194 0.8021645313506761 0.4900356493435141"
+            quat="0.05478277 0.06033676 0.56395431 0.82177482" />
+        
+        <camera name="xx" pos="2.411 0.095 1.310" xyaxes="0.004 1.000 -0.000 -0.454 0.002 0.891"/>
+
+
+        <!-- Robot -->
+        <body pos='0. 0. 0.' euler='0 0 0'>
+            <include file="franka_assets/chain_paddle.xml" />
+        </body>
+
+        <!-- Golfball -->
+        <body pos="0.6 -0.06 0.03" name="sphere_body">
+            <site name="sphere_site" />
+            <inertial mass="0.02" pos="0 0 0" diaginertia="1. 1. 1." />
+            <freejoint name="sphere_freejoint" />
+            <geom name="sphere_geom" conaffinity="1" contype="1" size="0.03"
+            friction="0.05 0.0005 0.000001" solref="-1100 -2" material="golf" type="sphere" />
+        </body>
+        
+        <!-- Goal -->
+        <body pos="0.73 -0.49 -0.03" name="goal_body">
+            <geom name="goal_geom" conaffinity="0" contype="0" size="0.05" rgba="0 0 0 1"
+                type="sphere" />
+        </body>
+        <body pos="0.73 -0.49 0.1" name="flag_body">
+            <geom name="pole_geom" conaffinity="0" contype="0" size="0.005 0.1"
+                type="cylinder"  rgba="0 0 0 1" />
+            <geom pos="-0.04 0 0.07" name="flag_geom" conaffinity="0" contype="0" size="0.04 0.00001 0.03"  rgba="1 0 0 1"
+                type="box" />
+        </body>
+
+        <!-- Fixed Obstacles -->
+        <body pos="0.8 -0.1 0.04" name="obstacle0">
+            <geom name="obstacle0" conaffinity="1" contype="1" size="0.0175 0.4425 0.04"
+                material="wood"
+                type="box" />
+        </body>
+
+        <body pos="0.5 -0.56 0.04" name="obstacle1">
+            <geom name="obstacle1" conaffinity="1" contype="1" size="0.3175 0.0175 0.04"
+            material="wood"
+                type="box" />
+        </body>
+
+        <body pos="0.5 0.36 0.04" name="obstacle2">
+            <geom name="obstacle2" conaffinity="1" contype="1" size="0.3175 0.0175 0.04"
+            material="wood"
+                type="box" />
+        </body>
+
+        <body pos="0.2 -0.1 0.04" name="obstacle3">
+            <geom name="obstacle3" conaffinity="1" contype="1" size="0.0175 0.4425 0.04"
+            material="wood"
+                type="box" />
+        </body>
+
+        <body pos="0.5 -0.1 0.00001" name="surface">
+            <geom name="surface" conaffinity="1" contype="1" size="0.3 0.468 0.00001"
+            material="grass"
+                type="box" />
+        </body>
+
+        <!-- franka's reachable workspace -->
+        <!-- low: np.array([0.35, -0.38, 0.13, 0.00]),
+            high: np.array([0.65, 0.38, 0.8, 0.085]), -->
+        <!-- <geom conaffinity="2" contype="2" condim="1" name="reach" pos="0.54 0. 0.215"
+        size="0.16 0.25 0.2" type="box" rgba="0 255 0 0.1"/> -->
+
+    </worldbody>
+
+    <asset>
+        <texture name="grassplane" type="2d" height="1" width="1" file="grass.png" />
+        <material name='grass' texture="grassplane" texrepeat="1 1"
+            texuniform="false" />
+        <texture name="golfball"  height="1" width="1" file="golfball.png" />
+        <material name='golf' texture="golfball" texrepeat="1 1"
+            texuniform="false" />
+            <texture name="lightwood"  height="1" width="1" file="light-wood.png" />
+            <material name='wood' texture="lightwood" texrepeat="1 1"
+                texuniform="false" />
+    </asset>
+
+    <include file="franka_assets/actuator_position_arm.xml" />
+    <!-- <include file="franka_assets/actuator_position.xml" /> -->
+
+</mujoco>

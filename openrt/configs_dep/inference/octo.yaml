@@ -1,0 +1,13 @@
+num_timesteps: 50
+horizon: 2
+pred_horizon: 1
+im_size_x: 256
+im_size_y: 256
+step_duration: 0.1
+show_image: false
+# serial number, find with realsense_test.py
+main_camera: '215122255213'
+
+goal_eep: [0.3578328788280487, 0.0003321024705655873, 0.305997759103775, -3.135989077728518, 0.08807229172637632, 0.013793449679070677]
+
+ckpt_dir: "logdir/finetune_pick_red_cube_synthetic_sl/octo_finetune/experiment_20240320_152140"

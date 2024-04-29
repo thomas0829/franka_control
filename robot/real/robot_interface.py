@@ -171,6 +171,9 @@ class RobotInterfaceServer:
             time_to_go = self.adaptive_time_to_go(command)
         self._robot.move_to_joint_positions(command, time_to_go=time_to_go)
 
+    def move_to_ee_pose(self, pos, quat, time_to_go=None):
+        self._robot.move_to_ee_pose(pos, quat, time_to_go=time_to_go)
+        
     def get_joint_positions(self):
         return self._robot.get_joint_positions().tolist()
 
@@ -214,7 +217,7 @@ class RobotInterfaceServer:
 
         return state_dict, timestamp_dict
 
-    def adaptive_time_to_go(self, desired_joint_position, t_min=0, t_max=4):
+    def adaptive_time_to_go(self, desired_joint_position, t_min=1, t_max=4):
         curr_joint_position = self._robot.get_joint_positions()
         displacement = desired_joint_position - curr_joint_position
         time_to_go = self._robot._adaptive_time_to_go(displacement)

@@ -18,7 +18,19 @@ class ASIDWrapper(gym.Wrapper):
 
         self.obs_noise = obs_noise
 
-        if self.env.DoF == 2:
+        if self.DoF == 2 and self.env.obj_id == "puck":
+            self.unwrapped._reset_joint_qpos = np.array(
+                [
+                    0.36586183,
+                    0.31292763,
+                    -0.30332268,
+                    -2.77233706,
+                    0.09988396,
+                    2.89770401,
+                    0.74832614,
+                ]
+            )
+        elif self.env.DoF == 2 and self.env.obj_id == "rod":
             self.env.unwrapped._reset_joint_qpos = np.array(
                 [
                     0.85290707,
@@ -57,6 +69,18 @@ class ASIDWrapper(gym.Wrapper):
                 f"{self.obj_id}_geom",
             )
 
+        self.obj_body_id = mujoco.mj_name2id(
+            self.env.unwrapped._robot.model,
+            mujoco.mjtObj.mjOBJ_BODY,
+            f"{self.obj_id}_body",
+        )
+
+        self.surface_geom_id = mujoco.mj_name2id(
+            self.env.unwrapped._robot.model,
+            mujoco.mjtObj.mjOBJ_GEOM,
+            "surface_geom",
+        )
+
         # Physics parameters
         self.parameter_dict = parameter_dict
         # {
@@ -87,8 +111,8 @@ class ASIDWrapper(gym.Wrapper):
         else:
             obs += np.random.normal(0, self.obs_noise, obs.shape)
 
-        return obs 
-    
+        return obs
+
     def step(self, action):
 
         self.last_action = action
@@ -145,12 +169,12 @@ class ASIDWrapper(gym.Wrapper):
             # use set parameter + clip
             if self.params_set:
                 value = self.parameter_dict[key]["value"]
-                if self.parameter_dict[key]["type"] == "uniform":
-                    value = np.clip(
-                        value,
-                        self.parameter_dict[key]["min"],
-                        self.parameter_dict[key]["max"],
-                    )
+                # if self.parameter_dict[key]["type"] == "uniform":
+                value = np.clip(
+                    value,
+                    self.parameter_dict[key]["min"],
+                    self.parameter_dict[key]["max"],
+                )
             # sample parameter from uniform
             elif self.parameter_dict[key]["type"] == "uniform":
                 value = np.random.uniform(
@@ -167,16 +191,41 @@ class ASIDWrapper(gym.Wrapper):
 
             # set new parameter value
             if key == "inertia":
-                com_body_ids = mujoco.mj_name2id(
+                com_body_id = mujoco.mj_name2id(
                     self.env.unwrapped._robot.model,
                     mujoco.mjtObj.mjOBJ_BODY,
                     f"{self.obj_id}_com",
                 )
-                self.env.unwrapped._robot.model.body_pos[com_body_ids][1] = value
+                self.env.unwrapped._robot.model.body_pos[com_body_id][1] = value
 
             elif key == "friction":
                 for geom_id in self.obj_geom_ids:
-                    self.env.unwrapped._robot.model.geom_friction[geom_id][0] = value
+                    self.env.unwrapped._robot.model.geom_friction[geom_id][:2] = value
+                    self.env.unwrapped._robot.model.geom_friction[geom_id][2] = 0.0
+
+            elif key == "surface_friction":
+                self.env.unwrapped._robot.model.geom_friction[self.surface_geom_id][
+                    :2
+                ] = value
+                self.env.unwrapped._robot.model.geom_friction[self.surface_geom_id][
+                    2
+                ] = 0.0
+            elif key == "mass":
+                self.env.unwrapped._robot.model.body_mass[self.obj_body_id] = value
+            elif key == "damping":
+                joint_id = mujoco.mj_name2id(
+                    self.env.unwrapped._robot.model,
+                    mujoco.mjtObj.mjOBJ_JOINT,
+                    f"{self.obj_id}_freejoint",
+                )
+                self.env.unwrapped._robot.model.dof_damping[joint_id] = value
+            elif key == "frictionloss":
+                joint_id = mujoco.mj_name2id(
+                    self.env.unwrapped._robot.model,
+                    mujoco.mjtObj.mjOBJ_JOINT,
+                    f"{self.obj_id}_freejoint",
+                )
+                self.env.unwrapped._robot.model.dof_frictionloss[joint_id] = value
 
         if self.verbose:
             print(

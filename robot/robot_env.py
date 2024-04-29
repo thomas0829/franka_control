@@ -3,18 +3,13 @@ import time
 
 import gym
 import numpy as np
-import torch
+# import torch
 from gym.spaces import Box, Dict
 
-from utils.pointclouds import (
-    compute_camera_extrinsic,
-    compute_camera_intrinsic,
-    crop_points,
-    depth_to_points,
-    points_to_pcd,
-    read_calibration_file,
-    visualize_pcds,
-)
+from utils.pointclouds import (compute_camera_extrinsic,
+                               compute_camera_intrinsic, crop_points,
+                               depth_to_points, points_to_pcd,
+                               read_calibration_file, visualize_pcds)
 from utils.transformations import add_angles, angle_diff
 
 
@@ -27,12 +22,13 @@ class RobotEnv(gym.Env):
         self,
         # control frequency
         control_hz=10,
+        blocking_control=False,
         DoF=3,
         gripper=True,
         # Franka model: 'panda', 'fr3'
         robot_type="panda",
         # randomize arm position on reset
-        randomize_ee_on_reset=False,
+        randomize_ee_on_reset=0.0,
         # allows user to pause to reset reset of the environment
         pause_after_reset=False,
         # observation space configuration
@@ -44,6 +40,10 @@ class RobotEnv(gym.Env):
         ip_address=None,
         # specify path length if resetting after a fixed length
         max_path_length=None,
+        # cameras to use in sim
+        camera_names=["front"],
+        camera_rgb=True,
+        camera_depth=False,
         # camera type to use: 'realsense', 'zed'
         camera_model="realsense",
         camera_resolution=None,  # (128, 128) -> HxW
@@ -64,6 +64,7 @@ class RobotEnv(gym.Env):
         self.DoF = DoF
         self.gripper = gripper
         self.control_hz = control_hz
+        self.blocking_control = blocking_control
 
         self._episode_count = 0
         self._max_path_length = max_path_length
@@ -71,6 +72,8 @@ class RobotEnv(gym.Env):
 
         # resetting configuration
         self._randomize_ee_on_reset = randomize_ee_on_reset
+        self._set_randomize_ee_on_reset(randomize_ee_on_reset)
+
         self._pause_after_reset = pause_after_reset
         # polymetis _robot.home_pose
         self._reset_joint_qpos = np.array(
@@ -117,6 +120,7 @@ class RobotEnv(gym.Env):
 
         # action space
         # action_low, action_high = -1., 1.
+        # TODO this limits rotation (euler) -> increase for angle!
         action_low, action_high = -0.1, 0.1
         self.action_space = Box(
             np.array(
@@ -135,8 +139,10 @@ class RobotEnv(gym.Env):
         # ee_space_high = np.array([0.7, 0.38, 0.8, 3.14, 3.14, 3.14, 0.085])
         # ee_space_low = np.array([0.25, -0.5, 0.12, -3.14, -3.14, -3.14, 0.00])
         # ee_space_high = np.array([0.7, 0.5, 0.8, 3.14, 3.14, 3.14, 0.085])
-        ee_space_low = np.array([0.2, -1., 0.11, -3.14, -3.14, -3.14, 0.00])
-        ee_space_high = np.array([0.9, 1., 0.8, 3.14, 3.14, 3.14, 0.085])
+        # ee_space_low = np.array([0.1, -1.0, 0.11, -2*np.pi, -2*np.pi, -2*np.pi, 0.00])
+        # ee_space_high = np.array([1.0, 1.0, 1., 2*np.pi, 2*np.pi, 2*np.pi, 0.085])
+        ee_space_low = np.array([0.1, -1.0, 0.11, -np.pi, -np.pi, -np.pi, 0.00])
+        ee_space_high = np.array([1.0, 1.0, 0.7, np.pi, np.pi, np.pi, 0.085])
 
         # EE position (x, y, fixed z)
         if self.DoF == 2:
@@ -209,7 +215,8 @@ class RobotEnv(gym.Env):
             )
 
             if camera_model == "realsense":
-                from perception.cameras.realsense_camera import gather_realsense_cameras
+                from perception.cameras.realsense_camera import \
+                    gather_realsense_cameras
 
                 cameras = gather_realsense_cameras(hardware_reset=False)
             elif camera_model == "zed":
@@ -220,7 +227,8 @@ class RobotEnv(gym.Env):
             else:
                 cameras = []
 
-            from perception.cameras.multi_camera_wrapper import MultiCameraWrapper
+            from perception.cameras.multi_camera_wrapper import \
+                MultiCameraWrapper
 
             self._camera_reader = MultiCameraWrapper(cameras)
 
@@ -253,6 +261,9 @@ class RobotEnv(gym.Env):
                 has_renderer=on_screen_rendering,
                 has_offscreen_renderer=not on_screen_rendering,
                 calib_dict=calib_dict,
+                use_rgb=camera_rgb,
+                use_depth=camera_depth,
+                camera_names=camera_names,
             )
 
             # TODO move to MujocoManipulatorEnv
@@ -317,38 +328,80 @@ class RobotEnv(gym.Env):
                 self.DoF + 1
             ), f"Expected action shape: ({self.DoF+1},) got {action.shape}"
 
-        action = np.clip(action, self.action_space.low, self.action_space.high)
+        # BLOCKING CONTROL -> for BC inference
+        if self.blocking_control:
+            
+            self.control_hz = 1
+            # self._update_robot(
+            #     np.concatenate((action[:3], action[3:6], [action[-1]])),
+            #     action_space="cartesian_position",
+            #     blocking=True,
+            # )
 
-        pos_action, angle_action, gripper = self._format_action(action)
+            # keep track of desired pose in case controller drops actions
+            pos_action, angle_action, gripper = self._format_action(action)
+            
+            self._init_pos += pos_action
+            self._init_angle = add_angles(angle_action, self._init_angle) # 
+            
+            gripper = gripper
 
-        # clipping + any safety corrections for position
-        desired_pos = self._get_valid_pos(self._curr_pos + pos_action)
-        desired_angle = add_angles(angle_action, self._curr_angle)
+            # cartesian position control w/ blocking
+            self._update_robot(
+                np.concatenate((self._init_pos, self._init_angle, [gripper])),
+                action_space="cartesian_position",
+                blocking=False,
+            )
+            
+            comp_time = time.time() - start_time
+            sleep_left = max(0, (1 / self.control_hz) - comp_time)
+            if not self.sim:
+                time.sleep(sleep_left)
 
-        # if self.DoF == 4:
-        #     desired_angle[2] = desired_angle[2].clip(
-        #         self.ee_space.low[3], self.ee_space.high[3]
-        #     )
-        # elif self.DoF == 6:
-        #     desired_angle = desired_angle.clip(
-        #         self.ee_space.low[3:6], self.ee_space.high[3:6]
-        #     )
+            # # clip action to action space
+            # action = np.clip(action, self.action_space.low, self.action_space.high)
 
-        # cartesian position (delta) control
-        self._update_robot(
-            np.concatenate((desired_pos, desired_angle, [gripper])),
-            action_space="cartesian_position",
-        )
-        # # cartesian velocity control
-        # self._update_robot(
-        #     np.concatenate((pos_action, angle_action, [gripper])),
-        #     action_space="cartesian_velocity",
-        # )
+            # # formate action to DoF
+            # pos_action, angle_action, gripper = self._format_action(action)
 
-        comp_time = time.time() - start_time
-        sleep_left = max(0, (1 / self.control_hz) - comp_time)
-        if not self.sim:
-            time.sleep(sleep_left)
+            # # clipping + any safety corrections for position
+            # desired_pos = self._curr_pos + pos_action
+            # desired_angle = self._curr_angle + angle_action # add_angles(angle_action, self._curr_angle)
+
+            # # cartesian position control w/ blocking
+            # self._update_robot(
+            #     np.concatenate((desired_pos, desired_angle, [gripper])),
+            #     action_space="cartesian_position",
+            #     blocking=False,
+            # )
+
+        # NON BLOCKING CONTROL -> for everything else
+        else:
+    
+            # clip action to action space
+            action = np.clip(action, self.action_space.low, self.action_space.high)
+
+            # formate action to DoF
+            pos_action, angle_action, gripper = self._format_action(action)
+
+            # clipping + any safety corrections for position
+            desired_pos = self._get_valid_pos(self._curr_pos + pos_action)
+            desired_angle = add_angles(angle_action, self._curr_angle)
+
+            # cartesian position control
+            self._update_robot(
+                np.concatenate((desired_pos, desired_angle, [gripper])),
+                action_space="cartesian_position",
+                blocking=False,
+            )
+
+            # sleep to maintain control_hz
+            comp_time = time.time() - start_time
+            sleep_left = max(0, (1 / self.control_hz) - comp_time)
+            if not self.sim:
+                time.sleep(sleep_left)
+
+        # get observations
         obs = self.get_observation()
 
         self.curr_path_length += 1
@@ -358,6 +411,7 @@ class RobotEnv(gym.Env):
             and self.curr_path_length >= self._max_path_length
         ):
             done = True
+
         return obs, 0.0, done, {}
 
     def normalize_ee_obs(self, obs):
@@ -429,6 +483,10 @@ class RobotEnv(gym.Env):
                 # overwrite fixed z for 2DoF EE control with 0.13
                 self.ee_space.low[2] = 0.13
                 self.ee_space.high[2] = 0.13
+
+        if self.blocking_control:
+            self._init_pos = self._default_pos.copy()
+            self._init_angle = self._default_angle.copy()
 
         if self._randomize_ee_on_reset:
             self._randomize_reset_pos()
@@ -524,12 +582,13 @@ class RobotEnv(gym.Env):
         else:
             return len(self._camera_reader._all_cameras)
 
-    def render(self, mode=None):
+    def render(self, mode=None, sn=None):
         if self.sim and self._robot.has_renderer:
             self._robot.render()
         else:
             imgs = self.get_images()
-            sn = next(iter(imgs))
+            if sn is None:
+                sn = next(iter(imgs))
             return imgs[sn]["rgb"]
 
     def get_images(self):
@@ -623,19 +682,25 @@ class RobotEnv(gym.Env):
 
         visualize_pcds(points)
 
+    def _set_randomize_ee_on_reset(self, randomize_ee_on_reset):
+        self.xy_min_max = randomize_ee_on_reset
+        self.z_min_max = randomize_ee_on_reset
+        self.random_rot_min = randomize_ee_on_reset
+
     def _randomize_reset_pos(self):
         """takes random action along x-y plane, no change to z-axis / gripper"""
-        random_xy = np.random.uniform(-0.5, 0.5, (2,))
-        random_z = np.random.uniform(-0.2, 0.2, (1,))
+        random_xy = np.random.uniform(-self.xy_min_max, self.xy_min_max, (2,))
+        random_z = np.random.uniform(-self.z_min_max, self.z_min_max, (1,))
+        
         if self.DoF == 4:
-            random_rot = np.random.uniform(-0.5, 0.0, (1,))
+            random_rot = np.random.uniform(-self.random_rot_min, 0.0, (1,))
             act_delta = np.concatenate(
                 [random_xy, random_z, random_rot, np.zeros((1,))]
             )
         elif self.DoF == 6:
-            random_rot = np.random.uniform(-0.5, 0.0, (3,))
+            random_rot = np.random.uniform(-self.random_rot_min, 0.0, (3,))
             act_delta = np.concatenate(
-                [random_xy, random_z, *random_rot, np.zeros((1,))]
+                [random_xy, random_z, random_rot, np.zeros((1,))]
             )
         else:
             act_delta = np.concatenate([random_xy, random_z, np.zeros((1,))])
@@ -720,4 +785,4 @@ class RobotEnv(gym.Env):
     def seed(self, seed):
         self._seed = seed
         np.random.seed(seed)
-        torch.manual_seed(seed)
+        # torch.manual_seed(seed)

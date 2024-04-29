@@ -1,0 +1,24 @@
+num_trajectories: -1
+batch_size: 512
+num_epochs: 250
+
+learning_rate: 0.0003
+weight_decay: 0.0
+clip_grad_norm: 1.
+
+hidden_dim: 256
+
+# checkpoint_path: "${hydra:runtime.cwd}/${checkpoint_name: ${num_trajs}}"
+dataset_path: "data/pick_red_cube_synthetic/"
+
+act_noise_std: 0.001
+state_keys: ["lowdim_ee", "lowdim_qpos"]
+state_noise_std: 0.001
+image_keys: ["front_rgb"]
+# image_noise_std: 0.003
+image_color_jitter_scale: 0.1
+image_pixel_shift: 4
+image_resize: [224,224]
+
+eval_interval: 100
+save_interval: 50

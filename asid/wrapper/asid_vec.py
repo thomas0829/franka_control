@@ -12,6 +12,7 @@ def make_env(
     sysid=False,
     collision=False,
     verbose=False,
+    second=False,
 ):
 
     if verbose:
@@ -22,13 +23,21 @@ def make_env(
                 print("asid config", asid_cfg_dict)
 
     
-    if env_cfg_dict is not None and sysid:
+    if env_cfg_dict is not None and sysid and second:
+        robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
+            "base", "second_sysid_" + env_cfg_dict["obj_id"]
+        )
+    elif env_cfg_dict is not None and sysid:
         robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
             "base", "sysid_" + env_cfg_dict["obj_id"]
         )
     elif env_cfg_dict is not None and collision:
         robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
             "base", "collision_" + env_cfg_dict["obj_id"]
+        )
+    elif env_cfg_dict is not None and second:
+        robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
+            "base", "second_" + env_cfg_dict["obj_id"]
         )
     elif env_cfg_dict is not None:
         robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
@@ -45,8 +54,16 @@ def make_env(
         else:
             from robot.real.obj_tracker_wrapper import ObjectTrackerWrapper
 
-            env = ObjectTrackerWrapper(env, **env_cfg_dict, verbose=verbose)
-
+            if True or second:
+                import numpy as np
+                # crop_min = np.array([-1, 0, -1])
+                # crop_max = np.array([1, 1, 1])
+                crop_min = np.array([-1, -1, -1])
+                crop_max = np.array([1, 1, 1])
+                env = ObjectTrackerWrapper(env, **env_cfg_dict, crop_min=crop_min, crop_max=crop_max, verbose=verbose)
+            else:
+                env = ObjectTrackerWrapper(env, **env_cfg_dict, verbose=verbose)
+                
         if asid_cfg_dict is not None:
             from asid.wrapper.asid_wrapper import ASIDWrapper
             env = ASIDWrapper(env, **asid_cfg_dict, verbose=verbose)
@@ -61,6 +78,9 @@ def make_env(
                     device_id=device_id,
                 )
 
+    if env_cfg_dict is not None and env_cfg_dict["obj_id"] == "puck":
+        from asid.utils.puck import pre_reset_env_mod
+        pre_reset_env_mod(env, explore=True)
     env.seed(seed)
 
     return env
@@ -75,6 +95,7 @@ def make_vec_env(
     device_id=0,
     sysid=False,
     collision=False,
+    second=False,
     verbose=False,
 ):
     from robot.sim.vec_env.vec_wrapper import SubVecEnv
@@ -89,6 +110,7 @@ def make_vec_env(
             device_id=device_id,
             sysid=sysid,
             collision=collision,
+            second=second,
             verbose=bool(i == 0) and verbose,
         )
         for i in range(num_workers)

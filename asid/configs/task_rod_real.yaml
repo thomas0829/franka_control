@@ -1,0 +1,17 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - asid: inertia
+  - env: rod
+  - robot: real_6_dof
+  - train: task
+  - log: stdout
+
+exp_id: "inertia"
+
+seed: 0
+gpu_id: 0
+num_workers: 1
+num_workers_eval: 1

@@ -1,0 +1,6 @@
+obj_id: "bottle"
+obj_pos_noise: false
+obs_keys: ["lowdim_ee", "lowdim_qpos", "obj_pose"]
+safety_penalty: 0.
+filter: false
+flatten: true

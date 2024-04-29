@@ -1,0 +1,194 @@
+import os
+import time
+os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
+
+import hydra
+import joblib
+import torch
+
+from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
+from utils.logger import Video, configure_logger
+from utils.system import get_device, set_gpu_mode
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+import numpy as np
+
+from asid.wrapper.asid_vec import make_env, make_vec_env
+from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
+from utils.pointclouds import *
+
+
+def viz_points(points):
+    """quick visualization: viz_points(env.get_points())"""
+    points = np.concatenate((points[0, 0], points[0, 1]), axis=0)
+    points = crop_points(points)
+    visualize_pcds([points_to_pcd(points)])
+
+
+@hydra.main(
+    config_path="../configs/", config_name="explore_puck_real", version_base="1.1"
+)
+def run_experiment(cfg):
+
+    if "wandb" in cfg.log.format_strings:
+        run = setup_wandb(
+            cfg,
+            name=f"{cfg.exp_id}[explore][{cfg.seed}]",
+            entity=cfg.log.entity,
+            project=cfg.log.project,
+        )
+    set_random_seed(cfg.seed)
+    set_gpu_mode(cfg.gpu_id >= 0, gpu_id=cfg.gpu_id)
+    device = get_device()
+
+    logdir = os.path.join(cfg.log.dir, cfg.exp_id, str(cfg.seed), "explore")
+    logger = configure_logger(logdir, cfg.log.format_strings)
+
+    cfg.robot.max_path_length = 10
+    cfg.asid.obs_noise = 0.0
+
+    # debugging sim
+    # cfg.robot.on_screen_rendering = True
+    cfg.asid.reward = False
+    cfg.asid.parameter_dict = {}
+    cfg.env.obj_pose_noise_dict = None
+
+    # real env
+    envs = make_env(
+        robot_cfg_dict=hydra_to_dict(cfg.robot),
+        env_cfg_dict=hydra_to_dict(cfg.env),
+        asid_cfg_dict=hydra_to_dict(cfg.asid) if cfg.robot.ip_address is None else None,
+        seed=cfg.seed,
+        device_id=0,
+        verbose=False,
+    )
+
+    # envs.unwrapped._reset_joint_qpos = np.array(
+    #             [
+    #                 0.36586183,
+    #                 0.31292763,
+    #                 -0.30332268,
+    #                 -2.77233706,
+    #                 0.09988396,
+    #                 2.89770401,
+    #                 0.74832614,
+    #             ]
+    #         )
+    
+    from asid.utils.puck import pre_reset_env_mod, post_reset_env_mod
+
+    # TODO: set IK velocity limit higher
+    # curr = envs.unwrapped._robot.get_ee_pose()
+    # curr[0] += 0.8
+    # envs.unwrapped._update_robot(
+    #             np.concatenate((curr, [1.])),
+    #             action_space="cartesian_velocity",
+    #         )
+
+    ckptdir = os.path.join(
+        logdir, "policy_step_9001" # custom ckpt
+        # logdir, "policy",
+    )
+
+    from stable_baselines3 import SAC
+
+    policy = SAC("MlpPolicy", envs, device=device)
+    policy = policy.load(ckptdir)
+
+    data = {
+        "obs": [],
+        "act": [],
+        "rgbd": [],
+    }
+
+    # if cfg.env.sim and (hasattr(cfg.train, "ood_params") and cfg.train.ood_params):
+    #     param_dim = env.get_parameters()[0].shape[0]
+    #     # sample params in (normalized) range [-1.6, -1.1] or [1.1, 1.6]
+    #     rnd = np.random.uniform(low=-0.5, high=0.5, size=(1, param_dim))
+    #     param_ood = rnd + np.sign(rnd) * 1.1
+    #     env.set_parameters(param_ood)
+
+    if cfg.robot.ip_address is None:
+        envs.unwrapped._robot.camera_names += ["top_down"]
+
+    pre_reset_env_mod(envs, cfg, explore=True)
+
+    envs.seed(cfg.seed)
+    obs = envs.reset()[None]
+
+    images_array = envs.unwrapped.render(sn="top_down" if cfg.robot.ip_address is None else None)
+    data["rgbd"].append(images_array)
+
+    # post_reset_env_mod(envs, cfg)
+
+    # qvel = np.zeros(7)
+    # qvel[-2] = 7.
+    # for i in range(5):
+    #     envs.unwrapped._robot._robot.start_joint_velocity_control()
+    #     envs.unwrapped._robot._robot.update_desired_joint_velocities(qvel.tolist())
+    # qvel = np.zeros(7)
+    # envs.unwrapped._robot._robot.update_desired_joint_velocities(qvel.tolist())
+
+    done = False
+    # while not done:
+    for i in range(10):
+        
+        start = time.time()
+        images_array = envs.unwrapped.render(sn="top_down" if cfg.robot.ip_address is None else None)
+        data["rgbd"].append(images_array)
+
+        act, _ = policy.predict(obs, deterministic=False)
+        # act = np.array([[0.1 if i < 2 else -0.01, 0.]])
+        next_obs, reward, done, info = envs.step(act[0])
+
+        print(f"Time: {time.time() - start}")
+        print(
+            f"EE {np.around(obs[0,:2],3)} Obj {np.around(obs[0,11:13],3)} Act {np.around(act[0],3)}"
+        )
+
+        data["act"].append(act)
+        data["obs"].append(obs)
+        obs = next_obs[None]
+
+    # reset up right
+    envs.unwrapped._reset_joint_qpos = np.array(
+            [
+                -0.13677763938903809,
+                0.006021707784384489,
+                -0.048125553876161575,
+                -2.0723488330841064,
+                -0.021774671971797943,
+                2.0718562602996826,
+                0.5588430762290955,
+            ]
+        )
+    
+    obs = envs.reset()
+    data["final_obs"] = obs
+
+    if cfg.robot.ip_address is None and not cfg.asid.parameter_dict == {}:
+        data["zeta"] = envs.get_parameters()
+
+    for k, v in data.items():
+        data[k] = np.stack(v)
+
+    import imageio
+
+    imageio.mimwrite(os.path.join(logger.dir, "explore.mp4"), data["rgbd"].squeeze())
+    
+    # b, t, c, h, w
+    video = np.transpose(data["rgbd"][None, ..., :3], (1, 0, 4, 2, 3))
+    logger.record(
+        f"eval_policy/traj",
+        Video(video, fps=10),
+        exclude=["stdout"],
+    )
+    logger.dump(step=0)
+    
+    filenames = joblib.dump(data, os.path.join(logger.dir, "rollout.pkl"))
+    print("Saved rollout to", filenames)
+
+
+if __name__ == "__main__":
+    run_experiment()

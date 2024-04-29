@@ -5,7 +5,7 @@ from tqdm import tqdm
 import hydra
 
 from robot.controllers.oculus import VRController
-from robot.rlds_wrapper import (
+from robot.data_wrapper import (
     convert_rlds_to_np,
     load_rlds_dataset,
     wrap_env_in_rlds_logger,
@@ -36,7 +36,7 @@ def run_experiment(cfg):
     assert oculus.get_info()["controller_on"], "ERROR: oculus controller off"
     print("Oculus Connected")
 
-    # assert env._num_cameras > 0, "ERROR: camera(s) not connected!"
+    assert env._num_cameras > 0, "ERROR: camera(s) not connected!"
 
     with wrap_env_in_rlds_logger(
         env, cfg.exp_id, data_dir, max_episodes_per_shard=1 # cfg.episodes

@@ -1,0 +1,17 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - log: wandb
+  - robot: sim_6_dof
+  - aug: crop_resize
+  - env: cube
+  - training: bc_policy
+  - inference: diffusion_policy
+
+seed: 0
+gpu_id: 0
+
+exp_id: "bc_policy"
+

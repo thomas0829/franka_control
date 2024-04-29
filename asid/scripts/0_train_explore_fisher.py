@@ -124,7 +124,7 @@ def evaluate(policy, eval_envs, logger, tag="eval"):
 
 
 @hydra.main(
-    config_path="../configs/", config_name="explore_rod_sim", version_base="1.1"
+    config_path="../configs/", config_name="explore_puck_sim", version_base="1.1"
 )
 def run_experiment(cfg):
     if "wandb" in cfg.log.format_strings:

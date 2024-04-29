@@ -1,0 +1,7 @@
+parameter_dict: {"mass": {"type": "uniform", "min": 0.005, "max": 0.03, "value": null}}
+
+reward: true
+delta: 0.01
+normalization: 0.02
+
+obs_noise: 0.05

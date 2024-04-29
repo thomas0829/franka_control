@@ -7,7 +7,7 @@ defaults:
   - env: rod
   - robot: sim_6_dof
   - train: task
-  - log: wandb
+  - log: stdout
 
 exp_id: "inertia"
 

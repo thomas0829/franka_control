@@ -1,0 +1,2 @@
+python openrt/scripts/collect_demos_sim_curobo.py exp_id=sim2real_ml_1k act_noise_std=0.001 episodes=1000 robot.camera_names=["front"] robot.calibration_file=perception/cameras/calibration/logs/aruco/most_recent_calib.json
+python openrt/scripts/collect_demos_sim_curobo.py exp_id=sim2real_sl_1k act_noise_std=0.001 episodes=1000 env.obj_pose_noise_dict=null robot.camera_names=["front"] robot.calibration_file=perception/cameras/calibration/logs/aruco/most_recent_calib.json

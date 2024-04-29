@@ -1,7 +1,7 @@
 from setuptools import find_namespace_packages, setup
 
 requirements = [
-    "oculus_reader @ git+https://github.com/rail-berkeley/oculus_reader.git"
+    # "oculus_reader @ git+https://github.com/rail-berkeley/oculus_reader.git"
 ]
 setup(
     name="weird_franka",

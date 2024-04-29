@@ -1,0 +1,14 @@
+mode: "sysid" # "manual", "domain_randomization"
+action: 1 # for executing manual actions
+
+algorithm:
+  algo_name: cem
+
+  mu_init: 0.
+  sigma_init: 0.15
+
+  num_iters: 10
+  num_samples: 128
+  elite_frac: 0.1
+
+  num_workers: 1

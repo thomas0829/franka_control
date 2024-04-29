@@ -11,8 +11,10 @@ tqdm.monitor_interval = 0
 # from utils import logger as logger
 
 from mushroom_rl.algorithms.policy_search import REPS, ConstrainedREPS
-from mushroom_rl.distributions import (GaussianCholeskyDistribution,
-                                       GaussianDiagonalDistribution)
+from mushroom_rl.distributions import (
+    GaussianCholeskyDistribution,
+    GaussianDiagonalDistribution,
+)
 
 from utils.logger import Video
 
@@ -92,7 +94,7 @@ class SysIdentifier:
         verbose=False,
         logger=None,
         save_interval=10,
-        eval_interval=10,
+        eval_interval=1,
     ):
 
         if dist == "diag":
@@ -167,7 +169,7 @@ class SysIdentifier:
         for i in trange(self.n_epochs, disable=not self.verbose):
 
             candidates = self.sample()
-            # candidates = np.ones_like(candidates) * -0.05
+            # candidates = np.ones_like(candidates) * 0.05
             # for obs in real_obs:
             # fit += self.fitness(candidates, real_obs, real_acts, envs, render=i % self.eval_interval == 0)
 
@@ -176,6 +178,7 @@ class SysIdentifier:
                 real_obs,
                 real_acts,
                 envs,
+                epoch=i,
                 render=i % self.eval_interval == 0,
             )
             for j in range(self.fit_per_epoch):
@@ -201,7 +204,7 @@ class SysIdentifier:
                 self.save_zeta(real_obs, os.path.join(self.logger.dir, f"zeta_{i}"))
 
             if type(self.distribution) == GaussianDiagonalDistribution and np.all(
-                self.distribution._std < 1e-3
+                self.distribution._std < 1e-4
             ):
                 break
 
@@ -218,7 +221,7 @@ class SysIdentifier:
             ),
         )
 
-    def fitness(self, params, real_obs, real_acts, envs, render=False):
+    def fitness(self, params, real_obs, real_acts, envs, epoch, render=False):
 
         sim_obs = None
         # for i in trange(self.population_size):
@@ -258,10 +261,10 @@ class SysIdentifier:
 
             if self.logger is not None and render and i == 0:
                 imageio.mimsave(
-                    f"sim_{np.around(params[0][0], 2)}.gif",
+                    os.path.join(self.logger.dir, f"sim_{epoch}.mp4"),
                     np.stack(frames)[:, 0],
-                    duration=3,
                 )
+
                 video = np.transpose(np.stack(frames), (1, 0, 4, 2, 3))
                 self.logger.record(
                     f"sim/trajectory",
@@ -288,6 +291,9 @@ class SysIdentifier:
         # all
         # return - np.linalg.norm(obs_real - obs_sim.astype(np.float32), axis=(0,2))
         # obj pose
+        # return -np.linalg.norm(
+        #     obs_real[..., -7:] - obs_sim.astype(np.float32)[..., -7:], axis=(0, 2)
+        # )
         return -np.linalg.norm(
             obs_real[..., -7:] - obs_sim.astype(np.float32)[..., -7:], axis=(0, 2)
         )

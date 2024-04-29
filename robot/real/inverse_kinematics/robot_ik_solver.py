@@ -10,12 +10,12 @@ from utils.transformations_mujoco import (euler_to_quat_mujoco,
 
 
 class RobotIKSolver:
-    def __init__(self, robot_type, control_hz=10):
-        self.relative_max_joint_delta = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
+    def __init__(self, robot_type, control_hz=10, SPEED=False):
+        self.relative_max_joint_delta = np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]) if not SPEED else 2.3 * np.array([0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2])
         self.max_joint_delta = self.relative_max_joint_delta.max()
         self.max_gripper_delta = 0.25
-        self.max_lin_delta = 0.075
-        self.max_rot_delta = 0.15
+        self.max_lin_delta = 0.075 if not SPEED else 1.0 
+        self.max_rot_delta = 0.15 if not SPEED else 1.0
         self.control_hz = control_hz
 
         self._arm = FrankaArm(robot_type=robot_type)

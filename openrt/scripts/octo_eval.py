@@ -2,14 +2,13 @@ import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from datetime import datetime
-from functools import partial
 import os
 import time
 from dataclasses import dataclass
+from datetime import datetime
+from functools import partial
 from typing import Optional
 
-from absl import app, flags, logging
 import click
 import cv2
 import hydra
@@ -17,47 +16,53 @@ import imageio
 import jax
 import jax.numpy as jnp
 import numpy as np
+from absl import app, flags, logging
+from octo.model.octo_model import OctoModel
+from octo.utils.gym_wrappers import (HistoryWrapper, TemporalEnsembleWrapper,
+                                     UnnormalizeActionProprio)
 
 from asid.wrapper.asid_vec import make_env
-from utils.experiment import (
-    setup_wandb,
-    hydra_to_dict,
-    set_random_seed,
-)
-from octo.model.octo_model import OctoModel
-from octo.utils.gym_wrappers import (
-    HistoryWrapper,
-    TemporalEnsembleWrapper,
-    UnnormalizeActionProprio,
-)
-
+from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
-@hydra.main(config_path="../configs/", config_name="octo_eval", version_base="1.1")
+@hydra.main(config_path="../configs/", config_name="octo_eval_sim", version_base="1.1")
 def run_experiment(cfg):
 
+    logdir = os.path.join(cfg.inference.ckpt_dir, "videos") # os.path.join(cfg.log.dir, cfg.exp_id)
+    os.makedirs(logdir, exist_ok=True)
+    
+    cfg.robot.max_path_length = cfg.inference.num_timesteps
+    cfg.robot.blocking_control = True
+    
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
+        env_cfg_dict=hydra_to_dict(cfg.env),
         seed=cfg.seed,
         device_id=0,
         verbose=False,
     )
 
     from robot.gymnasium_wrapper import OctoPreprocessingWrapper
-    env = OctoPreprocessingWrapper(env)
+
+    env = OctoPreprocessingWrapper(
+        env,
+        img_keys=["left_rgb" if env.unwrapped.sim else "215122255213_rgb"],
+        proprio_keys=["lowdim_ee", "lowdim_qpos"],
+    )
 
     # load models
     # model = OctoModel.load_pretrained("hf://rail-berkeley/octo-small")
-    model = OctoModel.load_pretrained("logdir/finetune_config_pick_red_same_loc_10/octo_finetune/experiment_20240305_090917")
-    # OctoModel.load_pretrained("../../logdir/finetune_config_pick_red_same_loc_10/octo_finetune/experiment_20240305_090917")
+    model = OctoModel.load_pretrained(cfg.inference.ckpt_dir)
 
     # import ipdb; ipdb.set_trace()
     # wrap the robot environment
     env = UnnormalizeActionProprio(
         # env, model.dataset_statistics["bridge_dataset"], normalization_type="normal"
-        env, model.dataset_statistics, normalization_type="normal"
+        env,
+        model.dataset_statistics,
+        normalization_type="normal",
     )
     env = HistoryWrapper(env, horizon=cfg.inference.horizon)
     env = TemporalEnsembleWrapper(env, pred_horizon=cfg.inference.pred_horizon)
@@ -194,11 +199,11 @@ def run_experiment(cfg):
                     break
 
         # save video
-        if cfg.inference.video_save_path is not None:
-            os.makedirs(cfg.inference.video_save_path, exist_ok=True)
+        if logdir is not None:
+            os.makedirs(logdir, exist_ok=True)
             curr_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             save_path = os.path.join(
-                cfg.inference.video_save_path,
+                logdir,
                 f"{curr_time}.mp4",
             )
             video = np.concatenate([np.stack(goals), np.stack(images)], axis=1)

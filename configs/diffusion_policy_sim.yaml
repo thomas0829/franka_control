@@ -1,0 +1,16 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - log: wandb
+  - robot: sim_6_dof
+  - env: cube
+  - training: diffusion_policy
+  - inference: diffusion_policy
+
+seed: 0
+gpu_id: 0
+
+exp_id: "diffusion_policy"
+

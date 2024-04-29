@@ -1,0 +1,93 @@
+<mujoco model="puck_franka">
+
+    <!-- https://github.com/AirHockeyChallenge/air_hockey_challenge/blob/tournament/air_hockey_challenge/environments/data/table.xml -->
+    <option timestep="0.001" cone="elliptic" impratio="1">
+        <flag multiccd="enable" />
+    </option>
+    <size njmax='1000' nconmax='1000' />
+
+    <include file="basic_scene.xml" />
+    <include file="franka_assets/franka_assets.xml" />
+
+    <visual>
+        <global offwidth="2560" offheight="1920" />
+        <quality shadowsize="4096" offsamples="8" />
+        <map force="0.1" fogend="5" />
+    </visual>
+
+    <compiler inertiafromgeom='auto' inertiagrouprange='0 5' angle="radian" texturedir="texture"
+        meshdir="franka_assets/meshes" />
+
+    <asset>
+        <texture name="light_wood" type="2d" height="1" width="1" file="light-wood.png" />
+        <material name='wood' texture="light_wood" texrepeat="1 1"
+            texuniform="true" />
+    </asset>
+
+    <worldbody>
+
+        <!-- Cameras -->
+        <camera name="front" fovy="65"
+            pos="1.3420383158842424 -0.037408864541261 0.5281817817238226"
+            quat="0.60670078 0.37513562 0.37637644 0.5912091" />
+        <camera name="left" fovy="65" pos="0.5663422788968194 0.8021645313506761 0.4900356493435141"
+            quat="0.05478277 0.06033676 0.56395431 0.82177482" />
+        <camera name="top_down" pos="0.888 -0.248 1.938" xyaxes="0.998 0.057 -0.000 -0.056 0.994 0.096"/>
+
+
+        <!-- Robot -->
+        <body pos='0. 0. 0.' euler='0 0 0'>
+            <include file="franka_assets/chain.xml" />
+        </body>
+
+        <!-- Shuffle board -->
+        <body name="shuffleboard_body" pos="0.67 0. 0.02">
+
+            <!-- 113cm x 33cm -> 56.5cm x 16.5cm -->
+            <geom name="board_geom" type="box" pos="0. 0.0 -0.01" size="0.565 0.165 0.01" rgba="0.4 0.4 0.4 1" />
+            <geom name="left_geom" type="box" pos="0. 0.155 0." size="0.565 0.01 0.01" rgba="1 1 1 1" material="wood" />
+            <geom name="right_geom" type="box" pos="0. -0.155 0." size="0.565 0.01 0.01" rgba="1 1 1 1" material="wood" />
+            <geom name="front_geom" type="box" pos="0.555 0. 0." size="0.01 0.145 0.01" rgba="1 1 1 1" material="wood" />
+            <geom name="back_geom" type="box" pos="-0.555 0. 0." size="0.01 0.145 0.01" rgba="1 1 1 1" material="wood" />
+
+            <!-- 101cm x 23cm -> 50.5cm x 11.5cm -->
+            <geom name="surface_geom" type="box" pos="0. 0. 0." size="0.505 0.115 0.01" material="wood" condim="4" friction="0.0003 0.0003 0.0" conaffinity='1' contype='1' priority="1" />
+
+            <!-- sections -->
+            <geom name="zone_0_left" conaffinity="0" contype="0" condim="1" pos="0.1301 0.0951 0.0001" type="box" size="0.125 0.02 0.01" rgba="1 0.8 0.26 1" />
+            <geom name="zone_0_right" conaffinity="0" contype="0" condim="1" pos="0.1301 -0.0951 0.0001" type="box" size="0.125 0.02 0.01" rgba="1 0.8 0.26 1" />
+
+            <geom name="zone_1_left" conaffinity="0" contype="0" condim="1" pos="0.3801 0.0951 0.0001" type="box" size="0.125 0.02 0.01" rgba="0 0.26 0.7 1" />
+            <geom name="zone_1_right" conaffinity="0" contype="0" condim="1" pos="0.3801 -0.0951 0.0001" type="box" size="0.125 0.02 0.01" rgba="0 0.26 0.7 1" />
+
+            <!-- <geom name="marker_0" conaffinity="0" contype="0" condim="1" pos="0.08 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" />
+            <geom name="marker_1" conaffinity="0" contype="0" condim="1" pos="0.32 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" />
+            <geom name="marker_2" conaffinity="0" contype="0" condim="1" pos="0.57 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" /> -->
+            <!-- <geom name="marker_3" conaffinity="0" contype="0" condim="1" pos="0.53 0.15 0.02" type="sphere" size="0.015" rgba="0 0 1 1" /> -->
+
+        </body>
+        <!-- Puck -->
+        <!-- board height 3cm + puck height 1.27cm -->
+        <body pos="0.45 0. 0.0427" euler="0 0 0" name="puck_body">
+            <site name="puck_site" />
+            <joint type="free" name="puck_freejoint" damping="0.03" />
+            <inertial pos="0 0 0" mass="0.04" diaginertia="0.0002 0.0002 0.0002"/>    
+            <!-- official dims 2.54cm x 7.62cm -> 1.27cm x 3.81cm -->
+            <geom conaffinity="1" contype="1" condim="4"
+                name="puck_geom_0"
+                size="0.0381 0.0127" type="cylinder"
+                rgba="1 0 0 1" />
+        </body>
+
+        <!-- franka's reachable workspace -->
+        <!-- low: np.array([0.35, -0.38, 0.13, 0.00]),
+            high: np.array([0.65, 0.38, 0.8, 0.085]), -->
+        <!-- <geom conaffinity="2" contype="2" condim="1" name="reach" pos="0.54 0. 0.215"
+        size="0.16 0.25 0.2" type="box" rgba="0 255 0 0.1"/> -->
+
+    </worldbody>
+
+    <include file="franka_assets/actuator_position.xml" />
+    <!-- <include file="franka_assets/actuator_position.xml" /> -->
+
+</mujoco>

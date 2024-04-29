@@ -61,6 +61,9 @@ class ServerInterface:
     def move_to_joint_positions(self, command, time_to_go=None):
         self.server.move_to_joint_positions(command, time_to_go)
 
+    def move_to_ee_pose(self, pos, quat, time_to_go=None):
+        self.server.move_to_ee_pose(pos, quat, time_to_go)
+        
     def update_desired_joint_positions(self, command):
         self.server.update_desired_joint_positions(command)
 

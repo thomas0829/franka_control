@@ -139,6 +139,9 @@ class FrankaHardware(FrankaBase):
 
             self._robot.update_current_policy(udpate_pkt)
 
+    def move_to_ee_pose(self, pos, quat, time_to_go=3):
+        self._robot.move_to_ee_pose(pos, quat, time_to_go)
+
     def move_to_joint_positions(self, joint_pos_desired=None, time_to_go=3):
         # Use registered controller
         q_current = self._robot.get_joint_positions()

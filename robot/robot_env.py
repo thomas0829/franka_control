@@ -348,6 +348,7 @@ class RobotEnv(gym.Env):
 
             # cartesian position control w/ blocking
             self._update_robot(
+                # np.concatenate((self._curr_pos + pos_action, add_angles(angle_action, self._curr_angle), [gripper])),
                 np.concatenate((self._init_pos, self._init_angle, [gripper])),
                 action_space="cartesian_position",
                 blocking=False,

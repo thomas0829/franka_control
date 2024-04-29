@@ -13,7 +13,7 @@ from utils.experiment import hydra_to_dict
 
 
 @hydra.main(
-    config_path="../configs/", config_name="collect_cube_real", version_base="1.1"
+    config_path="../../configs/", config_name="collect_cube_real", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -22,12 +22,7 @@ def run_experiment(cfg):
 
     cfg.robot.max_path_length = cfg.max_episode_length
 
-    cfg.robot.DoF = 6
-    cfg.robot.control_hz = 1 # 15
-    cfg.robot.gripper = True
-    cfg.robot.blocking_control =  True # False
-    cfg.robot.on_screen_rendering = False
-    cfg.robot.max_path_length = 100
+    cfg.robot.blocking_control =  True
 
     cfg.env.flatten = False
 

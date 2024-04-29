@@ -164,6 +164,9 @@ class RobotInterfaceServer:
             time_to_go = self.adaptive_time_to_go(command)
         self._robot.move_to_joint_positions(command, time_to_go=time_to_go)
 
+    def move_to_ee_pose(self, pos, quat, time_to_go=None):
+        self._robot.move_to_ee_pose(pos, quat, time_to_go=time_to_go)
+        
     def get_joint_positions(self):
         return self._robot.get_joint_positions().tolist()
 

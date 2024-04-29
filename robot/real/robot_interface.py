@@ -143,14 +143,14 @@ class RobotInterfaceServer:
         # gripper crashes when running multiple grasp,grasp,grasp,... or ungrasp,ungrasp,ungrasp,... -> use flag
         if command > 0.0 and not self._grasping:
             self._gripper.grasp(
-                grasp_width=0.0, speed=0.05, force=0.1, blocking=blocking
+                grasp_width=0.0, speed=0.05, force=0.5, blocking=blocking
             )
             self._grasping = True
         elif command == 0.0 and self._grasping:
             self._gripper.grasp(
                 grasp_width=self._max_gripper_width,
                 speed=0.05,
-                force=0.1,
+                force=0.5,
                 blocking=blocking,
             )
             self._grasping = False
@@ -158,6 +158,13 @@ class RobotInterfaceServer:
     def update_desired_joint_positions(self, command):
         command = torch.Tensor(command)
         self._robot.update_desired_joint_positions(command)
+
+    def start_joint_velocity_control(self):
+        self._robot.start_joint_velocity_control(np.zeros(7))
+    
+    def update_desired_joint_velocities(self, command):
+        command = torch.Tensor(command)
+        self._robot.update_desired_joint_velocities(command)
 
     def move_to_joint_positions(self, command, time_to_go=None):
         if time_to_go is None:

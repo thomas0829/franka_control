@@ -63,7 +63,13 @@ class ServerInterface:
 
     def update_desired_joint_positions(self, command):
         self.server.update_desired_joint_positions(command)
-        
+    
+    def update_desired_joint_velocities(self, command):
+        self.server.update_desired_joint_velocities(command)
+
+    def start_joint_velocity_control(self):
+        self.server.start_joint_velocity_control()
+
     def update_gripper(self, command, velocity=True, blocking=False):
         self.server.update_gripper(command, velocity, blocking)
 

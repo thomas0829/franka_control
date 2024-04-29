@@ -3,7 +3,7 @@
 env._reset_joint_qpos = np.array([0.0, -0.8, 0.0, -2.3, 0.1, 2.3, 0.8])
 obs = env.reset()
 
-file = file_names[3]
+file = file_names[0]
 episode = h5py.File(file, "r+")["data"]["demo_0"]
 
 from utils.transformations import *
@@ -13,7 +13,7 @@ for i in range(30):
 ##################
 
 
-####### REPLAY EE POSE
+####### REPLAY EE POSE (polymetis IK)
 
 env._reset_joint_qpos = np.array([0.0, -0.8, 0.0, -2.3, 0.1, 2.3, 0.8])
 env.reset()
@@ -28,6 +28,53 @@ for i in range(30):
     # 45 DEGREE OFFSET MISSING IN EE SPACE
     desired_ee_quat = episode["obs"]["eef_quat"][i]
     env._robot.move_to_ee_pose(desired_ee_pos.tolist(), desired_ee_quat.tolist())
+
+##################
+
+
+####### REPLAY EE POSE (R2D2 IK)
+
+env._reset_joint_qpos = np.array([0.0, -0.8, 0.0, -2.3, 0.1, 2.3, 0.8])
+env.reset()
+file = file_names[0]
+episode = h5py.File(file, "r+")["data"]["demo_0"]
+from utils.transformations import *
+
+# OFFSET FROM WORLD FRAME TO ROBOT FRAME
+world_offset_pos = np.array([0.2045, 0., 0.])
+# 45 DEGREE OFFSET IN EE SPACE
+ee_offset_euler = np.array([0., 0., np.pi / 4])
+
+# BLOCKING CONTROL BY RUNNING WITH LOWER CONTROL FREQUENCY Hz
+env.control_hz = 1
+
+first_grasp_idx = np.where(episode["actions"][..., -1] == -1)[0][0]
+actions = episode["actions"][:].copy()
+actions[first_grasp_idx:] = 1
+
+for i in range(55):
+
+    start_time = time.time()
+    
+    desired_ee_pos = episode["obs"]["eef_pos"][i] + world_offset_pos
+    desired_ee_quat = episode["obs"]["eef_quat"][i]
+    desired_ee_euler = quat_to_euler(desired_ee_quat) + ee_offset_euler
+    # def normalize_angle(angle):
+    #     return np.arctan2(np.sin(angle), np.cos(angle))
+    # desired_ee_euler = normalize_angle(desired_ee_euler)
+
+    gripper = actions[i,-1]
+
+    env._update_robot(
+                np.concatenate((desired_ee_pos, desired_ee_euler, [gripper])),
+                action_space="cartesian_position",
+                blocking=False,
+            )
+
+    # SLEEP TO MAINTAIN CONTROL FREQUENCY
+    comp_time = time.time() - start_time
+    sleep_left = max(0, (1 / env.control_hz) - comp_time)
+    time.sleep(sleep_left)
 
 ##################
 

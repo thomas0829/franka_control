@@ -15,7 +15,7 @@ from utils.experiment import hydra_to_dict
 
 
 @hydra.main(
-    config_path="../configs/", config_name="collect_cube_real", version_base="1.1"
+    config_path="../../configs/", config_name="collect_cube_real", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -43,6 +43,7 @@ def run_experiment(cfg):
     env.action_space.high[:-1] = 1.0
 
     env._reset_joint_qpos = np.array([0.0, -0.8, 0.0, -2.3, 0.1, 2.3, 0.8])
+    offset = np.array([0.0, -0.569, 0.0, -2.810, 0.0, 3.037, 0.741]) - np.array([0.0, -0.8, 0.0, -2.3, 0.1, 2.3, 0.8])
 
     dataset_path = "data/helen_504/train"
     # dataset_path = f"data/{cfg.exp_id}/train"
@@ -66,6 +67,32 @@ def run_experiment(cfg):
         # cfg.robot.blocking_control = False
 
         obs = env.reset()
+
+        # desired_ee_pos = episode["obs"]["eef_pos"][0]
+        # desired_ee_pos[2] -= 0.1034
+        # desired_ee_quat = episode["obs"]["eef_quat"][0]
+        # robot_state = env._robot.get_robot_state()[0]
+
+        # desired_qpos = env._robot._ik_solver.cartesian_position_to_joint_position(desired_ee_pos, desired_ee_quat, robot_state)
+
+        # env._robot.update_joints(
+        #         desired_qpos.tolist(), velocity=False, blocking=True
+        #     )
+        
+        # desired_ee_pos = episode["obs"]["eef_pos"][0]
+        # desired_ee_quat = episode["obs"]["eef_quat"][0]
+        # env._robot.control_hz = 10
+        # env._robot.blocking_control = False
+        # obs = env.reset()
+        # error = np.linalg.norm(desired_ee_pos - obs["lowdim_ee"][:3])
+        # while error > 1e-3:
+        #     act = np.zeros(7)
+        #     act[:3] = desired_ee_pos - obs["lowdim_ee"][:3]
+        #     obs, _, _, _ = env.step(act)
+        #     error = np.linalg.norm(desired_ee_pos - obs["lowdim_ee"][:3])
+        #     print(error, desired_ee_pos, obs["lowdim_ee"][:3])
+
+
 
         # des_pose = env.get_observation()["lowdim_ee"].copy()
         # # des_pose[5] -= np.pi / 4
@@ -94,7 +121,6 @@ def run_experiment(cfg):
         for act in tqdm(actions):
 
             print(act)
-            act[3:] = 0.
             next_obs, rew, done, _ = env.step(act)
 
             obss.append(obs)

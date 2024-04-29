@@ -82,27 +82,38 @@ class RobotIKSolver:
 
         return joint_velocity
 
-    def cartesian_position_to_joint_position(
-        self, desired_ee_pos, desired_ee_quat, robot_state
-    ):
-        qpos = np.array(robot_state["joint_positions"])
-        qvel = np.array(robot_state["joint_velocities"])
-        curr_pos, curr_quat = robot_state["cartesian_position"][:3], euler_to_quat(
-            robot_state["cartesian_position"][3:]
-        )
+    # def cartesian_position_to_joint_position(
+    #     self, cartesian_pose, robot_state
+    # ):
+    #     qpos = np.array(robot_state["joint_positions"])
+    #     qvel = np.array(robot_state["joint_velocities"])
 
-        lin_vel = desired_ee_pos - curr_pos
-        rot_vel = quat_to_euler(quat_diff(desired_ee_quat, curr_quat))
+    #     cartesian_delta = cartesian_pose - robot_state["cartesian_position"] 
+    #     self._arm.update_state(self._physics, qpos, qvel)
+    #     self._cart_effector_6d.set_control(self._physics, cartesian_delta)
+    #     joint_delta = self._physics.bind(self._arm.actuators).ctrl.copy()
+    #     np.any(joint_delta)
 
-        action = np.concatenate([lin_vel, rot_vel])
-        self._arm.update_state(self._physics, qpos, qvel)
-        self._cart_effector_6d.set_control(self._physics, action)
-        joint_vel_ctrl = self._physics.bind(self._arm.actuators).ctrl.copy()
+    #     return qpos + joint_delta
+    
+    #     # qpos = np.array(robot_state["joint_positions"])
+    #     # qvel = np.array(robot_state["joint_velocities"])
+    #     # curr_pos, curr_quat = robot_state["cartesian_position"][:3], euler_to_quat(
+    #     #     robot_state["cartesian_position"][3:]
+    #     # )
 
-        desired_qpos = qpos + joint_vel_ctrl
-        np.any(desired_qpos)
+    #     # lin_vel = desired_ee_pos - curr_pos
+    #     # rot_vel = quat_to_euler(quat_diff(desired_ee_quat, curr_quat))
 
-        return desired_qpos
+    #     # action = np.concatenate([lin_vel, rot_vel])
+    #     # self._arm.update_state(self._physics, qpos, qvel)
+    #     # self._cart_effector_6d.set_control(self._physics, action)
+    #     # joint_vel_ctrl = self._physics.bind(self._arm.actuators).ctrl.copy()
+
+    #     # desired_qpos = qpos + joint_vel_ctrl
+    #     # np.any(desired_qpos)
+
+    #     # return desired_qpos
 
     ### Velocity To Delta ###
     def gripper_velocity_to_delta(self, gripper_velocity):

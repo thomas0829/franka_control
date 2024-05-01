@@ -13,5 +13,14 @@ defaults:
 seed: 0
 gpu_id: 0
 
-exp_id: "bc_policy"
+exp_id: null
 
+n_rollouts: 10
+
+open_loop: false
+open_loop_split: "eval"
+# ckpt_path: "robomimic/bc_trained_models/gaussian/20240427091609/models/model_epoch_500.pth"
+data_path: "data/sim2real_sl_1k/demos.hdf5"
+
+framework: "weird_bc"
+ckpt_path: null

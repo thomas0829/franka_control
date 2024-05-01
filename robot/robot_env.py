@@ -331,13 +331,6 @@ class RobotEnv(gym.Env):
         # BLOCKING CONTROL -> for BC inference
         if self.blocking_control:
             
-            self.control_hz = 1
-            # self._update_robot(
-            #     np.concatenate((action[:3], action[3:6], [action[-1]])),
-            #     action_space="cartesian_position",
-            #     blocking=True,
-            # )
-
             # keep track of desired pose in case controller drops actions
             pos_action, angle_action, gripper = self._format_action(action)
             
@@ -358,23 +351,6 @@ class RobotEnv(gym.Env):
             sleep_left = max(0, (1 / self.control_hz) - comp_time)
             if not self.sim:
                 time.sleep(sleep_left)
-
-            # # clip action to action space
-            # action = np.clip(action, self.action_space.low, self.action_space.high)
-
-            # # formate action to DoF
-            # pos_action, angle_action, gripper = self._format_action(action)
-
-            # # clipping + any safety corrections for position
-            # desired_pos = self._curr_pos + pos_action
-            # desired_angle = self._curr_angle + angle_action # add_angles(angle_action, self._curr_angle)
-
-            # # cartesian position control w/ blocking
-            # self._update_robot(
-            #     np.concatenate((desired_pos, desired_angle, [gripper])),
-            #     action_space="cartesian_position",
-            #     blocking=False,
-            # )
 
         # NON BLOCKING CONTROL -> for everything else
         else:

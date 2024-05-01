@@ -12,6 +12,7 @@ class ObjWrapper(gym.Wrapper):
         self,
         env,
         obj_id="rod",
+        obj_pose_init=None,
         obj_pose_noise_dict=None,
         joint_type="free",
         obs_keys=None, # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
@@ -52,7 +53,7 @@ class ObjWrapper(gym.Wrapper):
         # Object position
         self.obj_pose_noise_dict = obj_pose_noise_dict
         self.obj_pos_noise = obj_pose_noise_dict is not None
-        self.init_obj_pose = self.get_obj_pose()
+        self.init_obj_pose = self.get_obj_pose() if obj_pose_init is None else obj_pose_init
         self.curr_obj_pose = None
 
         # Reward

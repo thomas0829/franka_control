@@ -24,5 +24,6 @@ open_loop_split: "eval"
 # ckpt_path: "robomimic/bc_trained_models/gaussian/20240427091609/models/model_epoch_500.pth"
 data_path: "data/sim2real_sl_1k/demos.hdf5"
 
+framework: "robomimic"
 ckpt_path: "robomimic/robomimic/logdir/gaussian_rnn_r3m_img/gaussian_rnn_r3m_img/20240427105809/models/model_epoch_60.pth"
 # ckpt_path: "robomimic/bc_trained_models/gaussian_rnn_img/20240427093916/models/model_epoch_20.pth"

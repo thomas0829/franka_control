@@ -42,8 +42,10 @@ from utils.transformations import *
 
 # OFFSET FROM WORLD FRAME TO ROBOT FRAME
 world_offset_pos = np.array([0.2045, 0., 0.])
-# 45 DEGREE OFFSET IN EE SPACE
+# 45 DEGREE OFFSET IN EE SPACE MUJOCO
 ee_offset_euler = np.array([0., 0., np.pi / 4])
+# 90 DEGREE OFFSET IN EE SPACE POLYMETIS
+ee_offset_euler = np.array([0., 0., -np.pi / 2])
 
 # BLOCKING CONTROL BY RUNNING WITH LOWER CONTROL FREQUENCY Hz
 env.control_hz = 1

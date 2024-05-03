@@ -22,7 +22,9 @@ def run_experiment(cfg):
 
     cfg.robot.max_path_length = cfg.max_episode_length
 
-    cfg.robot.blocking_control =  True
+    # cfg.robot.blocking_control =  True
+    if cfg.robot.blocking_control:
+        cfg.robot.control_hz =  1
 
     cfg.env.flatten = False
 

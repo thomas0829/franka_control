@@ -1,6 +1,7 @@
 import datetime
 import glob
 import os
+import pickle
 
 import h5py
 import hydra
@@ -12,13 +13,13 @@ def shortest_angle(angles):
     return (angles + np.pi) % (2 * np.pi) - np.pi
 
 
-def normalize(arr, stats, key):
-    min_val, max_val = stats[f"{key}_min"], stats[f"{key}_max"]
+def normalize(arr, stats):
+    min_val, max_val = stats["min"], stats["max"]
     return 2 * (arr - min_val) / (max_val - min_val) - 1
 
 
-def unnormalize(arr, stats, key):
-    min_val, max_val = stats[f"{key}_min"], stats[f"{key}_max"]
+def unnormalize(arr, stats):
+    min_val, max_val = stats["min"], stats["max"]
     return 0.5 * (arr + 1) * (max_val - min_val) + min_val
 
 
@@ -130,13 +131,14 @@ def run_experiment(cfg):
                 "max": actions.max(axis=0),
             }
         }
-        np.save(os.path.join(hdf5_path, "stats.npy"), stats)
+
+        pickle.dump(stats, open(os.path.join(hdf5_path, "stats"), 'wb'))
 
         print("Normalizing actions ...")
         for split in cfg.splits:
             for demo_key in demo_keys[split]:
                 actions = grp[demo_key]["actions"]
-                actions = normalize(actions, stats, key="actions")
+                actions = normalize(actions, stats["action"])
                 grp[demo_key]["actions"][...] = actions
 
     now = datetime.datetime.now()

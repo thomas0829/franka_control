@@ -36,10 +36,13 @@ first_grasp_idx = np.where(episode["actions"][..., -1] == -1)[0][0]
 actions = episode["actions"][:].copy()
 actions[first_grasp_idx:] = 1
 
+jointss = []
 poss = []
 poss_des = []
 eulers = []
 eulers_des = []
+imgs = []
+
 
 for i in range(len(episode["obs"]["eef_pos"])):
 
@@ -57,11 +60,15 @@ for i in range(len(episode["obs"]["eef_pos"])):
                 action_space="cartesian_position",
                 blocking=False,
             )
-    
+
+    jointss.append(env._robot.get_joint_positions())
+
     poss.append(env._robot.get_ee_pos())
     poss_des.append(desired_ee_pos)
     eulers.append(env._robot.get_ee_angle())
     eulers_des.append(desired_ee_euler)
+
+    imgs.append(env.render())
 
     # SLEEP TO MAINTAIN CONTROL FREQUENCY
     comp_time = time.time() - start_time
@@ -100,3 +107,16 @@ plt.plot(quat_to_euler(episode["obs"]["eef_quat"])[...,2], color="tab:pink", lin
 #plt.plot(eulers_des[...,2], color="tab:pink", linestyle="--", label="yaw real (commanded)")
 plt.legend()
 plt.savefig(f"ee_angles_{file_idx}.png")
+
+plt.close()
+jointss = np.stack(jointss)
+colors = ["tab:orange", "tab:blue", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink"]
+for j in range(7):
+    if j == 0:
+        plt.plot(jointss[...,j], label=f"joint {j} real", color=colors[j])
+        plt.plot(episode["obs"]["joint_pos"][..., j], label=f"joint {j} isaac", color=colors[j], linestyle="dashed")
+    else:
+        plt.plot(jointss[...,j], color=colors[j])
+        plt.plot(episode["obs"]["joint_pos"][..., j], color=colors[j], linestyle="dashed")
+plt.legend()
+plt.savefig(f"joint_pos_{file_idx}.png")

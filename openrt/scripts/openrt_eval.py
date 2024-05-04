@@ -15,6 +15,7 @@ from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.logger import configure_logger
 from utils.system import get_device, set_gpu_mode
+from openrt.scripts.convert_np_to_hdf5 import normalize, unnormalize
 
 
 def inverse_discretize_bins(binned_data, min_value, max_value, num_bins=256):
@@ -121,6 +122,8 @@ def run_experiment(cfg):
             image_keys=[cn + "_rgb" for cn in camera_names],
         )
 
+    stats = pickle.load(open(os.path.join(cfg.data_path, "stats"), "rb"))
+
     data = {
         "obs": [],
         "act": [],
@@ -141,6 +144,9 @@ def run_experiment(cfg):
         # call openrt api
         act = call_rt(img, cfg.msg, cfg.url, cfg.minmaxlst)[None]
 
+        # unnorm action
+        act = unnormalize(act, stats["action"])
+        
         # step
         next_obs, reward, done, info = env.step(act)
 

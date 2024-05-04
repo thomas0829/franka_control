@@ -102,11 +102,12 @@ def move_to_cartesian_pose(
     steps = 0
     imgs = []
 
-    for i in range(len(qpos_plan.ee_position)):
+    # first waypoint is current pose -> start from i=1
+    for i in range(len(qpos_plan.ee_position)-1):
 
         des_pose = np.concatenate(
             (
-                qpos_plan.ee_position[i].cpu().numpy(),
+                qpos_plan.ee_position[i+1].cpu().numpy(),
                 quat_to_euler_mujoco(qpos_plan.ee_quaternion[i].cpu().numpy()),
             )
         )
@@ -132,6 +133,12 @@ def move_to_cartesian_pose(
             err = np.linalg.norm(pos_diff) + np.linalg.norm(angle_diff)
 
             # early stopping when actions don't change position anymore
+            # 5x more accuracy for last 3 steps
+            # if i > len(qpos_plan.ee_position) - 3:
+            #     if err < progress_threshold / 5:
+            #         break
+            # elif err < progress_threshold:
+            #     break
             if err < progress_threshold:
                 break
 
@@ -153,14 +160,14 @@ def collect_demo_pick_up(env):
     - success: whether the pick up was successful
     """
 
-    target_noise_std = 5e-3
-    progress_threshold = 5e-2
+    target_noise_std = 0.0
+    progress_threshold = 3e-2
 
     motion_planner = MotionPlanner(
         interpolation_dt=0.1, random_obstacle=False, device=torch.device("cuda:0")
     )
     controller = CartesianPDController(
-        Kp=1., Kd=0.0, control_hz=env.unwrapped._robot.control_hz
+        Kp=1.0, Kd=0.0, control_hz=env.unwrapped._robot.control_hz
     )
 
     env.reset()
@@ -177,7 +184,9 @@ def collect_demo_pick_up(env):
 
     # lowest possible z w/ Curobo | real is 0.13
     target_pose[2] = 0.12
-    target_pose_noisy = target_pose + np.random.normal(loc=0.0, scale=target_noise_std, size=target_pose.shape)
+    target_pose_noisy = target_pose + np.random.normal(
+        loc=0.0, scale=target_noise_std, size=target_pose.shape
+    )
     gripper = 0.0
     move_to_cartesian_pose(
         target_pose_noisy,
@@ -190,7 +199,9 @@ def collect_demo_pick_up(env):
 
     target_pose[2] = 0.3
     # randomize lift up position
-    target_pose_noisy = target_pose + np.random.normal(loc=0.0, scale=target_noise_std, size=target_pose.shape)
+    target_pose_noisy = target_pose + np.random.normal(
+        loc=0.0, scale=target_noise_std, size=target_pose.shape
+    )
     gripper = 1.0
     move_to_cartesian_pose(
         target_pose_noisy,
@@ -214,10 +225,11 @@ def run_experiment(cfg):
 
     cfg.robot.max_path_length = cfg.max_episode_length
 
-    cfg.robot.blocking_control = True
-    fake_blocking = cfg.robot.blocking_control
-    cfg.robot.blocking_control = not cfg.robot.blocking_control
-    
+    cfg.robot.blocking_control = False  # True
+    fake_blocking = False
+    # fake_blocking = cfg.robot.blocking_control
+    # cfg.robot.blocking_control = not cfg.robot.blocking_control
+
     language_instruction = "pick up the red cube"
 
     env = make_env(
@@ -239,7 +251,7 @@ def run_experiment(cfg):
             image_keys=[cn + "_rgb" for cn in camera_names],
             crop_render=True,
         )
-    
+
     if cfg.aug.camera_resize is not None:
         env = ResizeImageWrapper(
             env,

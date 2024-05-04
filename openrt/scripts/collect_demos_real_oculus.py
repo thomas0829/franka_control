@@ -36,7 +36,7 @@ def run_experiment(cfg):
     camera_names = [k for k in env.get_images().keys()]
 
     print(f"Camera names: {camera_names}")
-    
+
     # crop image observations
     if cfg.aug.camera_crop is not None:
         env = CropImageWrapper(
@@ -155,6 +155,11 @@ def run_experiment(cfg):
                 if cfg.robot.ip_address == None:
                     time.sleep(1 / cfg.robot.control_hz)
                     env.render()
+
+                # # remove depth from observations
+                # for cn in camera_names:
+                #     if cn + "_depth" in obs:
+                #         del obs[cn + "_depth"]
 
                 obss.append(obs)
                 acts.append(act)

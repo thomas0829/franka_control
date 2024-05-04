@@ -7,6 +7,7 @@ file = file_names[0]
 episode = h5py.File(file, "r+")["data"]["demo_0"]
 
 from utils.transformations import *
+
 for i in range(30):
     env._robot.update_joints((episode["obs"]["joint_pos"][i]).tolist(), velocity=False, blocking=True)
 
@@ -33,6 +34,10 @@ for i in range(30):
 
 
 ####### REPLAY EE POSE (R2D2 IK)
+# -> works in SIM!
+# -> real has offset issue -> maybe an additional 45 degrees from offset sim, i.e., +np.pi/2 ?
+
+from scipy.spatial.transform import Rotation as R
 
 env._reset_joint_qpos = np.array([0.0, -0.8, 0.0, -2.3, 0.1, 2.3, 0.8])
 env.reset()
@@ -52,16 +57,16 @@ first_grasp_idx = np.where(episode["actions"][..., -1] == -1)[0][0]
 actions = episode["actions"][:].copy()
 actions[first_grasp_idx:] = 1
 
-for i in range(55):
+imgs = []
+
+for i in range(len(actions)):
 
     start_time = time.time()
     
     desired_ee_pos = episode["obs"]["eef_pos"][i] + world_offset_pos
     desired_ee_quat = episode["obs"]["eef_quat"][i]
+
     desired_ee_euler = quat_to_euler(desired_ee_quat) + ee_offset_euler
-    # def normalize_angle(angle):
-    #     return np.arctan2(np.sin(angle), np.cos(angle))
-    # desired_ee_euler = normalize_angle(desired_ee_euler)
 
     gripper = actions[i,-1]
 

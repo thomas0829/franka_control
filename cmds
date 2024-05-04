@@ -1,114 +1,92 @@
 ######
 
 # non-blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio training.dataset_path=data/green_block_sl_10_nonblocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio training.dataset_path=data/green_block_sl_10_nonblocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio training.dataset_paths=data/green_block_sl_10_nonblocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio training.dataset_paths=data/green_block_sl_10_nonblocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10
 
 # non-blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img training.dataset_path=data/green_block_sl_10_nonblocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img training.dataset_path=data/green_block_sl_10_nonblocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img training.dataset_paths=data/green_block_sl_10_nonblocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img training.dataset_paths=data/green_block_sl_10_nonblocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10
 
 
 # blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio training.dataset_path=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-; python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio training.dataset_path=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio training.dataset_paths=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+; python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio training.dataset_paths=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=10
 
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio training.dataset_path=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio training.dataset_paths=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
 
 # blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img training.dataset_path=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
-; python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img training.dataset_path=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img training.dataset_paths=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
+; python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img training.dataset_paths=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=10
 
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img training.dataset_path=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img training.dataset_paths=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1
 
 ######
 
 python openrt/scripts/collect_demos_real_oculus.py exp_id=green_block_sl_10_sanity episodes=10 split=train
 
 # non-blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_sanity training.dataset_path=data/green_block_sl_10_sanity training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_sanity training.dataset_path=data/green_block_sl_10_sanity training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_sanity training.dataset_paths=data/green_block_sl_10_sanity training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_sanity training.dataset_paths=data/green_block_sl_10_sanity training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10
 
 # non-blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_sanity training.dataset_path=data/green_block_sl_10_sanity training.image_keys=["215122255213_rgb"] training.state_keys=[]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_sanity training.dataset_path=data/green_block_sl_10_sanity training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_sanity training.dataset_paths=data/green_block_sl_10_sanity training.image_keys=["215122255213_rgb"] training.state_keys=[]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_sanity training.dataset_paths=data/green_block_sl_10_sanity training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10
 
 
 # blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_sanity training.dataset_path=data/green_block_sl_10_sanity_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-; python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio training.dataset_path=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_sanity training.dataset_paths=data/green_block_sl_10_sanity_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+; python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio training.dataset_paths=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=10
 
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_sanity training.dataset_path=data/green_block_sl_10_sanity_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_sanity training.dataset_paths=data/green_block_sl_10_sanity_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
 
 # blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_sanity training.dataset_path=data/green_block_sl_10_sanity_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
-; python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img training.dataset_path=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_sanity training.dataset_paths=data/green_block_sl_10_sanity_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
+; python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img training.dataset_paths=data/green_block_sl_10_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=10
 
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_sanity training.dataset_path=data/green_block_sl_10_sanity_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_sanity training.dataset_paths=data/green_block_sl_10_sanity_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1
 
 #####
 
 python openrt/scripts/collect_demos_real_oculus.py exp_id=green_block_sl_10_middle episodes=10 split=train
 
 # non-blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_middle training.dataset_path=data/green_block_sl_10_middle training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_middle training.dataset_path=data/green_block_sl_10_middle training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_middle training.dataset_paths=data/green_block_sl_10_middle training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_middle training.dataset_paths=data/green_block_sl_10_middle training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10
 
 # non-blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_middle training.dataset_path=data/green_block_sl_10_middle training.image_keys=["215122255213_rgb"] training.state_keys=[]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_middle training.dataset_path=data/green_block_sl_10_middle training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_middle training.dataset_paths=data/green_block_sl_10_middle training.image_keys=["215122255213_rgb"] training.state_keys=[]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_middle training.dataset_paths=data/green_block_sl_10_middle training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10
 
 
 # blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_middle training.dataset_path=data/green_block_sl_10_middle_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_middle training.dataset_path=data/green_block_sl_10_middle_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_middle training.dataset_paths=data/green_block_sl_10_middle_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_middle training.dataset_paths=data/green_block_sl_10_middle_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
 
 # blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_middle training.dataset_path=data/green_block_sl_10_middle_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_middle training.dataset_path=data/green_block_sl_10_middle_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_middle training.dataset_paths=data/green_block_sl_10_middle_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_middle training.dataset_paths=data/green_block_sl_10_middle_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1
 
 ##### gripper pause --> weird behavior, doesn't work at all
 
 python openrt/scripts/collect_demos_real_oculus.py exp_id=green_block_sl_10_gripper_pause episodes=10 split=train
 
 # non-blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_gripper_pause training.dataset_path=data/green_block_sl_10_gripper_pause training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_gripper_pause training.dataset_path=data/green_block_sl_10_gripper_pause training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_gripper_pause training.dataset_paths=data/green_block_sl_10_gripper_pause training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_proprio_gripper_pause training.dataset_paths=data/green_block_sl_10_gripper_pause training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10
 
 # non-blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_gripper_pause training.dataset_path=data/green_block_sl_10_gripper_pause training.image_keys=["215122255213_rgb"] training.state_keys=[]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_gripper_pause training.dataset_path=data/green_block_sl_10_gripper_pause training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_gripper_pause training.dataset_paths=data/green_block_sl_10_gripper_pause training.image_keys=["215122255213_rgb"] training.state_keys=[]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=non_blocking_weird_bc_img_gripper_pause training.dataset_paths=data/green_block_sl_10_gripper_pause training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10
 
 
 # blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_gripper_pause training.dataset_path=data/green_block_sl_10_gripper_pause_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_gripper_pause training.dataset_path=data/green_block_sl_10_gripper_pause_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_gripper_pause training.dataset_paths=data/green_block_sl_10_gripper_pause_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_gripper_pause training.dataset_paths=data/green_block_sl_10_gripper_pause_blocking training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
 
 # blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_gripper_pause training.dataset_path=data/green_block_sl_10_gripper_pause_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_gripper_pause training.dataset_path=data/green_block_sl_10_gripper_pause_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1
-
-##### sim
-
-python openrt/scripts/collect_demos_sim_curobo.py exp_id=green_block_sl_10_sim act_noise_std=0.005 episodes=10 env.obj_pose_noise_dict=null
-
-# non-blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_sim exp_id=non_blocking_weird_bc_img_proprio_sim training.dataset_path=data/green_block_sl_10_sim training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=non_blocking_weird_bc_img_proprio_sim training.dataset_path=data/green_block_sl_10_sim training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10 env.obj_pose_noise_dict=null
-
-# non-blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_sim exp_id=non_blocking_weird_bc_img_sim training.dataset_path=data/green_block_sl_10_sim training.image_keys=["front_rgb"] training.state_keys=[]
-python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=non_blocking_weird_bc_img_sim training.dataset_path=data/green_block_sl_10_sim training.image_keys=["front_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10 env.obj_pose_noise_dict=null
-
-
-# blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_proprio_sim training.dataset_path=data/green_block_sl_10_sim_blocking training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_proprio_sim training.dataset_path=data/green_block_sl_10_sim_blocking training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null
-
-# blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_sim training.dataset_path=data/green_block_sl_10_sim_blocking training.image_keys=["front_rgb"] training.state_keys=[]
-python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_sim training.dataset_path=data/green_block_sl_10_sim_blocking training.image_keys=["front_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null
-
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_gripper_pause training.dataset_paths=data/green_block_sl_10_gripper_pause_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_gripper_pause training.dataset_paths=data/green_block_sl_10_gripper_pause_blocking training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1
 
 ##### two block locations
 
@@ -118,15 +96,60 @@ python openrt/scripts/collect_demos_real_oculus.py exp_id=green_block_sl_10_righ
 ##### left
 
 # blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_left_right training.dataset_path=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_left_right training.dataset_path=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_left_right training.dataset_paths=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_left_right training.dataset_paths=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1
 
 ##### left + right
 
 # blocking | weird bc | img proprio
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_left_right training.dataset_path=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_left_right training.dataset_path=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_left_right training.dataset_paths=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_proprio_left_right training.dataset_paths=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null
 
 # blocking | weird bc | img
-python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_left_right training.dataset_path=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=[]
-python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_left_right training.dataset_path=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null
+python training/weird_bc/train_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_left_right training.dataset_paths=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=[]
+python training/weird_bc/eval_script.py --config-name=bc_policy_real exp_id=blocking_weird_bc_img_left_right training.dataset_paths=data/green_block_ml_50 training.image_keys=["215122255213_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null
+
+
+
+##### SIM #####
+
+python openrt/scripts/collect_demos_sim_curobo.py exp_id=green_block_sl_10_sim act_noise_std=0.005 episodes=10 env.obj_pose_noise_dict=null
+
+# non-blocking | weird bc | img proprio
+python training/weird_bc/train_script.py --config-name=bc_policy_sim exp_id=non_blocking_weird_bc_img_proprio_sim training.dataset_paths=data/green_block_sl_10_sim training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=non_blocking_weird_bc_img_proprio_sim training.dataset_paths=data/green_block_sl_10_sim training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=false robot.control_hz=10 env.obj_pose_noise_dict=null
+
+# non-blocking | weird bc | img
+python training/weird_bc/train_script.py --config-name=bc_policy_sim exp_id=non_blocking_weird_bc_img_sim training.dataset_paths=data/green_block_sl_10_sim training.image_keys=["front_rgb"] training.state_keys=[]
+python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=non_blocking_weird_bc_img_sim training.dataset_paths=data/green_block_sl_10_sim training.image_keys=["front_rgb"] training.state_keys=[] robot.blocking_control=false robot.control_hz=10 env.obj_pose_noise_dict=null
+
+
+# blocking | weird bc | img proprio
+python training/weird_bc/train_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_proprio_sim training.dataset_paths=data/green_block_sl_10_sim_blocking training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_proprio_sim training.dataset_paths=data/green_block_sl_10_sim_blocking training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null
+
+# blocking | weird bc | img
+python training/weird_bc/train_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_sim training.dataset_paths=data/green_block_sl_10_sim_blocking training.image_keys=["front_rgb"] training.state_keys=[]
+python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_sim training.dataset_paths=data/green_block_sl_10_sim_blocking training.image_keys=["front_rgb"] training.state_keys=[] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null
+
+
+##### left + right
+
+python openrt/scripts/collect_demos_sim_curobo.py exp_id=green_block_sl_10_sim_left episodes=10 robot.camera_names=["front"] env.obj_pose_noise_dict=null env.obj_pose_init="[0.5, 0.15, 0.02, 0., 0., 0., 1.]"
+python openrt/scripts/collect_demos_sim_curobo.py exp_id=green_block_sl_10_sim_right episodes=10 robot.camera_names=["front"] env.obj_pose_noise_dict=null env.obj_pose_init="[0.5, -0.15, 0.02, 0., 0., 0., 1.]"
+
+# blocking | robomimic | img proprio | left
+python robomimic/robomimic/scripts/train.py --name robomimic_img_proprio_left --config default_config.json --data data/green_block_sl_10_sim_left/demos.hdf5
+python training/weird_bc/eval_script.py --config-name=eval_robomimic_sim exp_id=blocking_weird_bc_img_proprio_left_sim robot.camera_names=["front"] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null env.obj_pose_init="[0.5, 0.15, 0.02, 0., 0., 0., 1.]" robot.max_path_length=70 ckpt_path="/home/weirdlab/Projects/polymetis_franka/robomimic/robomimic/logdir/robomimic_img_proprio_left/robomimic_img_proprio_left/20240430112132/models/model_epoch_20.pth" open_loop=false
+
+python training/weird_bc/train_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_proprio_left_sim training.dataset_paths=["data/green_block_sl_10_sim_left"] training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=blocking_weird_bc_img_proprio_left_sim training.dataset_paths=["data/green_block_sl_10_sim_left"] robot.camera_names=["front"] training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null env.obj_pose_init="[0.5, 0.15, 0.02, 0., 0., 0., 1.]" open_loop=false robot.max_path_length=70
+
+##### middle
+python openrt/scripts/collect_demos_sim_curobo.py exp_id=green_block_sl_100_sim_middle episodes=100 robot.camera_names=["front"] env.obj_pose_noise_dict=null
+
+python robomimic/robomimic/scripts/train.py --name robomimic_blocking_middle --config default_config.json --data data/cube_100_middle_blocking/demos.hdf5
+python training/weird_bc/eval_script.py --config-name=eval_robomimic_sim exp_id=robomimic_blocking_middle robot.camera_names=["front"] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null robot.max_path_length=100 data_path="data/cube_100_middle_blocking/demos.hdf5" ckpt_path="logdir/robomimic_blocking_middle/robomimic_blocking_middle/20240430165102/models/model_epoch_40.pth"
+
+python training/weird_bc/train_script.py exp_id=weird_blocking_middle training.dataset_paths=["data/cube_100_middle_blocking"] training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"]
+python training/weird_bc/eval_script.py --config-name=bc_policy_sim exp_id=weird_blocking_middle training.dataset_paths=["data/cube_100_middle_blocking"] robot.camera_names=["front"] training.image_keys=["front_rgb"] training.state_keys=["lowdim_ee","lowdim_qpos"] robot.blocking_control=true robot.control_hz=1 env.obj_pose_noise_dict=null robot.max_path_length=100

@@ -4,7 +4,7 @@ hydra:
   
 defaults:
   - log: stdout
-  - robot: sim_2_dof
+  - robot: sim_6_dof
 
 seed: 0
 gpu_id: 0

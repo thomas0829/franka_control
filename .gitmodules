@@ -4,6 +4,9 @@
 [submodule "training/weird_bc"]
 	path = training/weird_bc
 	url = https://github.com/memmelma/weird_bc.git
+[submodule "training/robomimic_nvidia"]
+	path = training/robomimic_nvidia
+	url = https://github.com/memmelma/robomimic_nvidia.git
 [submodule "training/weird_stable-baselines3"]
 	path = training/weird_stable-baselines3
 	url = https://github.com/memmelma/weird_stable-baselines3.git

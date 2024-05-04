@@ -1,11 +1,14 @@
-name: franka
+# python=3.9
+# manually pip install dm-robotics-moma=0.6.0
+# mamba install pytorch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 pytorch-cuda=12.1 -c pytorch -c nvidia
+name: polymetis_franka
 channels:
   - pytorch
   - nvidia
   - conda-forge
   - defaults
 dependencies:
-  - librealsense=2.54.2.5684
+  # - librealsense=2.54.2.5684
   - pytorch=2.0.1
   - pytorch-cuda=11.7
   - cudatoolkit=11.7
@@ -15,10 +18,12 @@ dependencies:
   - py
   - pip
   - pip:
+    - zerorpc
+    - pyrealsense2
     - mujoco==3.0.0
     - opencv-python
     - open3d
-    - dm-robotics-moma
+    # - dm-robotics-moma
     - gym==0.22.0
     - mujoco-python-viewer
     - hydra-core

@@ -1,11 +1,12 @@
+import glob
 import os
 import time
+
+import hydra
+import imageio
+import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-import imageio
-import hydra
-import glob
-import matplotlib.pyplot as plt
 
 from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
@@ -13,7 +14,7 @@ from utils.experiment import hydra_to_dict
 
 
 @hydra.main(
-    config_path="../../configs/", config_name="collect_cube_real", version_base="1.1"
+    config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -21,11 +22,6 @@ def run_experiment(cfg):
     os.makedirs(logdir, exist_ok=True)
 
     cfg.robot.max_path_length = cfg.max_episode_length
-
-    # cfg.robot.blocking_control =  True
-    if cfg.robot.blocking_control:
-        cfg.robot.control_hz =  1
-
     cfg.env.flatten = False
 
     env = make_env(
@@ -35,11 +31,9 @@ def run_experiment(cfg):
         verbose=True,
     )
 
-    # TODO check if this makes a difference -> does when replaying action
-    # env.action_space.low[:-1] = -1.0
-    # env.action_space.high[:-1] = 1.0
+    camera_names = [k + "_rgb" for k in env.get_images().keys()]
 
-    dataset_path = f"data/{cfg.exp_id}/train"
+    dataset_path = f"data/{cfg.exp_id}/{cfg.split}"
     file_names = glob.glob(f"{dataset_path}/episode_*.npy")
     assert len(file_names) > 0, f"WARNING: no data in {dataset_path}!"
 
@@ -58,39 +52,33 @@ def run_experiment(cfg):
         init_angle = env._curr_angle
 
         for step in tqdm(episode):
-            
+
             start_time = time.time()
-            
+
             act = step["action"]
             print(act)
             next_obs, rew, done, _ = env.step(act)
 
-            # init_pos += act[:3]
-            # init_angle += act[3:6]
-            # gripper = act[6]
-
-            # env._update_robot(
-            #     np.concatenate((init_pos, init_angle, [gripper])),
-            #     action_space="cartesian_position", blocking=True,
-            # )
-            # next_obs = env.get_observation()
-            
             obss.append(obs)
             acts.append(act)
             obs = next_obs
 
-            comp_time = time.time() - start_time
-            sleep_left = max(0, (1 / cfg.robot.control_hz) - comp_time)
-            # time.sleep(sleep_left)
-            # time.sleep(1/cfg.robot.control_hz)
-
         env.reset()
 
         # visualize traj
-        img_obs = np.stack([obs["215122255213_rgb"] for obs in obss])
+        img_obs = np.stack([obs[camera_names[0]] for obs in obss])
         imageio.mimsave(os.path.join(logdir, "replay.mp4"), img_obs)
         # ugly hack to get the demo images
-        img_demo = np.stack([step["215122255213_rgb"] if "215122255213_rgb" in step.keys() else step["front_rgb"] for step in episode])
+        img_demo = np.stack(
+            [
+                (
+                    step[camera_names[0]]
+                    if camera_names[0] in step.keys()
+                    else step["front_rgb"]
+                )
+                for step in episode
+            ]
+        )
         imageio.mimsave(os.path.join(logdir, "demo.mp4"), img_demo)
 
         # plot difference between demo and replay
@@ -108,21 +96,12 @@ def run_experiment(cfg):
         labels = ["x", "y", "z"]
         colors = ["tab:orange", "tab:blue", "tab:green"]
 
-        for i, (l,c) in enumerate(zip(labels, colors)):
-            plt.plot(ee_act[:,i], color=c, label=f"{l} demo")
-            plt.plot(ee_obs[:,i], color=c, linestyle="dashed", label=f"{l} replay")
-
-        # labels = ["x", "y", "z", "roll", "pitch", "yaw"]
-        # colors = ["tab:orange", "tab:blue", "tab:green", "red", "blue", "green"]
-
-        # for i, (l,c) in enumerate(zip(labels, colors)):
-        #     plt.plot(ee_act[:,i], color=c, label=f"{l} demo")
-        #     plt.plot(ee_obs[:,i], color=c, linestyle="dashed", label=f"{l} replay")
+        for i, (l, c) in enumerate(zip(labels, colors)):
+            plt.plot(ee_act[:, i], color=c, label=f"{l} demo")
+            plt.plot(ee_obs[:, i], color=c, linestyle="dashed", label=f"{l} replay")
 
         plt.legend()
         plt.show()
-
-        time.sleep(5)
 
     env.reset()
 

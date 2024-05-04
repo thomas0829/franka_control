@@ -7,16 +7,14 @@ from tqdm import tqdm
 
 from robot.controllers.oculus import VRController
 from robot.crop_wrapper import CropImageWrapper
-from robot.data_wrapper import (DataCollectionWrapper, convert_rlds_to_np,
-                                load_rlds_dataset, wrap_env_in_rlds_logger)
+from robot.data_wrapper import DataCollectionWrapper
 from robot.resize_wrapper import ResizeImageWrapper
-from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
 
 
 @hydra.main(
-    config_path="../../configs/", config_name="collect_cube_real", version_base="1.1"
+    config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -24,39 +22,38 @@ def run_experiment(cfg):
     os.makedirs(logdir, exist_ok=True)
 
     cfg.robot.max_path_length = cfg.max_episode_length
-
-    # cfg.robot.DoF = 6
-    # cfg.robot.control_hz = 15
-    cfg.robot.gripper = True
-    fake_blocking = cfg.robot.blocking_control
-    cfg.robot.blocking_control = False
-    cfg.robot.on_screen_rendering = False
-    cfg.robot.max_path_length = 100
-
     cfg.env.flatten = False
-    cfg.robot.imgs = True
+    assert cfg.robot.imgs, "ERROR: set robot.imgs=true to record image observations!"
 
-    language_instruction = "pick up the green cube"
-
+    # create env
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         seed=cfg.seed,
         device_id=0,
         verbose=True,
     )
-    
-    # TODO check if this makes a difference -> does when replaying action
-    # env.action_space.low[:-1] = -1.0
-    # env.action_space.high[:-1] = 1.0
-    
-    env.action_space.low[:3] = -0.1
-    env.action_space.high[:3] = 0.1
-    env.action_space.low[3:] = -0.25
-    env.action_space.high[3:] = 0.25
 
     camera_names = [k + "_rgb" for k in env.get_images().keys()]
-    env = CropImageWrapper(env, y_min=160, image_keys=camera_names)
-    env = ResizeImageWrapper(env, size=(224, 224), image_keys=camera_names)
+
+    # crop image observations
+    if cfg.aug.camera_crop is not None:
+        env = CropImageWrapper(
+            env,
+            x_min=cfg.aug.camera_crop[0],
+            x_max=cfg.aug.camera_crop[1],
+            y_min=cfg.aug.camera_crop[2],
+            y_max=cfg.aug.camera_crop[3],
+            image_keys=[cn + "_rgb" for cn in camera_names],
+            crop_render=True,
+        )
+
+    # resize image observations
+    if cfg.aug.camera_resize is not None:
+        env = ResizeImageWrapper(
+            env,
+            size=cfg.aug.camera_resize,
+            image_keys=[cn + "_rgb" for cn in camera_names],
+        )
 
     obs = env.reset()
     print("Observation keys", obs.keys())
@@ -64,8 +61,8 @@ def run_experiment(cfg):
     savedir = f"data/{cfg.exp_id}/{cfg.split}"
     env = DataCollectionWrapper(
         env,
-        language_instruction=language_instruction,
-        fake_blocking=fake_blocking,
+        language_instruction=cfg.language_instruction,
+        fake_blocking=False,
         act_noise_std=cfg.act_noise_std,
         save_dir=savedir,
     )
@@ -81,7 +78,7 @@ def run_experiment(cfg):
 
         # reset w/o recording obs and w/o randomizing ee pos
         randomize_ee_on_reset = env.unwrapped._randomize_ee_on_reset
-        env.unwrapped._set_randomize_ee_on_reset(0.)
+        env.unwrapped._set_randomize_ee_on_reset(0.0)
         env.unwrapped.reset()
         env.unwrapped._set_randomize_ee_on_reset(randomize_ee_on_reset)
 
@@ -97,17 +94,22 @@ def run_experiment(cfg):
                 obs = env.reset()
                 print("Start Collecting")
                 break
-            
+
         print(f"Press 'A' to Indicate SUCCESS, Press 'B' to Indicate FAILURE")
 
         obss = []
         acts = []
 
-        for j in tqdm(range(cfg.max_episode_length), desc=f"Collecting Trajectory {n_traj}/{cfg.episodes}"):
-            
+        for j in tqdm(
+            range(cfg.max_episode_length),
+            desc=f"Collecting Trajectory {n_traj}/{cfg.episodes}",
+        ):
+
             # wait for controller input
             info = oculus.get_info()
-            while (not info["success"] and not info["failure"]) and not info["movement_enabled"]:
+            while (not info["success"] and not info["failure"]) and not info[
+                "movement_enabled"
+            ]:
                 info = oculus.get_info()
 
             # press 'A' to indicate success
@@ -156,7 +158,7 @@ def run_experiment(cfg):
                 acts.append(act)
 
                 obs = next_obs
-        
+
         # save trajectory if success
         if save:
             env.save_buffer()

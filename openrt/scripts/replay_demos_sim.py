@@ -23,7 +23,8 @@ def run_experiment(cfg):
     logdir = os.path.join(cfg.log.dir, cfg.exp_id)
     os.makedirs(logdir, exist_ok=True)
 
-    cfg.robot.blocking_control = True
+    if cfg.robot.blocking_control:
+        cfg.robot.control_hz = 1
 
     dataset_path = f"data/{cfg.exp_id}/train"
     file_names = glob.glob(f"{dataset_path}/episode_*.npy")

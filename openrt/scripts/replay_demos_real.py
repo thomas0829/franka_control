@@ -22,7 +22,6 @@ def run_experiment(cfg):
     os.makedirs(logdir, exist_ok=True)
 
     cfg.robot.max_path_length = cfg.max_episode_length
-    cfg.env.flatten = False
 
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),

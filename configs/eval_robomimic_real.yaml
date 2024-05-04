@@ -3,7 +3,7 @@ hydra:
     chdir: false
   
 defaults:
-  - log: wandb
+  - log: stdout
 
   - robot: real_6_dof
   - aug: crop_resize
@@ -13,7 +13,7 @@ exp_id: null
 seed: 0
 gpu_id: 0
 
-n_rollouts: 10
+n_rollouts: 1
 
 # maximum timesteps to run before auto-reset
 max_episode_length: 100
@@ -23,7 +23,9 @@ open_loop: false
 open_loop_split: "eval"
 
 # path to dataset for open loop predictions
-data_path: "data/NAME/demos.hdf5"
+data_path: ""
+# data_path: "data/NAME/demos.hdf5"
 
 # path to model checkpoint
-ckpt_path: "robomimic/robomimic/logdir/gaussian_rnn_r3m_img/gaussian_rnn_r3m_img/20240427105809/models/model_epoch_60.pth"
+ckpt_path: ""
+# ckpt_path: "robomimic/robomimic/logdir/gaussian_rnn_r3m_img/gaussian_rnn_r3m_img/20240427105809/models/model_epoch_60.pth"

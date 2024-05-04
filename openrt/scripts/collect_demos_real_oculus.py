@@ -32,8 +32,11 @@ def run_experiment(cfg):
         verbose=True,
     )
 
-    camera_names = [k + "_rgb" for k in env.get_images().keys()]
+    # camera_names = [k + "_rgb" for k in env.get_images().keys()]
+    camera_names = [k for k in env.get_images().keys()]
 
+    print(f"Camera names: {camera_names}")
+    
     # crop image observations
     if cfg.aug.camera_crop is not None:
         env = CropImageWrapper(

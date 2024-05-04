@@ -6,7 +6,7 @@
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": false,
-            "log_wandb": true,
+            "log_wandb": false,
             "wandb_proj_name": "openrt_robomimic"
         },
         "save": {
@@ -264,7 +264,7 @@
                     "lowdim_qpos"
                 ],
                 "rgb": [
-                    "215122255213_rgb"
+                    "844212071484_rgb"
                 ],
                 "depth": [],
                 "scan": [],

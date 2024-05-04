@@ -19,6 +19,7 @@ dependencies:
   - pip
   - pip:
     - zerorpc
+    - imageio
     - pyrealsense2
     - mujoco==3.0.0
     - opencv-python

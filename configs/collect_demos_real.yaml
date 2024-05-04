@@ -5,13 +5,22 @@ hydra:
 defaults:
   - log: stdout
   - robot: real_6_dof
+  - aug: crop_resize
+
+exp_id: null
 
 seed: 0
 gpu_id: 0
 
-exp_id: "demos_real"
+episodes: 10
+# maximum timesteps to collect before auto-reset
+max_episode_length: 1000
+# std of action noise applied on top of input cmd
+act_noise_std: 0.001
 
-episodes: 50
-max_episode_length: 100
+# data split \in ["train", "eval"]
+split: "train"
+# resume collection from traj index
+start_traj: 0
 
-data_dir: "data/"
+language_instruction: "pick up the green cube"

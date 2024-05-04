@@ -1,13 +1,13 @@
-import h5py
-
+import glob
 import os
 import time
+
+import h5py
+import hydra
+import imageio
+import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-import imageio
-import hydra
-import glob
-import matplotlib.pyplot as plt
 
 from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
@@ -15,7 +15,7 @@ from utils.experiment import hydra_to_dict
 
 
 @hydra.main(
-    config_path="../../configs/", config_name="collect_cube_real", version_base="1.1"
+    config_path="../../configs/", config_name="collect_cube_sim", version_base="1.1"
 )
 def run_experiment(cfg):
 

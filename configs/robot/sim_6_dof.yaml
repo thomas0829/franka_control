@@ -20,10 +20,10 @@ normalize: false
 # pass IP if not running on NUC "localhost" if running on NUC None if running sim
 ip_address: null
 # specify path length if resetting after a fixed length
-max_path_length: 20
+max_path_length: 70
 # camera type to use: 'realsense' 'zed'
 camera_model: null
-camera_names: ["front", "shoulder", "wrist"]
+camera_names: ["front"] # , "shoulder", "wrist"]
 camera_resolution: [480, 640] # (128 128) -> HxW
 calibration_file: "perception/cameras/calibration/logs/aruco/most_recent_calib.json"
 # Mujoco: model name

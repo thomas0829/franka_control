@@ -141,7 +141,7 @@ class RobotEnv(gym.Env):
         # ee_space_high = np.array([0.7, 0.5, 0.8, 3.14, 3.14, 3.14, 0.085])
         # ee_space_low = np.array([0.1, -1.0, 0.11, -2*np.pi, -2*np.pi, -2*np.pi, 0.00])
         # ee_space_high = np.array([1.0, 1.0, 1., 2*np.pi, 2*np.pi, 2*np.pi, 0.085])
-        ee_space_low = np.array([0.1, -1.0, 0.11, -np.pi, -np.pi, -np.pi, 0.00])
+        ee_space_low = np.array([0.12, -1.0, 0.11, -np.pi, -np.pi, -np.pi, 0.00])
         ee_space_high = np.array([1.0, 1.0, 0.7, np.pi, np.pi, np.pi, 0.085])
 
         # EE position (x, y, fixed z)

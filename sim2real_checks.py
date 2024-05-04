@@ -36,9 +36,10 @@ for i in range(30):
 
 env._reset_joint_qpos = np.array([0.0, -0.8, 0.0, -2.3, 0.1, 2.3, 0.8])
 env.reset()
-file = file_names[0]
+file = file_names[1]
 episode = h5py.File(file, "r+")["data"]["demo_0"]
 from utils.transformations import *
+from utils.transformations_mujoco import *
 
 # OFFSET FROM WORLD FRAME TO ROBOT FRAME
 world_offset_pos = np.array([0.2045, 0., 0.])
@@ -60,7 +61,8 @@ for i in range(55):
     
     desired_ee_pos = episode["obs"]["eef_pos"][i] + world_offset_pos
     desired_ee_quat = episode["obs"]["eef_quat"][i]
-    desired_ee_euler = quat_to_euler(desired_ee_quat) + ee_offset_euler
+    desired_ee_euler = quat_to_euler_mujoco(desired_ee_quat) + ee_offset_euler
+    # desired_ee_euler = add_angles(ee_offset_euler, desired_ee_euler)
     # def normalize_angle(angle):
     #     return np.arctan2(np.sin(angle), np.cos(angle))
     # desired_ee_euler = normalize_angle(desired_ee_euler)

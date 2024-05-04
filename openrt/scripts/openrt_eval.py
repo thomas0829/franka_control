@@ -135,8 +135,7 @@ def run_experiment(cfg):
 
         start = time.time()
 
-        # preprocess img
-        img = obs["215122255213_rgb"][:, 160:]
+        img = obs[camera_names[0]]        
         data["rgbd"].append(img)
 
         # call openrt api

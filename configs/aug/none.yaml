@@ -1,0 +1,2 @@
+camera_crop: [0, -1, 0, -1] # [x_min, x_max, y_min, y_max]
+camera_resize: [224, 224] # null

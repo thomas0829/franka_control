@@ -139,8 +139,11 @@ class MultiCameraWrapper:
         return rvecs, tvecs, trash
 
     def get_aruco_poses(
-        self, marker_size=0.15, aruco_dict=cv2.aruco.DICT_6X6_50, steps=1, verbose=False
+        self, marker_size=0.15, aruco_dict=None, steps=1, verbose=False
     ):
+        if aruco_dict is None:
+            aruco_dict = cv2.aruco.DICT_6X6_50
+
         tvecs = []
         rotation_matrices = []
         for camera in self._all_cameras:
@@ -159,11 +162,14 @@ class MultiCameraWrapper:
         self,
         camera,
         marker_size=0.15,
-        aruco_dict=cv2.aruco.DICT_6X6_50,
+        aruco_dict=None,
         steps=1,
         verbose=False,
     ):
-
+        
+        if aruco_dict is None:
+            aruco_dict = cv2.aruco.DICT_6X6_50
+            
         frame = camera.read_camera()[0]["array"]
 
         sn = camera.read_camera()[0]["serial_number"]

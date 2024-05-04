@@ -16,3 +16,5 @@ slurm/
 *.egg-info/
 
 tmp
+configs/aug/crop_resize.yaml
+robot/real/server_interface.py

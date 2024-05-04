@@ -1,8 +1,12 @@
 # ROBOT SPECIFIC IMPORTS
 import os
 import time
+# to catch polymetis server errors -> deprecated, remove in the future
+try:
+    import grpc
+except:
+    pass
 
-import grpc
 import numpy as np
 import torch
 # from polymetis import GripperInterface, RobotInterface

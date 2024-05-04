@@ -41,14 +41,17 @@ from scipy.spatial.transform import Rotation as R
 
 env._reset_joint_qpos = np.array([0.0, -0.8, 0.0, -2.3, 0.1, 2.3, 0.8])
 env.reset()
-file = file_names[0]
+file = file_names[1]
 episode = h5py.File(file, "r+")["data"]["demo_0"]
 from utils.transformations import *
+from utils.transformations_mujoco import *
 
 # OFFSET FROM WORLD FRAME TO ROBOT FRAME
 world_offset_pos = np.array([0.2045, 0., 0.])
-# 45 DEGREE OFFSET IN EE SPACE
+# 45 DEGREE OFFSET IN EE SPACE MUJOCO
 ee_offset_euler = np.array([0., 0., np.pi / 4])
+# 90 DEGREE OFFSET IN EE SPACE POLYMETIS
+ee_offset_euler = np.array([0., 0., -np.pi / 2])
 
 # BLOCKING CONTROL BY RUNNING WITH LOWER CONTROL FREQUENCY Hz
 env.control_hz = 1
@@ -65,8 +68,11 @@ for i in range(len(actions)):
     
     desired_ee_pos = episode["obs"]["eef_pos"][i] + world_offset_pos
     desired_ee_quat = episode["obs"]["eef_quat"][i]
-
-    desired_ee_euler = quat_to_euler(desired_ee_quat) + ee_offset_euler
+    desired_ee_euler = quat_to_euler_mujoco(desired_ee_quat) + ee_offset_euler
+    # desired_ee_euler = add_angles(ee_offset_euler, desired_ee_euler)
+    # def normalize_angle(angle):
+    #     return np.arctan2(np.sin(angle), np.cos(angle))
+    # desired_ee_euler = normalize_angle(desired_ee_euler)
 
     gripper = actions[i,-1]
 

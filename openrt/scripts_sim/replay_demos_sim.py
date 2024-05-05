@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm, trange
 
-from robot.crop_wrapper import CropImageWrapper
-from robot.resize_wrapper import ResizeImageWrapper
+from robot.wrappers.crop_wrapper import CropImageWrapper
+from robot.wrappers.resize_wrapper import ResizeImageWrapper
 from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict

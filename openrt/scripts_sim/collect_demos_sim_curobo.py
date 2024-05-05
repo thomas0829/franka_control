@@ -12,9 +12,9 @@ import torch
 from tqdm import tqdm, trange
 
 from robot.controllers.motion_planner import MotionPlanner
-from robot.crop_wrapper import CropImageWrapper
-from robot.data_wrapper import DataCollectionWrapper
-from robot.resize_wrapper import ResizeImageWrapper
+from robot.wrappers.crop_wrapper import CropImageWrapper
+from robot.wrappers.data_wrapper import DataCollectionWrapper
+from robot.wrappers.resize_wrapper import ResizeImageWrapper
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.transformations_mujoco import *

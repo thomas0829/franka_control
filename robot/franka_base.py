@@ -14,7 +14,6 @@ class FrankaBase(abc.ABC):
         robot_type="panda",
         control_hz=15,
         gripper=True,
-        custom_controller=True,
         *args,
         **kwargs
     ):
@@ -22,10 +21,7 @@ class FrankaBase(abc.ABC):
 
         self.robot_type = robot_type
         self.control_hz = control_hz
-        self.custom_controller = (
-            True  # False if self.robot_type == "panda" else custom_controller
-        )
-
+        
         self.launch_ik()
 
     def launch_ik(self):

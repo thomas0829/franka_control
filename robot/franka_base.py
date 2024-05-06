@@ -125,9 +125,9 @@ class FrankaBase(abc.ABC):
 
         return action_dict
 
-    @abc.abstractmethod
-    def _start_custom_controller(self):
-        """Start custom controller"""
+    # @abc.abstractmethod
+    # def _start_custom_controller(self):
+    #     """Start custom controller"""
 
     @abc.abstractmethod
     def get_ee_pose(self):

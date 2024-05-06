@@ -12,10 +12,9 @@ from tqdm import tqdm
 from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
-
-
 from utils.transformations import *
 from utils.transformations_mujoco import *
+
 
 @hydra.main(
     config_path="../../configs/", config_name="collect_cube_real", version_base="1.1"
@@ -106,7 +105,7 @@ def run_experiment(cfg):
             desired_ee_pos = episode["obs"]["eef_pos"][i] + world_offset_pos
             desired_ee_quat = episode["obs"]["eef_quat"][i]
             desired_ee_euler = quat_to_euler(desired_ee_quat)
-            desired_ee_euler = add_angles(ee_offset_euler, desired_ee_euler)
+            desired_ee_euler = add_angles(ee_offset_euler, desired_ee_euler) if cfg.robot.ip_address is not None else desired_ee_euler
 
             gripper = actions[i,-1]
 
@@ -131,6 +130,7 @@ def run_experiment(cfg):
             time.sleep(sleep_left)
 
         import imageio
+
         # imageio.mimsave(f"ee_pose_{file_idx}.gif", np.stack(imgs), duration=5.)
         imageio.mimsave(f"ee_pose_{file_idx}.gif", np.concatenate((episode["obs"]["world_camera_low_res_image"], np.stack(imgs)), axis=2), duration=5.)
         

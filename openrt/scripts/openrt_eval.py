@@ -9,8 +9,8 @@ import numpy as np
 import requests
 from PIL import Image
 
-from robot.crop_wrapper import CropImageWrapper
-from robot.resize_wrapper import ResizeImageWrapper
+from robot.wrappers.crop_wrapper import CropImageWrapper
+from robot.wrappers.resize_wrapper import ResizeImageWrapper
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.logger import configure_logger

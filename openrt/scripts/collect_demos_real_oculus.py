@@ -6,9 +6,9 @@ import numpy as np
 from tqdm import tqdm
 
 from robot.controllers.oculus import VRController
-from robot.crop_wrapper import CropImageWrapper
-from robot.data_wrapper import DataCollectionWrapper
-from robot.resize_wrapper import ResizeImageWrapper
+from robot.wrappers.crop_wrapper import CropImageWrapper
+from robot.wrappers.data_wrapper import DataCollectionWrapper
+from robot.wrappers.resize_wrapper import ResizeImageWrapper
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
 

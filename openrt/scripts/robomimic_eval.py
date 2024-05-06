@@ -19,8 +19,8 @@ from tqdm import trange
 
 import robomimic.utils.file_utils as FileUtils
 import robomimic.utils.torch_utils as TorchUtils
-from robot.crop_wrapper import CropImageWrapper
-from robot.resize_wrapper import ResizeImageWrapper
+from robot.wrappers.crop_wrapper import CropImageWrapper
+from robot.wrappers.resize_wrapper import ResizeImageWrapper
 from robot.sim.vec_env.vec_env import make_env
 from training.weird_bc.models.policies import MixedGaussianPolicy
 from training.weird_bc.train_script import plot_trajectory

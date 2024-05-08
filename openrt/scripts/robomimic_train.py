@@ -617,6 +617,9 @@ def train(config, device, auto_remove_exp=False, resume=False):
     obs_normalization_stats = None
     if config.train.hdf5_normalize_obs:
         obs_normalization_stats = trainset["data"].get_obs_normalization_stats()
+        for k in obs_normalization_stats.keys():
+            obs_normalization_stats[k]["offset"] = -obs_normalization_stats[k]["mean"]
+            obs_normalization_stats[k]["scale"] = 1/obs_normalization_stats[k]["std"]
     action_normalization_stats = trainset["data"].get_action_normalization_stats()
     mp_action_normalization_stats = None
     if "classifier" in trainset:

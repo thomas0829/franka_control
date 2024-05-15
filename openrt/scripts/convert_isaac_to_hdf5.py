@@ -9,6 +9,18 @@ import hydra
 import numpy as np
 from tqdm import trange
 
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
+def quat_to_euler(quat, degrees=False):
+        euler = R.from_quat(quat).as_euler("xyz", degrees=degrees)
+        return euler
+
+def add_angles(delta, source, degrees=False):
+        delta_rot = R.from_euler("xyz", delta, degrees=degrees)
+        source_rot = R.from_euler("xyz", source, degrees=degrees)
+        new_rot = delta_rot * source_rot
+        return new_rot.as_euler("xyz", degrees=degrees)
 
 def shortest_angle(angles):
     return (angles + np.pi) % (2 * np.pi) - np.pi
@@ -28,6 +40,12 @@ def unnormalize(arr, stats):
     config_path="../../configs/", config_name="convert_demos_real", version_base="1.1"
 )
 def run_experiment(cfg):
+
+    # REMOVE ME !!!!
+    cfg.input_datasets = ["simpler_redcube_1000_seed_98"]
+    cfg.data_dir = "/home/marius/Projects/polymetis_franka/data/"
+    cfg.output_dataset = "simpler_redcube_1000_seed_98_blocking"
+    # REMOVE ME !!!!
 
     # create dataset paths
     dataset_paths = [
@@ -57,21 +75,62 @@ def run_experiment(cfg):
             print(f"Loading {dataset_path} {split} ...")
 
             # gather filenames
-            file_names = glob.glob(os.path.join(dataset_path, split, "episode_*.npy"))
+            file_names = glob.glob(os.path.join(dataset_path, split, "*.hdf5"))
 
             for i in trange(len(file_names)):
 
                 # load data
-                data = np.load(file_names[i], allow_pickle=True)
+                # data = np.load(file_names[i], allow_pickle=True)
+                data = h5py.File(file_names[i],'r')
 
-                # stack data
-                dic = {}
+                world_offset_pos = np.array([0.2045, 0., 0.])
+                ee_offset_euler = np.array([0., 0., -np.pi / 4])
 
-                obs_keys = data[0].keys()
-                for key in obs_keys:
-                    dic[key] = np.stack([d[key] for d in data])
-                actions = np.stack([d["action"] for d in data])
+                ee_pos = np.array(data["data"]["demo_0"]["obs"]["eef_pos"]).copy()
+                # add pos offset
+                ee_pos = ee_pos + world_offset_pos
 
+                ee_quat = np.array(data["data"]["demo_0"]["obs"]["eef_quat"]).copy()
+                # convert quat to euler
+                ee_euler = quat_to_euler(ee_quat)
+                # add angle offset
+                ee_euler = add_angles(ee_offset_euler, ee_euler)
+
+                qpos = np.array(data["data"]["demo_0"]["obs"]["joint_pos"]).copy()
+                
+                actions = np.array(data["data"]["demo_0"]["actions"]).copy()
+
+                gripper = np.array(data["data"]["demo_0"]["obs"]["gripper_qpos"]).copy()
+                
+                # imgs
+                world_img = np.array(data["data"]["demo_0"]["obs"]["world_camera_low_res_image"]).copy()
+                wrist_img = np.array(data["data"]["demo_0"]["obs"]["hand_camera_low_res_image"]).copy()
+
+                # convert gripper -1 close, 0 stay, +1 open to 0 open, 1 close
+                prev_gripper_act = 1
+                gripper_act = actions[..., -1].copy()
+                # sim runs continuous grasp -> only grasp when fully closed to match blocking
+                if cfg.blocking_control:
+                    not_quite_done_yet = np.where(np.abs(gripper[1:,0] - gripper[:-1,0]) > 1e-3)
+                    gripper_act[not_quite_done_yet] = 0
+                for i in range(len(gripper_act)):
+                    gripper_act[i] = prev_gripper_act if gripper_act[i] == 0 else gripper_act[i]
+                    prev_gripper_act = gripper_act[i]
+                gripper_act[np.where(gripper_act == 1)] = 0
+                gripper_act[np.where(gripper_act == -1)] = 1
+                actions[..., -1] = gripper_act
+                
+                lowdim_gripper = np.sum(gripper, axis=1)[:,None]
+
+                dic = {
+                    "lowdim_ee": np.concatenate((ee_pos, ee_euler, lowdim_gripper), axis=1),
+                    "lowdim_qpos": np.concatenate((qpos, lowdim_gripper), axis=1),
+                    "front_rgb": world_img,
+                    "wrist_rgb": wrist_img
+                }
+
+                obs_keys = dic.keys()
+                
                 if cfg.blocking_control:
                     # compute actual deltas s_t+1 - s_t (keep gripper actions)
                     actions_tmp = actions.copy()
@@ -83,10 +142,6 @@ def run_experiment(cfg):
                     # remove last state s_T
                     for key in obs_keys:
                         dic[key] = dic[key][:-1]
-                    
-                    # remove grasp actions if gripper is not closed -> blocking grasp
-                    first_grasp_idx = np.where(actions[...,-1] == 1)[0][0]
-                    actions[first_grasp_idx:first_grasp_idx+7,-1] = 0
 
                 # create demo group
                 demo_key = f"demo_{episodes}"
@@ -118,8 +173,7 @@ def run_experiment(cfg):
                         obs = obs[:, x_min : x_max, y_min : y_max]
                         # resize images for training
                         obs = np.stack([cv2.resize(img, cfg.aug.camera_resize) for img in obs])
-                        print(f"WARNING: replacing '{obs_key}' with 'front_rgb'!")
-                        obs_key = "front_rgb"
+
                     ep_obs_grp.create_dataset(obs_key, data=obs)
 
                 ep_data_grp.attrs["num_samples"] = len(actions)

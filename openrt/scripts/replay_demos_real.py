@@ -1,6 +1,8 @@
 import glob
 import os
 import time
+import h5py
+import pickle
 
 import hydra
 import imageio
@@ -8,13 +10,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from robot.robot_env import RobotEnv
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
+from openrt.scripts.convert_np_to_hdf5 import normalize, unnormalize
+from robot.wrappers.crop_wrapper import CropImageWrapper
+from robot.wrappers.resize_wrapper import ResizeImageWrapper
 
-
+# config_name="collect_demos_real" for real robot config_name="collect_demos_sim" for simulation
 @hydra.main(
-    config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
+    config_path="../../configs/", config_name="collect_demos_sim", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -23,84 +27,94 @@ def run_experiment(cfg):
 
     cfg.robot.max_path_length = cfg.max_episode_length
 
+    assert cfg.robot.blocking_control==True and cfg.robot.control_hz<=1, "WARNING: please make sure to pass robot.blocking_control=true robot.control_hz=1 to run blocking control!"
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
+        env_cfg_dict=hydra_to_dict(cfg.env) if "env" in cfg.keys() else None,
         seed=cfg.seed,
         device_id=0,
         verbose=True,
     )
 
-    camera_names = [k + "_rgb" for k in env.get_images().keys()]
+    camera_names = [k for k in env.get_images().keys()]
 
-    dataset_path = f"data/{cfg.exp_id}/{cfg.split}"
-    file_names = glob.glob(f"{dataset_path}/episode_*.npy")
-    assert len(file_names) > 0, f"WARNING: no data in {dataset_path}!"
+    print(f"Camera names: {camera_names}")
 
+    # crop image observations
+    if cfg.aug.camera_crop is not None:
+        env = CropImageWrapper(
+            env,
+            x_min=cfg.aug.camera_crop[0],
+            x_max=cfg.aug.camera_crop[1],
+            y_min=cfg.aug.camera_crop[2],
+            y_max=cfg.aug.camera_crop[3],
+            image_keys=[cn + "_rgb" for cn in camera_names],
+            crop_render=True,
+        )
+
+    # resize image observations
+    if cfg.aug.camera_resize is not None:
+        env = ResizeImageWrapper(
+            env,
+            size=cfg.aug.camera_resize,
+            image_keys=[cn + "_rgb" for cn in camera_names],
+        )
+
+    dataset_path = f"data/{cfg.exp_id}/"
+    
     num_trajectories = 1
 
-    for file in tqdm(file_names[:num_trajectories]):
+    file = h5py.File(os.path.join(dataset_path, "demos.hdf5"), 'r')
+    dataset = file["data"]
+    with open(os.path.join(dataset_path, "stats"),
+              'rb') as file:
+        stats = pickle.load(file)
+   
 
-        episode = np.load(file, allow_pickle=True)
+    for demo_key in list(dataset.keys())[:num_trajectories]:
+        
+        episode = dataset[demo_key]
 
         obs = env.reset()
 
         obss = []
         acts = []
 
-        init_pos = env._curr_pos
-        init_angle = env._curr_angle
+        actions = np.array(episode["actions"])
+        actions = unnormalize(actions, stats=stats["action"])
 
-        for step in tqdm(episode):
+        for act in tqdm(actions):
 
             start_time = time.time()
 
-            act = step["action"]
-            print(act)
+            # print(act)
             next_obs, rew, done, _ = env.step(act)
 
             obss.append(obs)
             acts.append(act)
             obs = next_obs
 
+            print(f"Act {act} \nTook {np.around(time.time() - start_time, 3)}s")
         env.reset()
 
         # visualize traj
-        img_obs = np.stack([obs[camera_names[0]] for obs in obss])
-        imageio.mimsave(os.path.join(logdir, "replay.mp4"), img_obs)
-        # ugly hack to get the demo images
-        img_demo = np.stack(
-            [
-                (
-                    step[camera_names[0]]
-                    if camera_names[0] in step.keys()
-                    else step["front_rgb"]
-                )
-                for step in episode
-            ]
-        )
-        imageio.mimsave(os.path.join(logdir, "demo.mp4"), img_demo)
+        img_obs = np.stack([obs[camera_names[0] + "_rgb"] for obs in obss])
+        img_demo = np.array(dataset[demo_key]["obs"]["front_rgb"])
+        imageio.mimsave(os.path.join(logdir, f"demo_replay_{demo_key}.mp4"), np.concatenate((img_demo, img_obs), axis=2))
 
         # plot difference between demo and replay
-        plt.close()
         ee_obs = np.stack([obs["lowdim_ee"] for obs in obss])
-        ee_act = []
-        init_pos = env._curr_pos
-        init_angle = env._curr_angle
-        for step in episode:
-            init_pos += step["action"][:3]
-            init_angle += step["action"][3:6]
-            ee_act.append(np.concatenate((init_pos.copy(), init_angle.copy())))
-        ee_act = np.stack(ee_act)
+        ee_demo = np.array(dataset[demo_key]["obs"]["lowdim_ee"])
 
-        labels = ["x", "y", "z"]
-        colors = ["tab:orange", "tab:blue", "tab:green"]
-
-        for i, (l, c) in enumerate(zip(labels, colors)):
-            plt.plot(ee_act[:, i], color=c, label=f"{l} demo")
-            plt.plot(ee_obs[:, i], color=c, linestyle="dashed", label=f"{l} replay")
-
+        labels = ["x", "y", "z", "r", "p", "y"]
+        colors = ["tab:orange", "tab:blue", "tab:green", "tab:red", "tab:purple", "tab:brown"]
+        n = 3
+        for j, (l,c) in enumerate(zip(labels[:n], colors[:n])):
+            plt.plot(ee_demo [:,j], color=c, label=f"{l} demo")
+            plt.plot(ee_obs[:,j], color=c, linestyle="dashed", label=f"{l} replay")
         plt.legend()
-        plt.show()
+        plt.savefig(os.path.join(logdir, f"poses_{demo_key}.png"))
+        plt.close()
 
     env.reset()
 

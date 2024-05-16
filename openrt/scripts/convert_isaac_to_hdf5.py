@@ -7,7 +7,7 @@ import cv2
 import h5py
 import hydra
 import numpy as np
-from tqdm import trange
+from tqdm import trange, tqdm
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -75,36 +75,37 @@ def run_experiment(cfg):
             print(f"Loading {dataset_path} {split} ...")
 
             # gather filenames
-            file_names = glob.glob(os.path.join(dataset_path, split, "*.hdf5"))
-
-            for i in trange(len(file_names)):
-
+            file_name = os.path.join(dataset_path, split, "demo.hdf5")
+            data = h5py.File(file_name,'r')
+            keys = data["data"].keys()
+            for i, curr_key in tqdm(enumerate(keys), total=len(keys)):
                 # load data
                 # data = np.load(file_names[i], allow_pickle=True)
-                data = h5py.File(file_names[i],'r')
+                # data = h5py.File(file_names[i],'r')
+                # demo_key = "demo_0"
 
                 world_offset_pos = np.array([0.2045, 0., 0.])
                 ee_offset_euler = np.array([0., 0., -np.pi / 4])
 
-                ee_pos = np.array(data["data"]["demo_0"]["obs"]["eef_pos"]).copy()
+                ee_pos = np.array(data["data"][curr_key]["obs"]["eef_pos"]).copy()
                 # add pos offset
                 ee_pos = ee_pos + world_offset_pos
 
-                ee_quat = np.array(data["data"]["demo_0"]["obs"]["eef_quat"]).copy()
+                ee_quat = np.array(data["data"][curr_key]["obs"]["eef_quat"]).copy()
                 # convert quat to euler
                 ee_euler = quat_to_euler(ee_quat)
                 # add angle offset
                 ee_euler = add_angles(ee_offset_euler, ee_euler)
 
-                qpos = np.array(data["data"]["demo_0"]["obs"]["joint_pos"]).copy()
+                qpos = np.array(data["data"][curr_key]["obs"]["joint_pos"]).copy()
                 
-                actions = np.array(data["data"]["demo_0"]["actions"]).copy()
+                actions = np.array(data["data"][curr_key]["actions"]).copy()
 
-                gripper = np.array(data["data"]["demo_0"]["obs"]["gripper_qpos"]).copy()
+                gripper = np.array(data["data"][curr_key]["obs"]["gripper_qpos"]).copy()
                 
                 # imgs
-                world_img = np.array(data["data"]["demo_0"]["obs"]["world_camera_low_res_image"]).copy()
-                wrist_img = np.array(data["data"]["demo_0"]["obs"]["hand_camera_low_res_image"]).copy()
+                world_img = np.array(data["data"][curr_key]["obs"]["world_camera_low_res_image"]).copy()
+                wrist_img = np.array(data["data"][curr_key]["obs"]["hand_camera_low_res_image"]).copy()
 
                 # convert gripper -1 close, 0 stay, +1 open to 0 open, 1 close
                 prev_gripper_act = 1

@@ -14,7 +14,7 @@
             "every_n_seconds": null,
             "every_n_epochs": 20,
             "epochs": [],
-            "on_best_validation": false,
+            "on_best_validation": true,
             "on_best_rollout_return": false,
             "on_best_rollout_success_rate": true
         },
@@ -36,16 +36,16 @@
         }
     },
     "train": {
-        "data": "data/debug_marius_blocking/demos.hdf5",
+        "data": "data/right_lang_25_blocking/demos.hdf5",
         "data_co": [
-            "data/simpler_redcube_1000_seed_98_blocking/demos.hdf5"
+            "data/left_lang_25_blocking/demos.hdf5"
         ],
         "data_weights": [
             0.5,
             0.5
         ],
         "output_dir": "logdir/tmp",
-        "num_data_workers": 4,
+        "num_data_workers": 1,
         "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,

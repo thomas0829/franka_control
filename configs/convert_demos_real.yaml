@@ -2,6 +2,9 @@ hydra:
   job:
     chdir: false
 
+defaults:
+  - aug: crop_resize
+
 exp_id: null
 
 # path to data directory

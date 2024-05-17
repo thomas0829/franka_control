@@ -12,10 +12,10 @@ import torch
 from tqdm import tqdm, trange
 
 from robot.controllers.motion_planner import MotionPlanner
+from robot.sim.vec_env.vec_env import make_env
 from robot.wrappers.crop_wrapper import CropImageWrapper
 from robot.wrappers.data_wrapper import DataCollectionWrapper
 from robot.wrappers.resize_wrapper import ResizeImageWrapper
-from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.transformations_mujoco import *
 
@@ -230,8 +230,6 @@ def run_experiment(cfg):
     # fake_blocking = cfg.robot.blocking_control
     # cfg.robot.blocking_control = not cfg.robot.blocking_control
 
-    language_instruction = "pick up the red cube"
-
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env),
@@ -241,23 +239,23 @@ def run_experiment(cfg):
     )
     camera_names = env.unwrapped._robot.camera_names.copy()
 
-    if cfg.aug.camera_crop is not None:
-        env = CropImageWrapper(
-            env,
-            x_min=cfg.aug.camera_crop[0],
-            x_max=cfg.aug.camera_crop[1],
-            y_min=cfg.aug.camera_crop[2],
-            y_max=cfg.aug.camera_crop[3],
-            image_keys=[cn + "_rgb" for cn in camera_names],
-            crop_render=True,
-        )
+    # if cfg.aug.camera_crop is not None:
+    #     env = CropImageWrapper(
+    #         env,
+    #         x_min=cfg.aug.camera_crop[0],
+    #         x_max=cfg.aug.camera_crop[1],
+    #         y_min=cfg.aug.camera_crop[2],
+    #         y_max=cfg.aug.camera_crop[3],
+    #         image_keys=[cn + "_rgb" for cn in camera_names],
+    #         crop_render=True,
+    #     )
 
-    if cfg.aug.camera_resize is not None:
-        env = ResizeImageWrapper(
-            env,
-            size=cfg.aug.camera_resize,
-            image_keys=[cn + "_rgb" for cn in camera_names],
-        )
+    # if cfg.aug.camera_resize is not None:
+    #     env = ResizeImageWrapper(
+    #         env,
+    #         size=cfg.aug.camera_resize,
+    #         image_keys=[cn + "_rgb" for cn in camera_names],
+    #     )
 
     for split, n_episodes in zip(
         ["train", "eval"], [cfg.episodes, int(cfg.episodes // 10)]
@@ -265,7 +263,7 @@ def run_experiment(cfg):
         savedir = f"data/{cfg.exp_id}/{split}"
         env = DataCollectionWrapper(
             env,
-            language_instruction=language_instruction,
+            language_instruction=cfg.language_instruction,
             fake_blocking=fake_blocking,
             act_noise_std=cfg.act_noise_std,
             save_dir=savedir,

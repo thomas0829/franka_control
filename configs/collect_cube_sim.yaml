@@ -18,3 +18,5 @@ episodes: 10
 max_episode_length: 100
 
 act_noise_std: 0.001
+
+language_instruction: "pick up the green cube"

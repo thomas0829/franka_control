@@ -42,7 +42,7 @@
             1
         ],
         "output_dir": "logdir/tmp",
-        "num_data_workers": 4,
+        "num_data_workers": 1,
         "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,

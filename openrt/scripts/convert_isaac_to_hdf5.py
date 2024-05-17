@@ -11,6 +11,7 @@ from tqdm import trange, tqdm
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+from robomimic.utils.lang_utils import get_lang_emb
 
 def quat_to_euler(quat, degrees=False):
         euler = R.from_quat(quat).as_euler("xyz", degrees=degrees)
@@ -163,17 +164,25 @@ def run_experiment(cfg):
                 # create obs and next_obs groups
                 ep_obs_grp = ep_data_grp.create_group("obs")
 
+                if "language_instruction" not in obs_keys:
+                    dic["language_instruction"] = ["pick up the cube"] * len(dic["lowdim_ee"])
+                    print("WARNING: 'language_instruction' not in dataset, adding template instruction!")
+                obs_keys = dic.keys()
+                
                 # add obs and next_obs datasets
                 for obs_key in obs_keys:
                     obs = dic[obs_key]
-                    if obs_key == "language_instruction":
-                        continue
                     if "_rgb" in obs_key:
                         # crop images for training
                         x_min, x_max, y_min, y_max = cfg.aug.camera_crop
                         obs = obs[:, x_min : x_max, y_min : y_max]
                         # resize images for training
                         obs = np.stack([cv2.resize(img, cfg.aug.camera_resize) for img in obs])
+                    if obs_key == "language_instruction":
+                        lang_emb = get_lang_emb(obs[0])
+                        lang_emb = np.tile(lang_emb, (len(obs), 1))
+                        ep_obs_grp.create_dataset("lang_embed", data=lang_emb)
+                        obs = np.array(obs, dtype='S100')
 
                     ep_obs_grp.create_dataset(obs_key, data=obs)
 

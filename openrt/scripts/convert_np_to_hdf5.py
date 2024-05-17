@@ -8,7 +8,7 @@ import h5py
 import hydra
 import numpy as np
 from tqdm import trange
-
+from robomimic.utils.lang_utils import get_lang_emb
 
 def shortest_angle(angles):
     return (angles + np.pi) % (2 * np.pi) - np.pi
@@ -60,7 +60,7 @@ def run_experiment(cfg):
             file_names = glob.glob(os.path.join(dataset_path, split, "episode_*.npy"))
 
             for i in trange(len(file_names)):
-
+                # try:
                 # load data
                 data = np.load(file_names[i], allow_pickle=True)
 
@@ -106,12 +106,18 @@ def run_experiment(cfg):
 
                 # create obs and next_obs groups
                 ep_obs_grp = ep_data_grp.create_group("obs")
+                
+                if "language_instruction" not in obs_keys:
+                    dic["language_instruction"] = ["pick up the cube"]
+                    print("WARNING: 'language_instruction' not in dataset, addind template instruction!")
+                obs_keys = dic.keys()
 
+                print("WARNING: NOT skipping corner camera!")
                 # add obs and next_obs datasets
                 for obs_key in obs_keys:
+                    # if obs_key== '215122255213_rgb':
+                    #     continue # skipping the corner camera
                     obs = dic[obs_key]
-                    if obs_key == "language_instruction":
-                        continue
                     if "_rgb" in obs_key:
                         # crop images for training
                         x_min, x_max, y_min, y_max = cfg.aug.camera_crop
@@ -120,11 +126,19 @@ def run_experiment(cfg):
                         obs = np.stack([cv2.resize(img, cfg.aug.camera_resize) for img in obs])
                         print(f"WARNING: replacing '{obs_key}' with 'front_rgb'!")
                         obs_key = "front_rgb"
+                    if obs_key == "language_instruction":
+                        lang_emb = get_lang_emb(obs[0])
+                        lang_emb = np.tile(lang_emb, (len(obs), 1))
+                        ep_obs_grp.create_dataset("lang_embed", data=lang_emb)
+                        obs = np.array(obs, dtype='S100')
+
                     ep_obs_grp.create_dataset(obs_key, data=obs)
 
                 ep_data_grp.attrs["num_samples"] = len(actions)
 
                 episodes += 1
+                # except:
+                #     print(f"Error loading {file_names[i]}")
 
         # create mask dataset
         grp_mask.create_dataset(split, data=np.array(demo_keys[split], dtype="S"))

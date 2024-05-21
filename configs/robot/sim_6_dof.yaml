@@ -29,3 +29,4 @@ calibration_file: "perception/cameras/calibration/logs/aruco/most_recent_calib.j
 # Mujoco: model name
 model_name: "base_franka"
 on_screen_rendering: false
+visual_dr: false

@@ -51,6 +51,7 @@ class RobotEnv(gym.Env):
         # Mujoco: model name
         model_name="base_franka",
         on_screen_rendering=False,
+        visual_dr=False,
         device_id=0,
         # debugging
         verbose=False,
@@ -88,6 +89,8 @@ class RobotEnv(gym.Env):
                 0.5588430762290955,
             ]
         )
+
+        self._reset_joint_qpos = np.array([-5.65335140e-05, -1.47445112e-01,  5.44415554e-03, -2.57991934e+00  , 2.13176832e-02,  2.43316126e+00,  7.82760382e-01])
 
         if self.DoF == 2:
             self._reset_joint_qpos = np.array(
@@ -258,6 +261,7 @@ class RobotEnv(gym.Env):
                 use_rgb=camera_rgb,
                 use_depth=camera_depth,
                 camera_names=camera_names,
+                visual_dr=visual_dr,
             )
 
             # TODO move to MujocoManipulatorEnv
@@ -321,7 +325,7 @@ class RobotEnv(gym.Env):
             assert len(action) == (
                 self.DoF + 1
             ), f"Expected action shape: ({self.DoF+1},) got {action.shape}"
-
+        
         # BLOCKING CONTROL -> for BC inference
         if self.blocking_control:
             
@@ -332,7 +336,7 @@ class RobotEnv(gym.Env):
             self._init_angle = add_angles(angle_action, self._init_angle) # 
             
             gripper = gripper
-
+            
             # cartesian position control w/ blocking
             self._update_robot(
                 # np.concatenate((self._curr_pos + pos_action, add_angles(angle_action, self._curr_angle), [gripper])),
@@ -354,6 +358,7 @@ class RobotEnv(gym.Env):
 
             # formate action to DoF
             pos_action, angle_action, gripper = self._format_action(action)
+            
 
             # clipping + any safety corrections for position
             desired_pos = self._get_valid_pos(self._curr_pos + pos_action)
@@ -371,6 +376,7 @@ class RobotEnv(gym.Env):
             sleep_left = max(0, (1 / self.control_hz) - comp_time)
             if not self.sim:
                 time.sleep(sleep_left)
+        # self.desired_pos = desired_pos
 
         # get observations
         obs = self.get_observation()
@@ -416,6 +422,10 @@ class RobotEnv(gym.Env):
         self._robot.update_gripper(0.0, velocity=False, blocking=True)
 
     def reset(self):
+
+        if self.sim and self._robot.visual_dr:
+            self._robot.randomize()
+
         # ensure robot releases grasp before reset
         if self.gripper:
             self.reset_gripper()
@@ -745,6 +755,8 @@ class RobotEnv(gym.Env):
                 for sn, img in current_images.items():
                     for m, modality in img.items():
                         obs_dict[f"{sn}_{m}"] = modality
+         
+            #obs_dict[f"{sn}_rgb_pcd"] = self.get_images_and_points()  #rgb point cloud
 
         return obs_dict
 

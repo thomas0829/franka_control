@@ -428,7 +428,8 @@ class MujocoManipulatorEnv(FrankaBase):
             for sn, camera_name in zip(self.calib_dict.keys(), self.camera_names):
                 
                 # compute noise
-                fy_noise = np.random.uniform(low=-10., high=10.)
+                high_low = 50.
+                fy_noise = np.random.uniform(low=-high_low, high=high_low)
                 
                 # add noise
                 self.set_camera_intrinsic(

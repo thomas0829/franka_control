@@ -15,9 +15,9 @@
         <map force="0.1" fogend="5" /> -->
         <!-- no shadow -->
         <quality shadowsize="0" offsamples="8" />
-        <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0" />
-        <rgba haze="0.15 0.25 0.35 1" />
-        <global azimuth="120" elevation="-20" />
+        <!-- <headlight diffuse="0.4 0.4 0.4" ambient="0.1 0.1 0.1" specular="0.1 0.1 0.1" /> -->
+        <!-- <rgba haze="0.15 0.25 0.35 1" /> -->
+        <!-- <global azimuth="120" elevation="-20" /> -->
     </visual>
 
     <compiler inertiafromgeom='auto' inertiagrouprange='0 5' angle="radian" texturedir="texture"
@@ -40,7 +40,7 @@
             <freejoint name="cube_freejoint" />
             <inertial pos="0 0 0" mass="0.01" diaginertia="0.0002 0.0002 0.0002" />
             <geom name="cube_geom_0" friction="1. 0.005 0.0001" conaffinity="1" contype="1"
-                condim="3" pos="0. 0. 0.0" type="box" size="0.025 0.025 0.025" rgba="0.28 0.43 0.29 1." />
+                condim="3" pos="0. 0. 0.0" type="box" size="0.02 0.02 0.02" rgba="1 0 0 1." />
         </body>
 
         <!-- franka's reachable workspace -->

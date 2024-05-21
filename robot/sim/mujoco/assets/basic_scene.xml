@@ -14,48 +14,21 @@
     </visual> -->
 
     <worldbody>
-
-        <!-- main light is defined in franka_assets/chain.xml -->
-        <!-- <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='0.5 0.1 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='0.5 0.3 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='0.5 -0.1 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='0.5 -0.3 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='0.7 0.1 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='0.7 0.3 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='0.7 -0.1 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='0.7 -0.3 1' /> -->
-
-        <!-- <light directional='false' diffuse='.4 .4 .4' specular='0.3 0.3 0.3' pos='0.4 0.1 1' />
-        <light directional='false' diffuse='.4 .4 .4' specular='0.3 0.3 0.3' pos='0.3 0.3 1' />
-        <light directional='false' diffuse='.4 .4 .4' specular='0.3 0.3 0.3' pos='0.4 -0.1 1' />
-        <light directional='false' diffuse='.4 .4 .4' specular='0.3 0.3 0.3' pos='0.3 -0.3 1' />
-        <light directional='false' diffuse='.4 .4 .4' specular='0.3 0.3 0.3' pos='0.4 0.1 1' />
-        <light directional='false' diffuse='.4 .4 .4' specular='0.3 0.3 0.3' pos='0.1 0.3 1' />
-        <light directional='false' diffuse='.4 .4 .4' specular='0.3 0.3 0.3' pos='0.4 -0.1 1' />
-        <light directional='false' diffuse='.4 .4 .4' specular='0.3 0.3 0.3' pos='0.1 -0.3 1' /> -->
+        <light name="headlight" pos="0 0 2" dir="0 0 -1" diffuse="1 1 1" specular="0.1 0.1 0.1" ambient="0.1 0.1 0.1" />
         
-        <!-- <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='-0.1 0.1 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='-0.1 0.3 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='-0.1 -0.1 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='-0.1 -0.3 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='-0.3 0.1 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='-0.3 0.3 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='-0.3 -0.1 1' />
-        <light directional='false' diffuse='.3 .3 .3' specular='0.3 0.3 0.3' pos='-0.3 -0.3 1' /> -->
-
         <geom name='floor' friction='0.2 0.001 0.00001' pos='0. 0. -0.6' size='1. 1. 1'
             conaffinity='1' contype='1' type='plane' material="MatPlaneBlack" condim='3' />
 
         <geom name='wall_back_left' friction='0.2 0.001 0.00001' pos='-0.6 -1. 0.4' euler="0. 1.57 0." size='1. 1. 0.01'
-            conaffinity='1' contype='1' type='box' material="MatPlaneBlack" condim='3' />
+            conaffinity='1' contype='1' type='box' rgba="0.2 0.2 0.2 1." condim='3' />
         <geom name='wall_back_right' friction='0.2 0.001 0.00001' pos='-0.6 1. 0.4' euler="0. 1.57 0." size='1. 1. 0.01'
-            conaffinity='1' contype='1' type='box' material="MatPlaneBlack" condim='3' />
+            conaffinity='1' contype='1' type='box' rgba="0.2 0.2 0.2 1." condim='3' />
 
         <!-- <geom name='wall_left' friction='0.2 0.001 0.00001' pos='0.4 1.2 -0.4' euler="1.57 0. 0." size='1. 1. 0.01'
             conaffinity='1' contype='1' type='box' material="MatPlaneBlack" condim='3' /> -->
 
         <geom name='wall_right' friction='0.2 0.001 0.00001' pos='0.4 -1.2 0.4' euler="1.57 0. 0." size='1. 1. 0.01'
-            conaffinity='1' contype='1' type='box' material="MatPlaneBlack" condim='3' />
+            conaffinity='1' contype='1' type='box' rgba="0.2 0.2 0.2 1." condim='3' />
 
         <!-- <geom mesh="vention_table" material="MatPlaneBlack" class="visual" pos='0. 0. 0.' size='1. 1. 1' />
         <geom mesh="vention_table" material="MatPlaneBlack" class="collision" /> -->
@@ -64,7 +37,7 @@
         <!-- <geom name='vention_table' friction='0.2 0.001 0.00001' pos='0.23 0. -0.075' size='0.405 0.675 0.075' -->
         <!-- <body name="table"> -->
         <geom name='vention_table' friction='0.2 0.001 0.00001' pos='0.23 0. -0.075' euler="0 0 0" size='0.405 0.675 0.075'
-            conaffinity='1' contype='1' type='box' material="MatPlaneBlack" condim='3' />
+            conaffinity='1' contype='1' type='box' rgba="0.1 0.1 0.1 1" condim='3' />
     <!-- material="MatPlaneBlack" -->
         <!-- </body> -->
         

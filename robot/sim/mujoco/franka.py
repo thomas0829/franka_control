@@ -14,7 +14,7 @@ import yaml
 
 from utils.transformations import (euler_to_quat, quat_to_euler, rmat_to_euler,
                                    rmat_to_quat)
-from utils.transformations_mujoco import mat_to_quat_mujoco
+from utils.transformations_mujoco import mat_to_quat_mujoco, mat_to_euler_mujoco, euler_to_mat_mujoco
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +41,8 @@ class MujocoManipulatorEnv(FrankaBase):
         use_depth=False,
         img_height=480,
         img_width=640,
+        # domain randomization
+        visual_dr = False,
     ):
         super().__init__(
             robot_type=robot_type,
@@ -94,6 +96,11 @@ class MujocoManipulatorEnv(FrankaBase):
         # calibrate cameras
         self.calib_dict = calib_dict
         self.reset_camera_pose()
+
+        # domain randomization
+        self.visual_dr = visual_dr
+        if self.visual_dr:
+            self.init_randomize()
 
     @property
     def dt(self):
@@ -327,10 +334,11 @@ class MujocoManipulatorEnv(FrankaBase):
             K (np.array): 3x3 camera matrix
         """
         cam_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
-        # self.model.cam_fovy[cam_id] = np.degrees(
-        #     2 * np.arctan(self.img_height / (2 * fy))
-        # )
-        self.model.cam_fovy[cam_id] = fovy
+        # testing this
+        self.model.cam_fovy[cam_id] = np.degrees(
+            2 * np.arctan(self.img_height / (2 * fy))
+        )
+        # self.model.cam_fovy[cam_id] = fovy
 
     def get_camera_intrinsic(self, camera_name):
         """
@@ -412,3 +420,136 @@ class MujocoManipulatorEnv(FrankaBase):
         R = R @ camera_axis_correction
 
         return R
+
+    def randomize_camera_pose(self):
+        if self.calib_dict is not None:
+
+            # randomize fy (~385 +/- 10) -> used to compute fovy
+            for sn, camera_name in zip(self.calib_dict.keys(), self.camera_names):
+                
+                # compute noise
+                fy_noise = np.random.uniform(low=-10., high=10.)
+                
+                # add noise
+                self.set_camera_intrinsic(
+                    camera_name,
+                    self.calib_dict[sn]["intrinsic"]["fx"],
+                    self.calib_dict[sn]["intrinsic"]["fy"] + fy_noise,
+                    self.calib_dict[sn]["intrinsic"]["ppx"],
+                    self.calib_dict[sn]["intrinsic"]["ppy"],
+                    self.calib_dict[sn]["intrinsic"]["fovy"],
+                )
+
+            # randomize pos and ori
+            for sn, camera_name in zip(self.calib_dict.keys(), self.camera_names):
+                
+                # compute noise
+                pos_noise = np.random.normal(loc=0.0, scale=1e-2, size=(3,))
+                ori_noise = np.random.normal(loc=0.0, scale=1e-2, size=(3,))
+
+                # add noise
+                pos = np.array(self.calib_dict[sn]["extrinsic"]["pos"]).reshape(-1) + pos_noise
+                ori_mat = np.array(self.calib_dict[sn]["extrinsic"]["ori"])
+                ori_euler = mat_to_euler_mujoco(ori_mat) + ori_noise
+                ori_mat = euler_to_mat_mujoco(ori_euler)
+
+                R = np.eye(4)
+                R[:3, :3] = ori_mat
+                R[:3, 3] = pos
+                self.set_camera_extrinsic(camera_name, R)
+            
+            # no need to change these
+            # self.img_width = self.calib_dict[sn]["intrinsic"]["width"]
+            # self.img_height = self.calib_dict[sn]["intrinsic"]["height"]
+
+    def init_randomize(self):
+        # color
+        self.geom_rgba = self.model.geom_rgba.copy()
+        # light
+        self.light_pos = self.model.light_pos.copy()
+        self.light_dir = self.model.light_dir.copy()
+        self.light_castshadow = self.model.light_castshadow.copy()
+        self.light_ambient = self.model.light_ambient.copy()
+        self.light_diffuse = self.model.light_diffuse.copy()
+        self.light_specular = self.model.light_specular.copy()
+
+    def reset_randomize(self):
+        # color
+        self.model.geom_rgba = self.geom_rgba
+        # camera pose
+        self.reset_camera_pose()
+        # light
+        self.model.light_pos = self.light_pos
+        self.model.light_dir = self.light_dir
+        self.model.light_castshadow = self.light_castshadow
+        self.model.light_ambient = self.light_ambient
+        self.model.light_diffuse = self.light_diffuse
+        self.model.light_specular = self.light_specular
+
+    def randomize_all_color(self):
+        self.model.geom_rgba[:, :3] *= np.random.uniform(
+            0.95, 1.05, (self.model.geom_rgba.shape[0], 3)
+        )
+
+    def randomize_background_color(self):
+       
+        geom_names = [mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_GEOM, i) for i in range(self.model.ngeom)]
+
+        self.wall_geom_ids = []
+        self.table_geom_ids = []
+        for name in geom_names:
+            if name is None:
+                continue
+            if "wall" in name:
+                self.wall_geom_ids += [
+                    mujoco.mj_name2id(
+                        self.model, mujoco.mjtObj.mjOBJ_GEOM, name
+                    )
+                ]
+            if "table" in name:
+                self.table_geom_ids += [
+                    mujoco.mj_name2id(
+                        self.model, mujoco.mjtObj.mjOBJ_GEOM, name
+                    )
+                ]
+        geom_ids = self.wall_geom_ids + self.table_geom_ids
+
+        # full color randomization
+        # self.model.geom_rgba[geom_ids, :3] = np.random.uniform(
+        #     0, 1, (len(geom_ids), 3)
+        # )
+        # color jitter
+        self.model.geom_rgba[geom_ids, :3] *= np.random.uniform(
+            0.9, 1.1, (len(geom_ids), 3)
+        )
+        
+    def randomize_light(self):
+        
+        # change light position and direction -> low impact
+        light_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_LIGHT, "headlight")
+        scale = 3e-2
+        # Adjust position and direction slightly
+        self.model.light_pos[light_id] += np.random.normal(0.0, scale, size=3)
+        self.model.light_dir[light_id] += np.random.normal(0.0, scale, size=3)
+        
+        self.model.light_castshadow = np.random.choice([0, 1])
+
+        # change light color -> large impact
+        scale = 3e-2
+        self.model.light_ambient += np.random.normal(0.0, scale, size=3)
+        self.model.light_diffuse += np.random.normal(0.0, scale, size=3)
+        self.model.light_specular += np.random.normal(0.0, scale, size=3)
+    
+    def randomize(self):
+
+        # reset to intial values
+        self.reset_randomize()
+
+        # randomize camera, background color, light
+        self.randomize_camera_pose()
+        self.randomize_background_color()
+        # self.randomize_all_color()
+        self.randomize_light()
+
+        # push changes from model to data | reset mujoco data
+        mujoco.mj_resetData(self.model, self.data)

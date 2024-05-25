@@ -146,9 +146,9 @@ class MotionPlanner:
         traj = result.get_interpolated_plan()
         if traj is None:
             raise ValueError
-        print(
-            f"Trajectory Generated: success {result.success.item()} | len {len(traj)} | optimized_dt {result.optimized_dt.item()}"
-        )
+        # print(
+        #     f"Trajectory Generated: success {result.success.item()} | len {len(traj)} | optimized_dt {result.optimized_dt.item()}"
+        # )
         
         # replace joint position with ee pose
         if return_ee_pose:

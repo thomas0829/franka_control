@@ -43,9 +43,9 @@ def unnormalize(arr, stats):
 def run_experiment(cfg):
 
     # REMOVE ME !!!!
-    cfg.input_datasets = ["simpler_redcube_1000_seed_98"]
-    cfg.data_dir = "/home/marius/Projects/polymetis_franka/data/"
-    cfg.output_dataset = "simpler_redcube_1000_seed_98_blocking"
+    # cfg.input_datasets = ["simpler_redcube_1000_seed_98"]
+    # cfg.data_dir = "/home/marius/Projects/polymetis_franka/data/"
+    # cfg.output_dataset = "simpler_redcube_1000_seed_98_blocking"
     # REMOVE ME !!!!
 
     # create dataset paths
@@ -79,6 +79,10 @@ def run_experiment(cfg):
             file_name = os.path.join(dataset_path, split, "demo.hdf5")
             data = h5py.File(file_name,'r')
             keys = data["data"].keys()
+
+            # EXPERIMENTAL
+            # keys = list(keys)[:100]
+
             for i, curr_key in tqdm(enumerate(keys), total=len(keys)):
                 # load data
                 # data = np.load(file_names[i], allow_pickle=True)
@@ -133,6 +137,15 @@ def run_experiment(cfg):
 
                 obs_keys = dic.keys()
                 
+                # # EXPERIMENTAL: drop actions and obs where abs(act) < 1e-2
+                # abs_delta = np.sum(np.abs(actions[...,:-1]), axis=-1)
+                # low_act_idcs = abs_delta < 1e-2
+                for key in obs_keys:
+                    # dic[key] = dic[key][~low_act_idcs]
+                    dic[key] = dic[key][::2]
+                # actions = actions[~low_act_idcs]
+                actions = actions[::2]
+
                 if cfg.blocking_control:
                     # compute actual deltas s_t+1 - s_t (keep gripper actions)
                     actions_tmp = actions.copy()

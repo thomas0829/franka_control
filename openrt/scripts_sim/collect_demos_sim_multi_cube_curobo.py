@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import os
+import random
 import time
 
 import hydra
@@ -18,6 +19,7 @@ from robot.wrappers.data_wrapper import DataCollectionWrapper
 from robot.wrappers.resize_wrapper import ResizeImageWrapper
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.transformations_mujoco import *
+from robot.sim.mujoco.distractor_wrapper import DistWrapper
 
 import logging
 logging.getLogger('curobo').setLevel(logging.WARNING)
@@ -237,53 +239,92 @@ def run_experiment(cfg):
 
     cfg.robot.max_path_length = cfg.max_episode_length
 
-    cfg.robot.blocking_control = False  # True
-    fake_blocking = False
-    # fake_blocking = cfg.robot.blocking_control
-    # cfg.robot.blocking_control = not cfg.robot.blocking_control
+    # env = make_env(
+    #     robot_cfg_dict=hydra_to_dict(cfg.robot),
+    #     env_cfg_dict=hydra_to_dict(cfg.env),
+    #     seed=cfg.seed,
+    #     device_id=0,
+    #     verbose=True,
+    # )
 
-    env = make_env(
-        robot_cfg_dict=hydra_to_dict(cfg.robot),
-        env_cfg_dict=hydra_to_dict(cfg.env),
-        seed=cfg.seed,
-        device_id=0,
-        verbose=True,
-    )
-    camera_names = env.unwrapped._robot.camera_names.copy()
+    def make_multi_cube_env(cfg, color_ids=[0, 1, 2], savedir=None):
 
-    # if cfg.aug.camera_crop is not None:
-    #     env = CropImageWrapper(
-    #         env,
-    #         x_min=cfg.aug.camera_crop[0],
-    #         x_max=cfg.aug.camera_crop[1],
-    #         y_min=cfg.aug.camera_crop[2],
-    #         y_max=cfg.aug.camera_crop[3],
-    #         image_keys=[cn + "_rgb" for cn in camera_names],
-    #         crop_render=True,
-    #     )
+        colors = [
+            [0., 0.9, 0., 1.],
+            [0.9, 0., 0., 1.],
+            [0., 0., 0.9, 1.]
+        ]
+        color_names = [
+            "green",
+            "red",
+            "blue"
+        ]
 
-    # if cfg.aug.camera_resize is not None:
-    #     env = ResizeImageWrapper(
-    #         env,
-    #         size=cfg.aug.camera_resize,
-    #         image_keys=[cn + "_rgb" for cn in camera_names],
-    #     )
+        language_instruction = f"pick up the {color_names[color_ids[0]]} cube"
+
+        env_cfg_dict = hydra_to_dict(cfg.env)
+        env_cfg_dict["obj_id"] = "cubes"
+        env_cfg_dict["obj_rgba"] = colors[color_ids[0]]
+        env_cfg_dict["reset_data_on_reset"] = False
+        env = make_env(
+                robot_cfg_dict=hydra_to_dict(cfg.robot),
+                env_cfg_dict=env_cfg_dict,
+                seed=cfg.seed,
+                device_id=0,
+                verbose=True,
+            )
+
+        dis_cfg_dict = hydra_to_dict(cfg.env)
+        dis_cfg_dict["reset_data_on_reset"] = False
+        dis_cfg_dict["obj_id"] = "distractor_0"
+        dis_cfg_dict["obj_rgba"] = colors[color_ids[1]]
+        env = DistWrapper(env, **dis_cfg_dict)
+
+        dis_cfg_dict = hydra_to_dict(cfg.env)
+        dis_cfg_dict["obj_id"] = "distractor_1"
+        dis_cfg_dict["obj_rgba"] = colors[color_ids[2]]
+        env = DistWrapper(env, **dis_cfg_dict)
+
+        # camera_names = env.unwrapped._robot.camera_names.copy()
+
+        # if cfg.aug.camera_crop is not None:
+        #     env = CropImageWrapper(
+        #         env,
+        #         x_min=cfg.aug.camera_crop[0],
+        #         x_max=cfg.aug.camera_crop[1],
+        #         y_min=cfg.aug.camera_crop[2],
+        #         y_max=cfg.aug.camera_crop[3],
+        #         image_keys=[cn + "_rgb" for cn in camera_names],
+        #         crop_render=True,
+        #     )
+
+        # if cfg.aug.camera_resize is not None:
+        #     env = ResizeImageWrapper(
+        #         env,
+        #         size=cfg.aug.camera_resize,
+        #         image_keys=[cn + "_rgb" for cn in camera_names],
+        #     )
+
+        env = DataCollectionWrapper(
+            env,
+            language_instruction=language_instruction,
+            fake_blocking=False,
+            act_noise_std=cfg.act_noise_std,
+            save_dir=savedir,
+        )
+
+        return env
+
 
     for split, n_episodes in zip(
         ["train", "eval"], [cfg.episodes, int(cfg.episodes // 10)]
     ):
+
         if cfg.exp_id[0] == "/":
             savedir = f"{cfg.exp_id}/{split}"
         else:
             savedir = f"data/{cfg.exp_id}/{split}"
-        # savedir = f"/media/marius/X9 Pro/0523/{cfg.exp_id}/{split}"
-        env = DataCollectionWrapper(
-            env,
-            language_instruction=cfg.language_instruction,
-            fake_blocking=fake_blocking,
-            act_noise_std=cfg.act_noise_std,
-            save_dir=savedir,
-        )
+        
         successes = []
         obj_poses = []
 
@@ -292,6 +333,17 @@ def run_experiment(cfg):
         # for n_traj in trange(cfg.episodes):
         with tqdm(total=n_episodes) as pbar:
             while n_traj < n_episodes:
+            
+                # color #0 for first half of demos
+                if n_traj == 0:
+                    env = make_multi_cube_env(cfg, color_ids=[0, 1, 2], savedir=savedir)
+                # color #1 for second half of demos
+                elif n_traj == n_episodes // 2:
+                    traj_count_prev = env.traj_count
+                    env = make_multi_cube_env(cfg, color_ids=[1, 0, 2], savedir=savedir)
+                    env.traj_count = traj_count_prev
+                # color #2 for distractor
+                
                 env.reset_buffer()
 
                 try:

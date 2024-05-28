@@ -516,9 +516,9 @@ class MujocoManipulatorEnv(FrankaBase):
         geom_ids = self.wall_geom_ids + self.table_geom_ids
 
         # full color randomization
-        self.model.geom_rgba[geom_ids, :3] = np.random.uniform(
-            0, 1, (len(geom_ids), 3)
-        )
+        # self.model.geom_rgba[geom_ids, :3] = np.random.uniform(
+        #     0, 1, (len(geom_ids), 3)
+        # )
         # color jitter
         self.model.geom_rgba[geom_ids, :3] *= np.random.uniform(
             0.9, 1.1, (len(geom_ids), 3)

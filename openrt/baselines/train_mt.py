@@ -31,7 +31,8 @@ from collections import OrderedDict
 import torch
 from torch.utils.data import DataLoader
 
-import robomimic
+# import sys
+# sys.path.append('/home/marius/Projects/robomimic')
 import openrt.baselines.train_mt_utils as TrainUtils
 import robomimic.utils.torch_utils as TorchUtils
 import robomimic.utils.obs_utils as ObsUtils
@@ -65,15 +66,15 @@ def train(config, device):
         sys.stdout = logger
         sys.stderr = logger
 
-    # hack for language conditioning - add low-dim modality for language embedding
+    # # hack for language conditioning - add low-dim modality for language embedding
     if config.observation.language_conditioned:
-        # assert LangUtils.LANG_OBS_KEY not in config.observation.modalities.obs.low_dim
-        # assert LangUtils.LANG_OBS_KEY not in config.observation.modalities.obs.lang
+    #     # assert LangUtils.LANG_OBS_KEY not in config.observation.modalities.obs.low_dim
+    #     # assert LangUtils.LANG_OBS_KEY not in config.observation.modalities.obs.lang
         LangUtils.LANG_COND_ENABLED = True
-        if LangUtils.LANG_OBS_KEY not in config.observation.modalities.obs.lang:
-            with config.values_unlocked():
-                # config.observation.modalities.obs.low_dim.append(LangUtils.LANG_OBS_KEY)
-                config.observation.modalities.obs.lang.append(LangUtils.LANG_OBS_KEY)
+    #     if LangUtils.LANG_OBS_KEY not in config.observation.modalities.obs.lang:
+    #         with config.values_unlocked():
+    #             # config.observation.modalities.obs.low_dim.append(LangUtils.LANG_OBS_KEY)
+    #             config.observation.modalities.obs.lang.append(LangUtils.LANG_OBS_KEY)
 
     # read config to set up metadata for observation modalities (e.g. detecting rgb observations)
     ObsUtils.initialize_obs_utils_with_config(config)

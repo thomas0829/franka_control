@@ -122,13 +122,11 @@ class ObjWrapper(gym.Wrapper):
         else:
             obj_pose = self.curr_obj_pose.copy()
         # set obj qpos | mujoco forward
-
-        
-      
+        self.update_obj(obj_pose) 
 
         # reset robot |
         obs = self.env.reset()
-        self.update_obj(obj_pose)
+        
         return self.augment_observations(obs, flatten=self.flatten)
 
     def get_obj_pose(self):

@@ -280,10 +280,10 @@ def run_experiment(cfg):
         dis_cfg_dict["obj_rgba"] = colors[color_ids[1]]
         env = DistWrapper(env, **dis_cfg_dict)
 
-        # dis_cfg_dict = hydra_to_dict(cfg.env)
-        # dis_cfg_dict["obj_id"] = "distractor_1"
-        # dis_cfg_dict["obj_rgba"] = colors[color_ids[2]]
-        # env = DistWrapper(env, **dis_cfg_dict)
+        dis_cfg_dict = hydra_to_dict(cfg.env)
+        dis_cfg_dict["obj_id"] = "distractor_1"
+        dis_cfg_dict["obj_rgba"] = colors[color_ids[2]]
+        env = DistWrapper(env, **dis_cfg_dict)
 
         env = DataCollectionWrapper(
             env,

@@ -20,6 +20,7 @@ import robomimic
 import robomimic.utils.tensor_utils as TensorUtils
 import robomimic.utils.log_utils as LogUtils
 import robomimic.utils.file_utils as FileUtils
+import robomimic.utils.lang_utils as LangUtils
 
 from robomimic.utils.dataset import SequenceDataset
 from robomimic.envs.env_base import EnvBase
@@ -162,8 +163,10 @@ def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=Non
         hdf5_cache_mode=config.train.hdf5_cache_mode,
         hdf5_use_swmr=config.train.hdf5_use_swmr,
         hdf5_normalize_obs=config.train.hdf5_normalize_obs,
-        filter_by_attribute=filter_by_attribute
+        filter_by_attribute=filter_by_attribute,
+        use_lang=config.observation.language_conditioned and LangUtils.LANG_COND_ENABLED
     )
+    
     dataset = SequenceDataset(**ds_kwargs)
 
     return dataset
@@ -595,6 +598,25 @@ def run_epoch_mt(model, data_loaders, epoch, validate=False, num_steps=None, obs
         t = time.time()
         step_log = model.log_info(info)
         step_log_all.append(step_log)
+
+        # log logprobs for each dataset
+        idx_start = 0
+        if "predictions" in info.keys() and "log_probs" in info["predictions"].keys():
+            loss_tmp = {}
+            for i, dl in enumerate(data_loaders):
+                idx_end = idx_start + dl.batch_size
+                loss_tmp[f"mean_neg_logprobs_dl_{i}"] = -info["predictions"]["log_probs"][idx_start:idx_end].mean().detach().cpu()
+                idx_start = idx_end
+            step_log_all.append(loss_tmp)
+        elif "l2_loss" in info["losses"].keys():
+            loss_tmp = {}
+            for i, dl in enumerate(data_loaders):
+                idx_end = idx_start + dl.batch_size
+                loss_tmp[f"mean_mse_dl_{i}"] = torch.nn.functional.mse_loss(info["predictions"]["actions"][idx_start:idx_end].clone().detach().cpu(), batch["actions"][idx_start:idx_end, 0])
+                idx_start = idx_end
+            step_log_all.append(loss_tmp)
+        
+
         timing_stats["Log_Info"].append(time.time() - t)
 
     # flatten and take the mean of the metrics

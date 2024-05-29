@@ -280,30 +280,10 @@ def run_experiment(cfg):
         dis_cfg_dict["obj_rgba"] = colors[color_ids[1]]
         env = DistWrapper(env, **dis_cfg_dict)
 
-        dis_cfg_dict = hydra_to_dict(cfg.env)
-        dis_cfg_dict["obj_id"] = "distractor_1"
-        dis_cfg_dict["obj_rgba"] = colors[color_ids[2]]
-        env = DistWrapper(env, **dis_cfg_dict)
-
-        # camera_names = env.unwrapped._robot.camera_names.copy()
-
-        # if cfg.aug.camera_crop is not None:
-        #     env = CropImageWrapper(
-        #         env,
-        #         x_min=cfg.aug.camera_crop[0],
-        #         x_max=cfg.aug.camera_crop[1],
-        #         y_min=cfg.aug.camera_crop[2],
-        #         y_max=cfg.aug.camera_crop[3],
-        #         image_keys=[cn + "_rgb" for cn in camera_names],
-        #         crop_render=True,
-        #     )
-
-        # if cfg.aug.camera_resize is not None:
-        #     env = ResizeImageWrapper(
-        #         env,
-        #         size=cfg.aug.camera_resize,
-        #         image_keys=[cn + "_rgb" for cn in camera_names],
-        #     )
+        # dis_cfg_dict = hydra_to_dict(cfg.env)
+        # dis_cfg_dict["obj_id"] = "distractor_1"
+        # dis_cfg_dict["obj_rgba"] = colors[color_ids[2]]
+        # env = DistWrapper(env, **dis_cfg_dict)
 
         env = DataCollectionWrapper(
             env,
@@ -318,6 +298,7 @@ def run_experiment(cfg):
 
     for split, n_episodes in zip(
         ["train", "eval"], [cfg.episodes, int(cfg.episodes // 10)]
+        # ["eval"], [int(cfg.episodes // 10)]
     ):
 
         if cfg.exp_id[0] == "/":

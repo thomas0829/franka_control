@@ -1,6 +1,6 @@
 obj_id: "cube"
 joint_type: "free"
-obj_pose_init: [0.50, 0.0, 0.02, 0., 0., 0., 1.]
+obj_pose_init: [0.45, 0.0, 0.02, 0., 0., 0., 1.]
 obj_rgba: [0.9, 0., 0., 1.]
 obj_pose_noise_dict:
   {

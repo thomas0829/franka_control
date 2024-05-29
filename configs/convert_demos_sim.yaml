@@ -1,0 +1,25 @@
+hydra:
+  job:
+    chdir: false
+
+defaults:
+  - aug: crop_resize
+
+exp_id: null
+
+data_source: "mujoco"
+# path to data directory
+data_dir: "data/"
+# assume data_dir/train, data_dir/eval, ...
+splits: ["train", "eval"]
+
+# names of input datasets -> combines multiple datasets, e.g., ["left_25", "right_25", "middle_25"]
+input_datasets: []
+# name of output dataset, e.g,. "all_75"
+output_dataset: null
+
+# normalize actions and store stats
+normalize_acts: true
+# overwrites actions with actual deltas (x_t{t+1} - x_t{t})
+blocking_control: true
+

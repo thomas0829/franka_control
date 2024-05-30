@@ -28,6 +28,7 @@ def unnormalize(arr, stats):
     config_path="../../configs/", config_name="convert_demos_real", version_base="1.1"
 )
 def run_experiment(cfg):
+    
 
     # create dataset paths
     dataset_paths = [
@@ -38,6 +39,7 @@ def run_experiment(cfg):
 
     hdf5_path = os.path.join(cfg.data_dir, cfg.output_dataset)
     os.makedirs(hdf5_path, exist_ok=True)
+  
     f = h5py.File(os.path.join(hdf5_path, "demos.hdf5"), "w")
 
     # create data group
@@ -47,6 +49,7 @@ def run_experiment(cfg):
     episodes = 0
 
     demo_keys = {}
+  
 
     for split in cfg.splits:
 
@@ -58,9 +61,12 @@ def run_experiment(cfg):
 
             # gather filenames
             file_names = glob.glob(os.path.join(dataset_path, split, "episode_*.npy"))
+           
 
             for i in trange(len(file_names)):
+                # WARNING: please do NOT add try except -> it is skipping data points and hides the real issues
                 # try:
+
                 # load data
                 data = np.load(file_names[i], allow_pickle=True)
 
@@ -70,7 +76,16 @@ def run_experiment(cfg):
                 obs_keys = data[0].keys()
                 for key in obs_keys:
                     dic[key] = np.stack([d[key] for d in data])
+                    
+                    # only keep every 3rd timestep
+                    if cfg.data_source == "mujoco":
+                        dic[key] = dic[key][::2]
+
                 actions = np.stack([d["action"] for d in data])
+                
+                # only keep every 3rd timestep
+                if cfg.data_source == "mujoco":
+                    actions = actions[::2]
 
                 if cfg.blocking_control:
                     # compute actual deltas s_t+1 - s_t (keep gripper actions)
@@ -85,8 +100,8 @@ def run_experiment(cfg):
                         dic[key] = dic[key][:-1]
                     
                     # remove grasp actions if gripper is not closed -> blocking grasp
-                    first_grasp_idx = np.where(actions[...,-1] == 1)[0][0]
-                    actions[first_grasp_idx:first_grasp_idx+7,-1] = 0
+                    # first_grasp_idx = np.where(actions[...,-1] == 1)[0][0]
+                    # actions[first_grasp_idx:first_grasp_idx+3,-1] = 0
 
                 # create demo group
                 demo_key = f"demo_{episodes}"
@@ -95,7 +110,12 @@ def run_experiment(cfg):
 
                 # compute shortest angle -> avoid wrap around
                 actions[..., 3:6] = shortest_angle(actions[..., 3:6])
+                if cfg.data_source == "real":
+                    actions[..., [3,4,5]] = actions[..., [4,3,5]]
+                    actions[...,4] = -actions[...,4]
+                    actions[...,3] = -actions[...,3]
 
+                print(actions[...,:6].min(), actions[...,:6].max())
                 # add action dataset
                 ep_data_grp.create_dataset("actions", data=actions)
 
@@ -108,36 +128,40 @@ def run_experiment(cfg):
                 ep_obs_grp = ep_data_grp.create_group("obs")
                 
                 if "language_instruction" not in obs_keys:
-                    dic["language_instruction"] = ["pick up the cube"]
+                    dic["language_instruction"] = ["pick up the red block"]
                     print("WARNING: 'language_instruction' not in dataset, addind template instruction!")
                 obs_keys = dic.keys()
 
-                print("WARNING: NOT skipping corner camera!")
+                # print("WARNING: NOT skipping corner camera!")
                 # add obs and next_obs datasets
                 for obs_key in obs_keys:
-                    # if obs_key== '215122255213_rgb':
-                    #     continue # skipping the corner camera
+                    #if cfg.data_source == "real":
+                    #   if obs_key== '215122255213_rgb':
+                    #       print("WARNING: skipping 215122255213_rgb!")
+                    #       continue # skipping the corner camera
                     obs = dic[obs_key]
                     if "_rgb" in obs_key:
                         # crop images for training
-                        x_min, x_max, y_min, y_max = cfg.aug.camera_crop
-                        obs = obs[:, x_min : x_max, y_min : y_max]
-                        # resize images for training
-                        obs = np.stack([cv2.resize(img, cfg.aug.camera_resize) for img in obs])
-                        print(f"WARNING: replacing '{obs_key}' with 'front_rgb'!")
+                        # x_min, x_max, y_min, y_max = cfg.aug.camera_crop
+                        # obs = obs[:, x_min : x_max, y_min : y_max]
+                        # # resize images for training
+                        # obs = np.stack([cv2.resize(img, cfg.aug.camera_resize) for img in obs])
+                        # print(f"WARNING: replacing '{obs_key}' with 'front_rgb'!")
                         obs_key = "front_rgb"
                     if obs_key == "language_instruction":
                         lang_emb = get_lang_emb(obs[0])
                         lang_emb = np.tile(lang_emb, (len(obs), 1))
                         ep_obs_grp.create_dataset("lang_embed", data=lang_emb)
-                        obs = np.array(obs, dtype='S100')
+                        obs = np.array(obs, dtype='S40')
 
                     ep_obs_grp.create_dataset(obs_key, data=obs)
 
                 ep_data_grp.attrs["num_samples"] = len(actions)
-
                 episodes += 1
-                # except:
+                
+                # WARNING: please do NOT add try except -> it is skipping data points and hides the real issues
+                # except Exception as e:
+                #     print(e)
                 #     print(f"Error loading {file_names[i]}")
 
         # create mask dataset

@@ -10,7 +10,6 @@ build/
 slurm/
 
 *.gif
-*.json
 *.png
 *.zip
 *.egg-info/

@@ -1,0 +1,194 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Current File with profiler",
+            "type": "python",
+            "request": "launch",
+            "module": "cProfile",
+            "args": [
+                "-o",
+                "/tmp/tmp.prof",
+                "${file}",
+            ]
+        },
+        {
+            "name": "test env",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "exp_id=debug_sim",
+                "robot.imgs=True"
+            ]
+        },
+        {
+            "name": "test mp",
+            "type": "python",
+            "request": "launch",
+            "program": "tests/test_mp.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "exp_id=debug_sim",
+                "robot.imgs=False"
+            ]
+        },
+        {
+            "name": "fisher explore",
+            "type": "python",
+            "request": "launch",
+            "program": "0_train_explore_fisher.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "collect sim demos curobo",
+            "type": "python",
+            "request": "launch",
+            "program": "openrt/scripts/collect_demos_sim_curobo.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "exp_id=synth_sim2real",
+                "act_noise_std=0.00",
+                "robot.randomize_ee_on_reset=0.05",
+                "episodes=3",
+                "env.obj_pose_noise_dict=null",
+                "robot.calibration_file=perception/cameras/calibration/logs/aruco/most_recent_calib.json"
+            ]
+        },
+        {
+            "name": "sim MP",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/weirdlab/Projects/polymetis_franka/asid/scripts/collect_demos_sim_mp.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            // "args": ["--exp", "debug_sim", "--episodes", "3", "--max_episode_length", "30"]
+        },
+        {
+            "name": "debug eval bc",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            // "args": ["training.batch_size=4", "training.dataset_path=data/synth_sl_100", "training.image_keys=['shoulder_rgb']", "training.state_keys=[]", "exp_id=bc_synth_sl_100_shoulder", "env.obj_pose_noise_dict=null"]
+            "args": [
+                "exp_id=green_block_sl_100_sim_middle",
+                "env.obj_pose_noise_dict=null",
+                "robot.blocking_control=false"
+            ]
+            // "args": ["training.dataset_path=data/bc_test_sl_5/train", "training.image_keys=['front_rgb']", "training.state_keys=['lowdim_ee', 'lowdim_qpos', 'obj_pose']", "exp_id=bc_test_sl_5", "env.obj_pose_noise_dict=null"]
+        },
+        {
+            "name": "debug collect data",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "exp_id=bc_test_sl_5",
+                "env.obj_pose_noise_dict=null"
+            ]
+        },
+        {
+            "name": "helen_504",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "exp_id=helen_504"
+            ] //, "robot.on_screen_rendering=true",  "robot.max_path_length=100", "robot.blocking_control=true", "robot.camera_names=['front']", "env.obj_pose_noise_dict=null"] //, "training.dataset_paths=['data/helen_504/train']"],
+        },
+        {
+            "name": "robomimic",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--config",
+                "default_config.json",
+                "--algo",
+                "bc",
+                "--name",
+                "debug_bc",
+                "--data",
+                "data/left_right_middle_75/demos.hdf5"
+            ]
+        },
+        {
+            "name": "two_cube_eval",
+            "type": "python",
+            "request": "launch",
+            "program": "openrt/scripts_sim/robomimic_two_cube_eval.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "exp_id=pick_language_two_cube_20_blocking",
+                "data_path='data/pick_language_two_cube_20_blocking'",
+                "robot.blocking_control=true",
+                "robot.control_hz=1",
+                "robot.max_path_length=100",
+                "open_loop=true",
+                "open_loop_split='train'",
+                "env.obj_pose_noise_dict=null",
+                "ckpt_path='/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/pick_language_two_cube_20_blocking/20240530171557/models/model_epoch_100.pth'"
+            ]
+        },
+        {
+            "name": "gen_single_cube",
+            "type": "python",
+            "request": "launch",
+            "program": "openrt/scripts_sim/collect_demos_sim_curobo.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "exp_id=pick_language_one_cube_10",
+                "episodes=10",
+                "robot.control_hz=10",
+                "robot.max_path_length=100",
+                "robot.visual_dr=false"
+            ]
+        },
+        {
+            "name": "one_cube_eval",
+            "type": "python",
+            "request": "launch",
+            "program": "openrt/scripts/robomimic_eval.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--config-name", "eval_robomimic_sim",
+                "exp_id=pick_language_one_cube_10_blocking",
+                "data_path='data/pick_language_one_cube_10_blocking'",
+                "robot.blocking_control=true",
+                "robot.control_hz=1",
+                "robot.max_path_length=100",
+                "env.obj_pose_noise_dict=null",
+                "open_loop=false",
+                "open_loop_split='eval'",
+                "ckpt_path='/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/mlp_lang_single_10/20240530102039/models/model_epoch_5_best_validation_35.73491744995117.pth'"
+            ]
+        },
+    ]
+}

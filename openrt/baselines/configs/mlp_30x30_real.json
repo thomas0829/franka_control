@@ -2,7 +2,7 @@
     "algo_name": "bc",
     "experiment": {
         "name": "mlp_30x30_real",
-        "validate": true,
+        "validate": false,
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": false,
@@ -48,8 +48,8 @@
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
-        "hdf5_filter_key": "train",
-        "hdf5_validation_filter_key": "eval",
+        "hdf5_filter_key": null,
+        "hdf5_validation_filter_key": null,
         "seq_length": 1,
         "pad_seq_length": true,
         "frame_stack": 1,

@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "clip_30x30_sim",
+        "name": "clip_frozen_30x30_sim",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -60,7 +60,7 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 16,
+        "batch_size": 256,
         "num_epochs": 1000,
         "seed": 1
     },
@@ -198,7 +198,7 @@
                 "core_kwargs": {
                     "backbone_class": "CLIPVision",
                     "backbone_kwargs": {
-                        "freeze": false
+                        "freeze": true
                     },
                     "pool_class": null
                 },

@@ -7,7 +7,7 @@ obj_pose_noise_dict:
     "x": { "min": -0.15, "max": 0.15 },
     "y": { "min": -0.15, "max": 0.15 },
     # "yaw": { "min": -0., "max": 0.0 },
-    "yaw": { "min": -0.0, "max": 0.0 },
+    "yaw": { "min": -0.785, "max": 0.785 },
   }
 obs_keys: ["lowdim_ee", "lowdim_qpos", "obj_pose"]
 safety_penalty: 0.

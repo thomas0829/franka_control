@@ -36,7 +36,7 @@
         }
     },
     "train": {
-        "data": "data/debug_marius_blocking/demos.hdf5",
+        "data": "data/pick_language_one_cube_10_blocking/demos.hdf5",
         "data_co": [],
         "data_weights": [
             1
@@ -117,8 +117,7 @@
             "obs": {
                 "low_dim": [
                     "lowdim_ee",
-                    "lowdim_qpos",
-                    "lang_embed"
+                    "lowdim_qpos"
                 ],
                 "rgb": [
                     "front_rgb"
@@ -162,7 +161,7 @@
                 },
                 "obs_randomizer_class": "EverythingRandomizer",
                 "obs_randomizer_kwargs": {
-                    "crop_randomizer": true,
+                    "crop_randomizer": false,
                     "crop_height": 220,
                     "crop_width": 220,
                     "num_crops": 1,

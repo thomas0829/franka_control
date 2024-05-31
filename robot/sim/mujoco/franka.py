@@ -271,7 +271,7 @@ class MujocoManipulatorEnv(FrankaBase):
             self.img_height = self.calib_dict[sn]["intrinsic"]["height"]
 
             # push changes from model to data | reset mujoco data
-            mujoco.mj_resetData(self.model, self.data)
+            # mujoco.mj_resetData(self.model, self.data)
 
     def viewer_setup(self):
         if self.has_renderer:
@@ -464,6 +464,8 @@ class MujocoManipulatorEnv(FrankaBase):
             # self.img_height = self.calib_dict[sn]["intrinsic"]["height"]
 
     def init_randomize(self):
+        # camera
+        self.calib_dict_copy = self.calib_dict.copy()
         # color
         self.geom_rgba = self.model.geom_rgba.copy()
         # light
@@ -478,6 +480,7 @@ class MujocoManipulatorEnv(FrankaBase):
         # color
         self.model.geom_rgba = self.geom_rgba
         # camera pose
+        self.calib_dict = self.calib_dict_copy
         self.reset_camera_pose()
         # light
         self.model.light_pos = self.light_pos
@@ -553,4 +556,4 @@ class MujocoManipulatorEnv(FrankaBase):
         self.randomize_light()
 
         # push changes from model to data | reset mujoco data
-        mujoco.mj_resetData(self.model, self.data)
+        # mujoco.mj_resetData(self.model, self.data)

@@ -599,6 +599,8 @@ def run_epoch_mt(model, data_loaders, epoch, validate=False, num_steps=None, obs
         step_log = model.log_info(info)
         step_log_all.append(step_log)
 
+        # print("pred", info["predictions"]["actions"].mean(), info["predictions"]["actions"].std())
+        # print("gt", batch["actions"].mean(), batch["actions"].std())
         # log logprobs for each dataset
         idx_start = 0
         if "predictions" in info.keys() and "log_probs" in info["predictions"].keys():
@@ -608,7 +610,7 @@ def run_epoch_mt(model, data_loaders, epoch, validate=False, num_steps=None, obs
                 loss_tmp[f"mean_neg_logprobs_dl_{i}"] = -info["predictions"]["log_probs"][idx_start:idx_end].mean().detach().cpu()
                 idx_start = idx_end
             step_log_all.append(loss_tmp)
-        elif "l2_loss" in info["losses"].keys():
+        elif "l2_loss" in info["losses"].keys() and "predictions" in info.keys() and "actions" in info["predictions"].keys():
             loss_tmp = {}
             for i, dl in enumerate(data_loaders):
                 idx_end = idx_start + dl.batch_size

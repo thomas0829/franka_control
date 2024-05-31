@@ -42,7 +42,7 @@ class ObjWrapper(gym.Wrapper):
         )
         self.obj_joint_id = self.env._robot.model.jnt_qposadr[self.obj_joint_id]
 
-        
+
         self.obj_geom_id = mujoco.mj_name2id(
             self.env._robot.model, mujoco.mjtObj.mjOBJ_GEOM, f"{self.obj_id}_geom"
         )
@@ -83,6 +83,10 @@ class ObjWrapper(gym.Wrapper):
             self.observation_space["obj_pose"] = gym.spaces.Box(
                 low=obj_pose_low, high=obj_pose_high
             )
+        
+        mujoco.mj_resetData(
+            self.env._robot.model, self.env._robot.data
+        )
 
     def augment_observations(self, obs, flatten=True):
         obs["obj_pose"] = self.get_obj_pose()
@@ -107,13 +111,7 @@ class ObjWrapper(gym.Wrapper):
         return self.augment_observations(obs, flatten=self.flatten), reward, done, info
 
     def reset(self, *args, **kwargs):
-
-        # reset mujoco data -> propagate model changes to data
-        if self.reset_data_on_reset:
-            mujoco.mj_resetData(
-                self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
-            )
-
+        
         # randomize obj position |
         self.resample_obj_pose()
 
@@ -122,7 +120,7 @@ class ObjWrapper(gym.Wrapper):
         else:
             obj_pose = self.curr_obj_pose.copy()
         # set obj qpos | mujoco forward
-        self.update_obj(obj_pose) 
+        self.update_obj(obj_pose)
 
         # reset robot |
         obs = self.env.reset()
@@ -140,7 +138,6 @@ class ObjWrapper(gym.Wrapper):
     def resample_obj_pose(self):
         pose = self.init_obj_pose.copy()
        
-        
         if self.obj_pos_noise:
             pose[0] += np.random.uniform(
                 self.obj_pose_noise_dict["x"]["min"],
@@ -168,7 +165,6 @@ class ObjWrapper(gym.Wrapper):
         self.curr_obj_pose = pose.copy()
 
     def update_obj(self, qpos):
-        # print(self.env._robot.data.qpos)
         self.env._robot.data.qpos[self.obj_joint_id:self.obj_joint_id+7] = qpos
         mujoco.mj_step(self.env._robot.model,self.env._robot.data,nstep=self.env.unwrapped._robot.frame_skip)
         

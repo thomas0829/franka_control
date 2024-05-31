@@ -16,12 +16,16 @@ python openrt/scripts_sim/collect_demos_sim_multi_cube_curobo.py exp_id="/media/
 python openrt/scripts_sim/collect_demos_sim_multi_cube_curobo.py exp_id="pick_language_cube_5" episodes=5 \
     robot.control_hz=10 robot.max_path_length=100 robot.visual_dr=false \
     env.obj_pose_init="[0.45, 0.0, 0.02, 0., 0., 0., 1.]"
+python openrt/scripts_sim/collect_demos_sim_two_cube_curobo.py exp_id="pick_language_two_cube_1k" episodes=1000 \
+    robot.control_hz=10 robot.max_path_length=100 robot.visual_dr=false \
+    env.obj_pose_init="[0.45, 0.0, 0.02, 0., 0., 0., 1.]"
 
 # convert mujoco data (language multi cube)
 python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["/media/marius/X9 Pro/pick_red_cube_1k_dr"] output_dataset="pick_red_cube_1k_dr_blocking" splits=["train","eval"]
 python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["/pick_language_cube_500"] output_dataset="pick_language_cube_500_blocking" splits=["train","eval"]
 python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["pick_language_cube_5"] output_dataset="pick_language_cube_5_blocking" splits=["train","eval"]
-python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["pick_red_cube_1k_dr"] output_dataset="pick_red_cube_1k_dr_blocking" splits=["train","eval"]
+python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["pick_red_cube_rnd_1k_dr"] output_dataset="pick_red_cube_rnd_1k_dr_blocking" splits=["train","eval"]
+python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["redcube_issac_1000_blocking_seed_10"] output_dataset="redcube_issac_1000_blocking_seed_10_blocking" splits=["train","eval"]
 
 # replay real data
 python openrt/scripts/replay_demos.py --config-name=collect_demos_sim exp_id=0518_all/0518_redblock_100_blocking robot.blocking_control=true robot.control_hz=1
@@ -34,6 +38,7 @@ openrt/scripts/analyze_demos_hdf5.ipynb
 
 # train
 python openrt/baselines/train_mt.py --config openrt/baselines/configs/mlp_config.json
+python openrt/baselines/train_mt.py --config openrt/baselines/configs/diffusion_config.json
 python openrt/baselines/train_mt.py --config openrt/baselines/configs/mlp_lang_config.json
 
 # eval sim
@@ -50,3 +55,27 @@ exp_id=co_train_sim_real \
 robot.blocking_control=true robot.control_hz=1 robot.max_path_length=100 open_loop=false \
 data_path="data/pick_red_cube_1k_blocking" \
 ckpt_path="CKPT"
+
+# replay sim data
+python openrt/scripts/replay_demos.py --config-name=collect_demos_sim exp_id=pick_language_cube_500_blocking robot.blocking_control=true robot.control_hz=1
+
+# eval multi sim
+python openrt/scripts_sim/robomimic_multi_eval.py --config-name eval_robomimic_sim \
+exp_id=pick_language_cube_500_blocking \
+robot.blocking_control=true robot.control_hz=1 robot.max_path_length=100 open_loop=false \
+env.obj_pose_init="[0.45, 0.0, 0.02, 0., 0., 0., 1.]" \
+data_path="data/pick_language_cube_500_blocking" \
+ckpt_path="/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/mlp_lang/20240529090432/models/model_epoch_667_best_validation_0.0052105444483459.pth"
+
+# eval multi sim (closed loop, train)
+python openrt/scripts_sim/robomimic_multi_eval.py --config-name eval_robomimic_sim exp_id=pick_language_cube_500_blocking robot.blocking_control=true robot.control_hz=1 robot.max_path_length=100 open_loop=false env.obj_pose_init="[0.45, 0.0, 0.02, 0., 0., 0., 1.]" data_path="data/pick_language_cube_500_blocking" ckpt_path="/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/mlp_lang/20240529090432/models/model_epoch_667_best_validation_0.0052105444483459.pth" open_loop=true open_loop_split="train"
+
+# eval multi sim (closed loop, eval)
+python openrt/scripts_sim/robomimic_multi_eval.py --config-name eval_robomimic_sim exp_id=pick_language_cube_500_blocking robot.blocking_control=true robot.control_hz=1 robot.max_path_length=100 open_loop=false env.obj_pose_init="[0.45, 0.0, 0.02, 0., 0., 0., 1.]" data_path="data/pick_language_cube_500_blocking" ckpt_path="/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/mlp_lang/20240529090432/models/model_epoch_667_best_validation_0.0052105444483459.pth" open_loop=true open_loop_split="eval"
+
+
+python openrt/scripts/robomimic_eval.py --config-name eval_robomimic_sim \
+exp_id=diffusion \
+robot.blocking_control=true robot.control_hz=1 robot.max_path_length=100 open_loop=false \
+data_path="data/pick_language_one_cube_10_blocking" \
+ckpt_path="/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/diffusion/20240530160929/models/model_epoch_60.pth"

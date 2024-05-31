@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_lang",
+        "name": "pick_language_two_cube_1k_blocking",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -12,7 +12,7 @@
         "save": {
             "enabled": true,
             "every_n_seconds": null,
-            "every_n_epochs": 20,
+            "every_n_epochs": 5,
             "epochs": [],
             "on_best_validation": true,
             "on_best_rollout_return": false,
@@ -36,20 +36,20 @@
         }
     },
     "train": {
-        "data": "data/pick_language_cube_500_blocking/demos.hdf5",
+        "data": "data/pick_language_two_cube_1k_blocking/demos.hdf5",
         "data_co": [],
         "data_weights": [
             1
         ],
         "output_dir": "logdir/tmp",
-        "num_data_workers": 1,
+        "num_data_workers": 4,
         "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
         "hdf5_filter_key": "train",
         "hdf5_validation_filter_key": "eval",
-        "seq_length": 10,
+        "seq_length": 1,
         "pad_seq_length": true,
         "frame_stack": 1,
         "pad_frame_stack": true,
@@ -60,8 +60,8 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 256,
-        "num_epochs": 2500,
+        "batch_size": 128,
+        "num_epochs": 1000,
         "seed": 1
     },
     "algo": {
@@ -85,8 +85,8 @@
             "cos_weight": 0.0
         },
         "actor_layer_dims": [
-            512,
-            512
+            1024,
+            1024
         ],
         "gaussian": {
             "enabled": false,
@@ -97,7 +97,7 @@
             "low_noise_eval": false
         },
         "gmm": {
-            "enabled": false,
+            "enabled": true,
             "num_modes": 5,
             "min_std": 0.0001,
             "std_activation": "softplus",
@@ -200,24 +200,17 @@
                 "core_kwargs": {
                     "backbone_class": "ResNet18ConvFiLM",
                     "backbone_kwargs": {
-                        "pretrained": true
+                        "pretrained": false
                     }
-                },
-                "pool_class": "SpatialSoftmax",
-                "pool_kwargs": {
-                    "num_kp": 32,
-                    "learnable_temperature": false,
-                    "temperature": 1.0,
-                    "noise_std": 0.0
                 },
                 "obs_randomizer_class": "EverythingRandomizer",
                 "obs_randomizer_kwargs": {
-                    "crop_randomizer": true,
+                    "crop_randomizer": false,
                     "crop_height": 216,
                     "crop_width": 216,
                     "num_crops": 1,
                     "pos_enc": false,
-                    "color_randomizer": true,
+                    "color_randomizer": false,
                     "brightness": 0.5,
                     "contrast": 0.5,
                     "saturation": 0.5,

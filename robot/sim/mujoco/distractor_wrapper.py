@@ -42,21 +42,19 @@ class DistWrapper(gym.Wrapper):
 
         # Color
         self.env.unwrapped._robot.model.geom_rgba[self.dist_geom_id] = obj_rgba
-
+        
         # Object position
         self.dist_pose_noise_dict = obj_pose_noise_dict
         self.dist_pos_noise = obj_pose_noise_dict is not None
         self.init_dist_pose = self.get_dist_pose() if obj_pose_init is None else obj_pose_init
         self.curr_dist_pose = None
 
+        mujoco.mj_resetData(
+            self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
+        )
+
     def reset(self, *args, **kwargs):
         
-        # # reset mujoco data -> propagate model changes to data
-        if self.reset_data_on_reset:
-            mujoco.mj_resetData(
-                self.env.unwrapped._robot.model, self.env.unwrapped._robot.data
-            )
-
         # randomize obj position |
         self.resample_dist_pose()
 
@@ -66,7 +64,7 @@ class DistWrapper(gym.Wrapper):
             dist_pose = self.curr_dist_pose.copy()
         # set obj qpos | mujoco forward
         self.update_dist(dist_pose)
-
+        
         # reset robot |
         obs = self.env.reset()
 
@@ -88,12 +86,14 @@ class DistWrapper(gym.Wrapper):
         while not valid:
           
             # Randomly choose an angle and distance
+            x_sign = np.random.choice([-1, 1])
+            y_sign = np.random.choice([-1, 1])
             angle = np.random.uniform(0, 2 * np.pi)
             distance = np.random.uniform(min_dist, min_dist + 0.1)  # Adjust maximum as needed
 
             # Calculate potential new position
-            x2 = x1 + distance * np.cos(angle)
-            y2 = y1 + distance * np.sin(angle)
+            x2 = x1 + distance * np.cos(angle) * x_sign
+            y2 = y1 + distance * np.sin(angle) * y_sign
 
             # Check if the new position is within the specified x and y ranges
             if x_range[0] <= x2 <= x_range[1] and y_range[0] <= y2 <= y_range[1]:
@@ -139,9 +139,9 @@ class DistWrapper(gym.Wrapper):
         
         self.env.unwrapped._robot.data.qpos[self.dist_joint_id:self.dist_joint_id+7] = qpos
         
-        # mujoco.mj_step(
-        #     self.env.unwrapped._robot.model,
-        #     self.env.unwrapped._robot.data,
-        #     nstep=self.env.unwrapped._robot.frame_skip,
-        # )
+        mujoco.mj_step(
+            self.env.unwrapped._robot.model,
+            self.env.unwrapped._robot.data,
+            nstep=self.env.unwrapped._robot.frame_skip,
+        )
         

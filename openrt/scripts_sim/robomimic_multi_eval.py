@@ -66,10 +66,10 @@ def make_multi_cube_env(cfg, color_ids=[0, 1, 2]):
     dis_cfg_dict["obj_rgba"] = colors[color_ids[1]]
     env = DistWrapper(env, **dis_cfg_dict)
 
-    # dis_cfg_dict = hydra_to_dict(cfg.env)
-    # dis_cfg_dict["obj_id"] = "distractor_1"
-    # dis_cfg_dict["obj_rgba"] = colors[color_ids[2]]
-    # env = DistWrapper(env, **dis_cfg_dict)
+    dis_cfg_dict = hydra_to_dict(cfg.env)
+    dis_cfg_dict["obj_id"] = "distractor_1"
+    dis_cfg_dict["obj_rgba"] = colors[color_ids[2]]
+    env = DistWrapper(env, **dis_cfg_dict)
 
     return env, language_instruction
 
@@ -217,7 +217,8 @@ def run_experiment(cfg):
                 obs = {
                     "lowdim_ee": eval_traj["obs"]["lowdim_ee"][j],
                     "lowdim_qpos": eval_traj["obs"]["lowdim_qpos"][j],
-                    "front_rgb": eval_traj["obs"]["215122255213_rgb"][j]
+                    # "front_rgb": eval_traj["obs"]["215122255213_rgb"][j]
+                    "front_rgb": eval_traj["obs"]["front_rgb"][j]
                 }
 
             # preprocess imgs
@@ -225,8 +226,8 @@ def run_experiment(cfg):
                 obs[key] = obs[key].transpose(2, 0, 1)
 
             with torch.no_grad():
-
-                obs["lang_embed"] = lang_embed
+                if "lang_embed" not in obs.keys():
+                    obs["lang_embed"] = lang_embed
 
                 # remove depth from observations
                 for cn in camera_names:
@@ -269,17 +270,23 @@ def run_experiment(cfg):
 
         # T,C,H,W
         video = np.stack(imgs)[:, 0]
+        if cfg.open_loop:
+            video = np.concatenate((video, np.array(eval_traj["obs"]["front_rgb"]).transpose(0,3,1,2)), axis=2)
 
         # save trajectory plot -> takes T,C,H,W
         plot_img = plot_trajectory(
             pred_actions=np.stack(acts),
-            true_actions=None,
+            true_actions=eval_traj["obs"]["action"] if cfg.open_loop else None,
             imgs=video,
         )
         logger.record(
             f"images/eval_{i}",
             Image(plot_img, dataformats="HWC"),
             exclude=["stdout"],
+        )
+        plt.imsave(
+            os.path.join(logdir, subdir, f"eval_{i}_plot.png"),
+            plot_img,
         )
 
         # save video local -> takes T,H,W,C

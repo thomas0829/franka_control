@@ -1,0 +1,75 @@
+<mujoco model="cube_franka">
+
+    <option cone="elliptic" impratio="100" noslip_iterations="3">
+        <!-- <option> -->
+        <flag multiccd="enable" />
+    </option>
+    <size njmax='1000' nconmax='1000' />
+
+    <include file="basic_scene.xml" />
+    <include file="franka_assets/franka_assets.xml" />
+
+    <visual>
+        <!-- <global offwidth="2560" offheight="1920" />
+        <quality shadowsize="4096" offsamples="8" />
+        <map force="0.1" fogend="5" /> -->
+        <!-- no shadow -->
+        <quality shadowsize="0" offsamples="8" />
+        <!-- <headlight diffuse="0.4 0.4 0.4" ambient="0.1 0.1 0.1" specular="0.1 0.1 0.1" /> -->
+        <!-- <rgba haze="0.15 0.25 0.35 1" /> -->
+        <!-- <global azimuth="120" elevation="-20" /> -->
+    </visual>
+
+    <compiler inertiafromgeom='auto' inertiagrouprange='0 5' angle="radian" texturedir="texture"
+        meshdir="franka_assets/meshes" />
+    <worldbody>
+
+        <!-- Cameras -->
+        <camera name="front" fovy="65"
+            pos="1.083 -0.313 0.687" xyaxes="0.297 0.955 -0.000 -0.396 0.123 0.910" />
+        <camera name="shoulder" fovy="65" pos="0.043 0.479 1.056"
+            xyaxes="-0.844 -0.537 -0.000 0.418 -0.657 0.627" />
+
+        <!-- Robot -->
+        <body pos='0. 0. 0.' euler='0 0 0'>
+            <include file="franka_assets/chain.xml" />
+        </body>
+
+        <!-- Cube -->
+        <body name="cube_body" pos="0.5 0.05 0.02" euler="0 0 0">
+            <freejoint name="cube_freejoint" />
+            <inertial pos="0 0 0" mass="0.01" diaginertia="0.0002 0.0002 0.0002" />
+            <geom name="cube_geom" friction="1. 0.005 0.0001" conaffinity="1" contype="1"
+                condim="3" pos="0. 0. 0.0" type="box" size="0.02 0.02 0.02" rgba="0.9 0 0 1." />
+        </body>
+
+        <body name="distractor_0_body" pos="0.5 -0.05 0.02" euler="0 0 0">
+            <freejoint name="distractor_0_freejoint" />
+            <inertial pos="0 0 0" mass="0.01" diaginertia="0.0002 0.0002 0.0002" />
+            <geom name="distractor_0_geom" friction="1. 0.005 0.0001" conaffinity="1" contype="1"
+                condim="3" pos="0. 0. 0.0" type="box" size="0.02 0.02 0.02" rgba="0. 1. 0 1." />
+        </body>
+
+        <body name="distractor_1_body" pos="0.5 -0.05 0.02" euler="0 0 0">
+            <freejoint name="distractor_1_freejoint" />
+            <inertial pos="0 0 0" mass="0.01" diaginertia="0.0002 0.0002 0.0002" />
+            <geom name="distractor_1_geom" friction="1. 0.005 0.0001" conaffinity="1" contype="1"
+                condim="3" pos="0. 0. 0.0" type="box" size="0.02 0.02 0.02" rgba="0. 1. 0 1." />
+        </body>
+
+        <!-- franka's reachable workspace -->
+        <!-- low: np.array([0.35, -0.38, 0.13, 0.00]),
+            high: np.array([0.65, 0.38, 0.8, 0.085]), -->
+        <!-- <geom conaffinity="2" contype="2" condim="1" name="reach" pos="0.54 0. 0.215"
+        size="0.16 0.25 0.2" type="box" rgba="0 255 0 0.1"/> -->
+
+    </worldbody>
+
+    <include file="franka_assets/actuator_position.xml" />
+    <!-- <include file="franka_assets/actuator_position.xml" /> -->
+
+    <!-- <keyframe>
+        <key qpos='-0.06315325 0.33202057 -0.0462324 -2.79372462 0.07651035 3.18670704 0.44067877
+    4.56178e-05 4.56178e-05 0.45 0.0 0.02 1 0 0 0'/>
+    </keyframe> -->
+</mujoco>

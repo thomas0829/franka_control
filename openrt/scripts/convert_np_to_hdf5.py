@@ -142,11 +142,11 @@ def run_experiment(cfg):
                     obs = dic[obs_key]
                     if "_rgb" in obs_key:
                         # crop images for training
-                        # x_min, x_max, y_min, y_max = cfg.aug.camera_crop
-                        # obs = obs[:, x_min : x_max, y_min : y_max]
+                        x_min, x_max, y_min, y_max = cfg.aug.camera_crop
+                        obs = obs[:, x_min : x_max, y_min : y_max]
                         # # resize images for training
-                        # obs = np.stack([cv2.resize(img, cfg.aug.camera_resize) for img in obs])
-                        # print(f"WARNING: replacing '{obs_key}' with 'front_rgb'!")
+                        obs = np.stack([cv2.resize(img, cfg.aug.camera_resize) for img in obs])
+                        print(f"WARNING: replacing '{obs_key}' with 'front_rgb'!")
                         obs_key = "front_rgb"
                     if obs_key == "language_instruction":
                         lang_emb = get_lang_emb(obs[0])

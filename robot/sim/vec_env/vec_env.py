@@ -17,7 +17,7 @@ def make_env(
         print("env config", env_cfg_dict)
     
     # replace base mujoco xml with object specific xml
-    if env_cfg_dict is not None:
+    if env_cfg_dict is not None and robot_cfg_dict["model_name"] == 'base_franka':
         robot_cfg_dict["model_name"] = robot_cfg_dict["model_name"].replace(
             "base", env_cfg_dict["obj_id"]
         )

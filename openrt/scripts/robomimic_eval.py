@@ -28,6 +28,7 @@ from openrt.scripts.convert_np_to_hdf5 import normalize, unnormalize
 from utils.experiment import hydra_to_dict, set_random_seed, setup_wandb
 from utils.logger import Image, Video, configure_logger
 from utils.system import get_device, set_gpu_mode
+from robomimic.utils.lang_utils import get_lang_emb
 
 
 @hydra.main(
@@ -56,7 +57,8 @@ def run_experiment(cfg):
     # load dataset for open loop execution
     if cfg.open_loop:
         data = h5py.File(
-            cfg.data_path,
+            cfg.data_path+"/demos.hdf5",
+            # cfg.data_path,
             "r",
             swmr=True,
             libver="latest",
@@ -72,7 +74,8 @@ def run_experiment(cfg):
         device=device,
         verbose=True,
     )
-    print("Pretrained weights loaded [robomimic].")
+    algo_name, _ = FileUtils.algo_name_from_checkpoint(ckpt_dict=ckpt_dict)
+    print(f"Pretrained {algo_name} weights loaded [robomimic].")
 
     # load stats to normalize actions
     stats = pickle.load(open(os.path.join(cfg.data_path, "stats"), "rb"))
@@ -89,7 +92,7 @@ def run_experiment(cfg):
         verbose=True,
     )
 
-    assert env._num_cameras > 0, "ERROR: not camera(s) connected!"
+    assert cfg.robot.ip_address is None or env._num_cameras > 0, "ERROR: not camera(s) connected!"
 
     # camera_names = [k for k in env.get_images().keys()] if cfg.robot.ip_address is not None else env.unwrapped._robot.camera_names.copy()
     # get training camera names from config
@@ -117,6 +120,8 @@ def run_experiment(cfg):
             image_keys=[cn + "_rgb" for cn in camera_names],
         )
 
+    lang_embed = get_lang_emb(cfg.language_instruction)
+
     obj_poses = []
 
     # open loop
@@ -130,6 +135,7 @@ def run_experiment(cfg):
         policy.start_episode()
 
         obs = env.reset()
+        prev_obs = None
 
         imgs = []
         acts = []
@@ -158,6 +164,7 @@ def run_experiment(cfg):
                     "lowdim_ee": eval_traj["obs"]["lowdim_ee"][j],
                     "lowdim_qpos": eval_traj["obs"]["lowdim_qpos"][j],
                     "front_rgb": eval_traj["obs"]["front_rgb"][j],
+                    "lang_embed": eval_traj["obs"]["lang_embed"][j]
                 }
 
             # preprocess imgs
@@ -165,13 +172,28 @@ def run_experiment(cfg):
                 obs[key] = obs[key].transpose(2, 0, 1)
 
             with torch.no_grad():
+
+                if "lang_embed" not in obs.keys():
+                    obs["lang_embed"] = lang_embed
+
                 # remove depth from observations
                 for cn in camera_names:
                     if cn + "_depth" in obs:
                         del obs[cn + "_depth"]
 
+                # works for history=2 diffusion policy
+                if algo_name == "diffusion_policy":
+                    obs_diff = {}
+                    for key in obs.keys():
+                        if prev_obs is None:
+                            prev_obs = obs.copy()
+                        obs_diff[key] = np.stack([obs[key], prev_obs[key]])
+                        prev_obs = obs.copy()
+                    act = policy(ob=obs_diff)
+                else:
+                    act = policy(ob=obs)
+                
                 # run policy and normalize actions
-                act = policy(ob=obs)
                 act = unnormalize(act, stats["action"])
 
             obs["front_rgb"] = env.render().transpose(2, 0, 1)
@@ -204,6 +226,8 @@ def run_experiment(cfg):
 
         # T,C,H,W
         video = np.stack(imgs)[:, 0]
+        if cfg.open_loop:
+            video = np.concatenate((video, np.array(eval_traj["obs"]["front_rgb"]).transpose(0,3,1,2)), axis=2)
 
         # save trajectory plot -> takes T,C,H,W
         plot_img = plot_trajectory(

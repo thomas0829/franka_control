@@ -278,6 +278,7 @@ def train(config, device):
     print("")
 
     # main training loop
+    best_train_loss = None
     best_valid_loss = None
     best_return = {k: -np.inf for k in envs} if config.experiment.rollout.enabled else None
     best_success_rate = {k: -1. for k in envs} if config.experiment.rollout.enabled else None

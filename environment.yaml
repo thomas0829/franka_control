@@ -29,3 +29,5 @@ dependencies:
     - mujoco-python-viewer
     - hydra-core
     - wandb
+    - transformers
+    - diffusers==0.11.1

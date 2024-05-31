@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_isaac_sim",
+        "name": "mlp_30x30_sim",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -36,21 +36,21 @@
         }
     },
     "train": {
-        "data": "data/redcube_issac_1000_blocking_seed_10/demos.hdf5",
+        "data": "data/pick_red_cube_rnd_1k_dr_blocking/demos.hdf5",
         "data_co": [
         ],
         "data_weights": [
             1
         ],
         "output_dir": "logdir/tmp",
-        "num_data_workers": 1,
+        "num_data_workers": 16,
         "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
         "hdf5_filter_key": "train",
         "hdf5_validation_filter_key": "eval",
-        "seq_length": 10,
+        "seq_length": 1,
         "pad_seq_length": true,
         "frame_stack": 1,
         "pad_frame_stack": true,
@@ -62,7 +62,7 @@
         "goal_mode": null,
         "cuda": true,
         "batch_size": 256,
-        "num_epochs": 2500,
+        "num_epochs": 1000,
         "seed": 1
     },
     "algo": {
@@ -98,7 +98,7 @@
             "low_noise_eval": false
         },
         "gmm": {
-            "enabled": false,
+            "enabled": true,
             "num_modes": 5,
             "min_std": 0.0001,
             "std_activation": "softplus",
@@ -196,13 +196,22 @@
             },
             "rgb": {
                 "core_class": "VisualCore",
-                "core_kwargs": {},
-                "pool_class": "SpatialSoftmax",
-                "pool_kwargs": {
-                    "num_kp": 32,
-                    "learnable_temperature": false,
-                    "temperature": 1.0,
-                    "noise_std": 0.0
+                "core_kwargs": {
+                    "feature_dimension": 64,
+                    "flatten": true,
+                    "backbone_class": "ResNet18Conv",
+                    "backbone_kwargs": {
+                        "pretrained": false,
+                        "input_coord_conv": false
+                    },
+                    "pool_class": "SpatialSoftmax",
+                    "pool_kwargs": {
+                        "num_kp": 32,
+                        "learnable_temperature": false,
+                        "temperature": 1.0,
+                        "noise_std": 0.0,
+                        "output_variance": false
+                    }
                 },
                 "obs_randomizer_class": "EverythingRandomizer",
                 "obs_randomizer_kwargs": {

@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "rnn_pick_red_cube_rnd_1k_dr_blocking",
+        "name": "mlp_30x30_sim",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -12,7 +12,7 @@
         "save": {
             "enabled": true,
             "every_n_seconds": null,
-            "every_n_epochs": 5,
+            "every_n_epochs": 20,
             "epochs": [],
             "on_best_validation": true,
             "on_best_rollout_return": false,
@@ -37,19 +37,20 @@
     },
     "train": {
         "data": "data/pick_red_cube_rnd_1k_dr_blocking/demos.hdf5",
-        "data_co": [],
+        "data_co": [
+        ],
         "data_weights": [
             1
         ],
         "output_dir": "logdir/tmp",
-        "num_data_workers": 4,
+        "num_data_workers": 16,
         "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
         "hdf5_filter_key": "train",
         "hdf5_validation_filter_key": "eval",
-        "seq_length": 10,
+        "seq_length": 1,
         "pad_seq_length": true,
         "frame_stack": 1,
         "pad_frame_stack": true,
@@ -60,7 +61,7 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 16,
+        "batch_size": 256,
         "num_epochs": 1000,
         "seed": 1
     },
@@ -85,8 +86,8 @@
             "cos_weight": 0.0
         },
         "actor_layer_dims": [
-            1024,
-            1024
+            512,
+            512
         ],
         "gaussian": {
             "enabled": false,
@@ -139,7 +140,7 @@
             ]
         },
         "rnn": {
-            "enabled": true,
+            "enabled": false,
             "horizon": 10,
             "hidden_dim": 1000,
             "rnn_type": "LSTM",
@@ -177,9 +178,7 @@
                 "depth": [],
                 "scan": [],
                 "pc": [],
-                "lang": [
-                    "lang_embed"
-                ]
+                "lang": []
             },
             "goal": {
                 "low_dim": [],
@@ -196,11 +195,22 @@
                 "obs_randomizer_kwargs": {}
             },
             "rgb": {
-                "core_class": "VisualCoreLanguageConditioned",
+                "core_class": "VisualCore",
                 "core_kwargs": {
-                    "backbone_class": "ResNet18ConvFiLM",
+                    "feature_dimension": 64,
+                    "flatten": true,
+                    "backbone_class": "ResNet18Conv",
                     "backbone_kwargs": {
-                        "pretrained": false
+                        "pretrained": false,
+                        "input_coord_conv": false
+                    },
+                    "pool_class": "SpatialSoftmax",
+                    "pool_kwargs": {
+                        "num_kp": 32,
+                        "learnable_temperature": false,
+                        "temperature": 1.0,
+                        "noise_std": 0.0,
+                        "output_variance": false
                     }
                 },
                 "obs_randomizer_class": "EverythingRandomizer",
@@ -242,7 +252,7 @@
                 "obs_randomizer_kwargs": {}
             }
         },
-        "language_conditioned": true
+        "language_conditioned": false
     },
     "meta": {
         "hp_base_config_file": null,

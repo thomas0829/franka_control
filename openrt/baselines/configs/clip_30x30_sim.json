@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_30x30_sim",
+        "name": "clip_30x30_sim",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -60,7 +60,7 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 256,
+        "batch_size": 16,
         "num_epochs": 1000,
         "seed": 1
     },
@@ -171,10 +171,9 @@
                     "lowdim_ee",
                     "lowdim_qpos"
                 ],
-                "cliprgb": [
+                "rgb": [
                     "front_rgb"
                 ],
-                "rgb": [],
                 "depth": [],
                 "scan": [],
                 "pc": [],
@@ -194,39 +193,15 @@
                 "obs_randomizer_class": null,
                 "obs_randomizer_kwargs": {}
             },
-            "cliprgb": {
-                "core_class": "VisualCore",
-                "core_kwargs":{"backbone_class":"CLIPModelVisionModel","pool_class":null,"backbone_kwargs":{"device":"cuda:0"}},
-                "pool_class": "SpatialSoftmax",
-                "pool_kwargs": {
-                    "num_kp": 256,
-                    "learnable_temperature": false,
-                    "temperature": 1.0,
-                    "noise_std": 0.0
-                },
-                "obs_randomizer_class": "EverythingRandomizer",
-                "obs_randomizer_kwargs": {
-                    "crop_randomizer": false,
-                    "crop_height": 220,
-                    "crop_width": 220,
-                    "num_crops": 1,
-                    "pos_enc": false,
-                    "color_randomizer": true,
-                    "brightness": 0.5,
-                    "contrast": 0.5,
-                    "saturation": 0.5,
-                    "hue": 0.03,
-                    "color_num_samples": 1,
-                    "gaussian_randomizer": false,
-                    "noise_mean": 0.0,
-                    "noise_std": 0.3,
-                    "limits": null,
-                    "noise_num_samples": 1
-                }
-            },
             "rgb": {
                 "core_class": "VisualCore",
-                "core_kwargs": {},
+                "core_kwargs": {
+                    "backbone_class": "CLIPVision",
+                    "backbone_kwargs": {
+                        "freeze": false
+                    },
+                    "pool_class": null
+                },
                 "obs_randomizer_class": null,
                 "obs_randomizer_kwargs": {}
             },

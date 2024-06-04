@@ -190,5 +190,16 @@
                 "ckpt_path='/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/mlp_lang_single_10/20240530102039/models/model_epoch_5_best_validation_35.73491744995117.pth'"
             ]
         },
+        {
+            "name": "debug CLIP",
+            "type": "python",
+            "request": "launch",
+            "program": "openrt/baselines/train_mt.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--config", "openrt/baselines/configs/clip_frozen_30x30_sim.json"
+            ],
+        },
     ]
 }

@@ -53,6 +53,9 @@ class LoggerCallback(BaseCallback):
         if (self.n_calls - 1) % self.save_interval == 0:
             self.model.save(self.save_dir + "_step_" + str(self.n_calls))
 
+        # return True, otherwise stops training
+        return True
+
     def compute_obj_dev(self):
         """
         This methods compute the deviation (L2) of the object pose from its initial pose.

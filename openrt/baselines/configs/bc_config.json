@@ -88,8 +88,8 @@
             "cos_weight": 0.0
         },
         "actor_layer_dims": [
-            512,
-            512
+            1024,
+            1024
         ],
         "gaussian": {
             "enabled": true,

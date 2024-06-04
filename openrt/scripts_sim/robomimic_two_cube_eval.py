@@ -47,20 +47,7 @@ def make_multi_cube_env(cfg, color_ids=[0, 1, 2]):
     ]
 
     language_instruction = f"pick up the {color_names[color_ids[0]]} cube"
-
-    colors = [
-        [0., 0.9, 0., 1.],
-        [0.9, 0., 0., 1.],
-        [0., 0., 0.9, 1.]
-    ]
-    color_names = [
-        "green",
-        "red",
-        "blue"
-    ]
     offsets = [0.1, -0.1]
-
-    language_instruction = f"pick up the {color_names[color_ids[0]]} cube"
 
     robot_cfg_dict = hydra_to_dict(cfg.robot)
     robot_cfg_dict["model_name"] = "two_cubes_franka"
@@ -69,7 +56,13 @@ def make_multi_cube_env(cfg, color_ids=[0, 1, 2]):
     env_cfg_dict["obj_id"] = "cube"
     env_cfg_dict["obj_rgba"] = colors[color_ids[0]]
     # env_cfg_dict["obj_pose_init"][1] = offsets[color_ids[0]]
-    env_cfg_dict["obj_pose_noise_dict"] = None
+    # env_cfg_dict["obj_pose_noise_dict"] = None
+    env_cfg_dict["obj_pose_noise_dict"] = {
+        "x": { "min": -0.1, "max": 0.1 },
+        "y": { "min": -0.1, "max": 0.1 },
+        # "yaw": { "min": -0., "max": 0.0 },
+        "yaw": { "min": -0.785, "max": 0.785 },
+    }
     env = make_env(
             robot_cfg_dict=robot_cfg_dict,
             env_cfg_dict=env_cfg_dict,
@@ -83,7 +76,13 @@ def make_multi_cube_env(cfg, color_ids=[0, 1, 2]):
     dis_cfg_dict["obj_id"] = "distractor_0"
     dis_cfg_dict["obj_rgba"] = colors[color_ids[1]]
     # dis_cfg_dict["obj_pose_init"][1] = offsets[color_ids[1]]
-    dis_cfg_dict["obj_pose_noise_dict"] = None
+    # dis_cfg_dict["obj_pose_noise_dict"] = None
+    env_cfg_dict["obj_pose_noise_dict"] = {
+        "x": { "min": -0.1, "max": 0.1 },
+        "y": { "min": -0.1, "max": 0.1 },
+        # "yaw": { "min": -0., "max": 0.0 },
+        "yaw": { "min": -0.785, "max": 0.785 },
+    }
     env = DistWrapper(env, **dis_cfg_dict)
 
     return env, language_instruction
@@ -279,10 +278,11 @@ def run_experiment(cfg):
                 gt_act = unnormalize(eval_traj["actions"][j], stats["action"])
                 error = np.around(np.sum(np.abs(gt_act[:6] - act[:6])), 3)
                 errors.append(error)
-        print(
-            f"episode {i} | sum abs error {np.sum(error)}"  #  | act {np.around(act,3)} | gt {np.around(gt_act,3)}",
-            # f"episode {i} | step {j} | abs error {error}"  #  | act {np.around(act,3)} | gt {np.around(gt_act,3)}",
-        )
+        if cfg.open_loop:
+            print(
+                f"episode {i} | sum abs error {np.sum(errors)}"  #  | act {np.around(act,3)} | gt {np.around(gt_act,3)}",
+                # f"episode {i} | step {j} | abs error {error}"  #  | act {np.around(act,3)} | gt {np.around(gt_act,3)}",
+            )
 
         # dump rollout
         np.save(os.path.join(logdir, subdir, f"eval_episode_{i}.npy"), obss)

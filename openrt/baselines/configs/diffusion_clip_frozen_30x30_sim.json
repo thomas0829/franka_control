@@ -1,7 +1,7 @@
 {
-    "algo_name": "bc",
+    "algo_name": "diffusion_policy",
     "experiment": {
-        "name": "clip_ft_30x30_sim",
+        "name": "diffusion_clip_frozen_30x30_sim_1k",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -14,7 +14,7 @@
             "every_n_seconds": null,
             "every_n_epochs": 20,
             "epochs": [],
-            "on_best_validation": true,
+            "on_best_validation": false,
             "on_best_rollout_return": false,
             "on_best_rollout_success_rate": true
         },
@@ -42,14 +42,14 @@
             1
         ],
         "output_dir": "logdir/tmp",
-        "num_data_workers": 16,
+        "num_data_workers": 1,
         "hdf5_cache_mode": "low_dim",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
         "hdf5_filter_key": "train",
         "hdf5_validation_filter_key": "eval",
-        "seq_length": 1,
+        "seq_length": 16,
         "pad_seq_length": true,
         "frame_stack": 1,
         "pad_frame_stack": true,
@@ -60,108 +60,56 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 128,
-        "num_epochs": 2000,
+        "batch_size": 16,
+        "num_epochs": 5000,
         "seed": 1
     },
     "algo": {
         "optim_params": {
             "policy": {
-                "optimizer_type": "adam",
                 "learning_rate": {
                     "initial": 0.0001,
                     "decay_factor": 0.1,
-                    "epoch_schedule": [],
-                    "scheduler_type": "multistep"
+                    "epoch_schedule": []
                 },
                 "regularization": {
                     "L2": 0.0
                 }
             }
         },
-        "loss": {
-            "l2_weight": 1.0,
-            "l1_weight": 0.0,
-            "cos_weight": 0.0
+        "horizon": {
+            "observation_horizon": 2,
+            "action_horizon": 8,
+            "prediction_horizon": 16
         },
-        "actor_layer_dims": [
-            1024,
-            1024
-        ],
-        "gaussian": {
-            "enabled": false,
-            "fixed_std": false,
-            "init_std": 0.1,
-            "min_std": 0.01,
-            "std_activation": "softplus",
-            "low_noise_eval": false
-        },
-        "gmm": {
+        "unet": {
             "enabled": true,
-            "num_modes": 5,
-            "min_std": 0.0001,
-            "std_activation": "softplus",
-            "low_noise_eval": false
+            "diffusion_step_embed_dim": 256,
+            "down_dims": [256,512,1024],
+            "kernel_size": 5,
+            "n_groups": 8
         },
-        "vae": {
-            "enabled": false,
-            "latent_dim": 14,
-            "latent_clip": null,
-            "kl_weight": 1.0,
-            "decoder": {
-                "is_conditioned": true,
-                "reconstruction_sum_across_elements": false
-            },
-            "prior": {
-                "learn": false,
-                "is_conditioned": false,
-                "use_gmm": false,
-                "gmm_num_modes": 10,
-                "gmm_learn_weights": false,
-                "use_categorical": false,
-                "categorical_dim": 10,
-                "categorical_gumbel_softmax_hard": false,
-                "categorical_init_temp": 1.0,
-                "categorical_temp_anneal_step": 0.001,
-                "categorical_min_temp": 0.3
-            },
-            "encoder_layer_dims": [
-                300,
-                400
-            ],
-            "decoder_layer_dims": [
-                300,
-                400
-            ],
-            "prior_layer_dims": [
-                300,
-                400
-            ]
+        "ema": {
+            "enabled": true,
+            "power": 0.75
         },
-        "rnn": {
-            "enabled": false,
-            "horizon": 10,
-            "hidden_dim": 1000,
-            "rnn_type": "LSTM",
-            "num_layers": 2,
-            "open_loop": false,
-            "kwargs": {
-                "bidirectional": false
-            }
+        "ddpm": {
+            "enabled": true,
+            "num_train_timesteps": 100,
+            "num_inference_timesteps": 100,
+            "beta_schedule": "squaredcos_cap_v2",
+            "clip_sample": true,
+            "prediction_type": "epsilon"
         },
-        "transformer": {
+        "ddim": {
             "enabled": false,
-            "context_length": 10,
-            "embed_dim": 512,
-            "num_layers": 6,
-            "num_heads": 8,
-            "emb_dropout": 0.1,
-            "attn_dropout": 0.1,
-            "block_output_dropout": 0.1,
-            "sinusoidal_embedding": false,
-            "activation": "gelu",
-            "supervise_all_steps": false,
-            "nn_parameter_for_timesteps": true
+            "num_train_timesteps": 100,
+            "num_inference_timesteps": 10,
+            "beta_schedule": "squaredcos_cap_v2",
+            "clip_sample": true,
+            "set_alpha_to_one": true,
+            "steps_offset": 0,
+            "prediction_type": "epsilon"
         }
     },
     "observation": {
@@ -177,7 +125,8 @@
                 "depth": [],
                 "scan": [],
                 "pc": [],
-                "lang": []
+                "lang": [
+                ]
             },
             "goal": {
                 "low_dim": [],
@@ -198,7 +147,7 @@
                 "core_kwargs": {
                     "backbone_class": "CLIPVision",
                     "backbone_kwargs": {
-                        "freeze": false
+                        "freeze": true
                     },
                     "pool_class": null
                 },

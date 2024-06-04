@@ -6,7 +6,7 @@ defaults:
   - log: stdout
 
   - robot: sim_6_dof
-  - env: cube
+  - env: cube_20x20_fix_ori
   - aug: crop_resize
 
 exp_id: null
@@ -19,4 +19,4 @@ max_episode_length: 100
 
 act_noise_std: 0.001
 
-language_instruction: "pick up the green cube"
+language_instruction: "pick up the red cube"

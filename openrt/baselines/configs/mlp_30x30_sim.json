@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_30x30_sim",
+        "name": "mlp_red_cube_20x20_1k",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -61,7 +61,7 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 256,
+        "batch_size": 16,
         "num_epochs": 1000,
         "seed": 1
     },
@@ -86,8 +86,8 @@
             "cos_weight": 0.0
         },
         "actor_layer_dims": [
-            512,
-            512
+            1024,
+            1024
         ],
         "gaussian": {
             "enabled": false,
@@ -98,7 +98,7 @@
             "low_noise_eval": false
         },
         "gmm": {
-            "enabled": true,
+            "enabled": false,
             "num_modes": 5,
             "min_std": 0.0001,
             "std_activation": "softplus",

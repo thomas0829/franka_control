@@ -1,8 +1,8 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_30x30_co",
-        "validate": false,
+        "name": "gmm_red_cube_20x20_1k",
+        "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
             "log_tb": false,
@@ -38,10 +38,9 @@
     "train": {
         "data": "data/pick_red_cube_rnd_1k_dr_blocking/demos.hdf5",
         "data_co": [
-            "data/0520_redblock_400_blocking/demos.hdf5"
         ],
         "data_weights": [
-            0.5, 0.5
+            1
         ],
         "output_dir": "logdir/tmp",
         "num_data_workers": 16,
@@ -49,8 +48,8 @@
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
-        "hdf5_filter_key": null,
-        "hdf5_validation_filter_key": null,
+        "hdf5_filter_key": "train",
+        "hdf5_validation_filter_key": "eval",
         "seq_length": 1,
         "pad_seq_length": true,
         "frame_stack": 1,
@@ -62,7 +61,7 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 256,
+        "batch_size": 16,
         "num_epochs": 1000,
         "seed": 1
     },

@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "clip_frozen_30x30_sim",
+        "name": "clip_red_cube_20x20_1k",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -36,7 +36,7 @@
         }
     },
     "train": {
-        "data": "data/pick_red_cube_rnd_1k_dr_blocking/demos.hdf5",
+        "data": "data/red_cube_20x20_1k/demos.hdf5",
         "data_co": [],
         "data_weights": [
             1
@@ -60,7 +60,7 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 256,
+        "batch_size": 16,
         "num_epochs": 1000,
         "seed": 1
     },
@@ -85,8 +85,8 @@
             "cos_weight": 0.0
         },
         "actor_layer_dims": [
-            512,
-            512
+            1024,
+            1024
         ],
         "gaussian": {
             "enabled": false,

@@ -1,12 +1,12 @@
 # generate mujoco data (single cube)
-python openrt/scripts_sim/collect_demos_sim_curobo.py exp_id=pick_red_cube_rnd_1k_dr episodes=1000 \
-    robot.control_hz=10 robot.max_path_length=100 robot.visual_dr=true \
+python openrt/scripts_sim/collect_demos_sim_curobo.py exp_id=red_cube_20x20_1k episodes=1000 \
+    robot.control_hz=10 robot.max_path_length=100 robot.visual_dr=false \
     env.obj_pose_init="[0.45, 0.0, 0.02, 0., 0., 0., 1.]" \
     language_instruction="pick up the red cube"
 
 # convert mujoco data
-python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["pick_red_cube_1k"] output_dataset="pick_red_cube_1k_blocking" splits=["train","eval"]
-python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["pick_red_cube_rnd_1k_dr"] output_dataset="pick_red_cube_rnd_1k_dr_blocking" splits=["train","eval"]
+python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["red_cube_20x20_1k"] output_dataset="red_cube_20x20_1k" splits=["train","eval"]
+python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["red_cube_20x20_1k"] output_dataset="red_cube_20x20_1k_blocking" splits=["train","eval"]
 
 
 # generate mujoco data (language multi cube)
@@ -79,3 +79,16 @@ exp_id=diffusion \
 robot.blocking_control=true robot.control_hz=1 robot.max_path_length=100 open_loop=false \
 data_path="data/pick_language_one_cube_10_blocking" \
 ckpt_path="/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/diffusion/20240530160929/models/model_epoch_60.pth"
+
+python openrt/scripts_sim/robomimic_two_cube_eval.py --config-name eval_robomimic_sim \
+exp_id=rnn_pick_red_cube_rnd_1k_dr_blocking \
+robot.blocking_control=true robot.control_hz=1 robot.max_path_length=100 open_loop=false \
+data_path="data/pick_red_cube_rnd_1k_dr_blocking" \
+ckpt_path="/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/rnn_pick_language_two_cube_1k_blocking/20240531073235/models/model_epoch_984_best_validation_-31.81317138671875.pth" env.obj_pose_init="[0.45, 0.0, 0.02, 0., 0., 0., 1.]"
+
+
+python openrt/scripts/robomimic_eval.py --config-name eval_robomimic_sim \
+exp_id=clip_frozen_30x30_sim_bs_16 \
+robot.blocking_control=true robot.control_hz=1 robot.max_path_length=100 \
+data_path="data/pick_red_cube_rnd_1k_dr_blocking" \
+ckpt_path="/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/clip_frozen_30x30_sim_bs_16/20240602215533/models/model_epoch_4320.pth" env.obj_pose_init="[0.45, 0.0, 0.02, 0., 0., 0., 1.]" open_loop=false open_loop_split="train"

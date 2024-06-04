@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_red_cube_20x20_1k_aug",
+        "name": "gmm_clip_frozen_20x20",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -36,7 +36,7 @@
         }
     },
     "train": {
-        "data": "data/red_cube_20x20_1k_blocking/demos.hdf5",
+        "data": "data/red_cube_20x20_1k/demos.hdf5",
         "data_co": [
         ],
         "data_weights": [
@@ -98,7 +98,7 @@
             "low_noise_eval": false
         },
         "gmm": {
-            "enabled": false,
+            "enabled": true,
             "num_modes": 5,
             "min_std": 0.0001,
             "std_activation": "softplus",
@@ -197,41 +197,14 @@
             "rgb": {
                 "core_class": "VisualCore",
                 "core_kwargs": {
-                    "feature_dimension": 64,
-                    "flatten": true,
-                    "backbone_class": "ResNet18Conv",
+                    "backbone_class": "CLIPVision",
                     "backbone_kwargs": {
-                        "pretrained": false,
-                        "input_coord_conv": false
+                        "freeze": true
                     },
-                    "pool_class": "SpatialSoftmax",
-                    "pool_kwargs": {
-                        "num_kp": 32,
-                        "learnable_temperature": false,
-                        "temperature": 1.0,
-                        "noise_std": 0.0,
-                        "output_variance": false
-                    }
+                    "pool_class": null
                 },
-                "obs_randomizer_class": "EverythingRandomizer",
-                "obs_randomizer_kwargs": {
-                    "crop_randomizer": true,
-                    "crop_height": 216,
-                    "crop_width": 216,
-                    "num_crops": 1,
-                    "pos_enc": false,
-                    "color_randomizer": true,
-                    "brightness": 0.5,
-                    "contrast": 0.5,
-                    "saturation": 0.5,
-                    "hue": 0.06,
-                    "color_num_samples": 1,
-                    "gaussian_randomizer": false,
-                    "noise_mean": 0.0,
-                    "noise_std": 0.3,
-                    "limits": null,
-                    "noise_num_samples": 1
-                }
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
             },
             "depth": {
                 "core_class": "VisualCore",

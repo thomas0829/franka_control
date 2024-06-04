@@ -36,7 +36,7 @@
         }
     },
     "train": {
-        "data": "data/pick_red_cube_rnd_1k_dr_blocking/demos.hdf5",
+        "data": "data/red_cube_20x20_1k_blocking/demos.hdf5",
         "data_co": [
         ],
         "data_weights": [
@@ -215,7 +215,7 @@
                 },
                 "obs_randomizer_class": "EverythingRandomizer",
                 "obs_randomizer_kwargs": {
-                    "crop_randomizer": false,
+                    "crop_randomizer": true,
                     "crop_height": 216,
                     "crop_width": 216,
                     "num_crops": 1,

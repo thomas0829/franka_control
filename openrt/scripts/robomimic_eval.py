@@ -146,7 +146,7 @@ def run_experiment(cfg):
             eval_traj = data["data"][demo_keys[i].astype(str)]
             cfg.robot.max_path_length = len(eval_traj["obs"]["action"])
 
-        for j in trange(cfg.robot.max_path_length):
+        for j in trange(cfg.robot.max_path_length-1):
 
             # save image and resize
             if len(camera_names):
@@ -169,7 +169,7 @@ def run_experiment(cfg):
 
             # preprocess imgs
             for key in [cn + "_rgb" for cn in camera_names]:
-                obs[key] = obs[key].transpose(2, 0, 1)
+                obs[key] = obs[key].transpose(2, 0, 1) / 255
 
             with torch.no_grad():
 
@@ -196,7 +196,7 @@ def run_experiment(cfg):
                 # run policy and normalize actions
                 act = unnormalize(act, stats["action"])
 
-            obs["front_rgb"] = env.render().transpose(2, 0, 1)
+            # obs["front_rgb"] = env.render().transpose(2, 0, 1)
 
             # binarize gripper
             act[-1] = 1 if act[-1] > 0.5 else 0
@@ -204,7 +204,7 @@ def run_experiment(cfg):
             acts.append(act)
             obs_original["action"] = act
             obss.append(obs_original)
-            print("applied act", np.around(act, 3))
+            # print("applied act", np.around(act, 3))
 
             # step env
             obs, reward, done, _ = env.step(act)
@@ -222,7 +222,8 @@ def run_experiment(cfg):
 
         # obj poses for success check
         if cfg.robot.ip_address is None:
-            obj_poses.append(obs["obj_pose"])
+            print("final obs pose", obss[-1]["obj_pose"])
+            obj_poses.append(obss[-1]["obj_pose"].copy())
 
         # T,C,H,W
         video = np.stack(imgs)[:, 0]
@@ -252,6 +253,8 @@ def run_experiment(cfg):
             exclude=["stdout"],
         )
 
+    # import pdb; pdb.set_trace()
+    print("Success", np.mean(np.stack(obj_poses)[...,2] > 0.05))
     logger.dump()
     data.close()
 

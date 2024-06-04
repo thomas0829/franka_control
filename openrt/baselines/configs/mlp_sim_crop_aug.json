@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_red_cube_20x20_1k_aug",
+        "name": "mlp_20x20_crop_aug",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -36,7 +36,7 @@
         }
     },
     "train": {
-        "data": "data/red_cube_20x20_1k_blocking/demos.hdf5",
+        "data": "data/red_cube_20x20_1k/demos.hdf5",
         "data_co": [
         ],
         "data_weights": [

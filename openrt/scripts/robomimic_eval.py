@@ -1,6 +1,7 @@
 import collections
 import json
 import os
+import re
 import time
 import pickle
 from dataclasses import dataclass
@@ -30,6 +31,8 @@ from utils.logger import Image, Video, configure_logger
 from utils.system import get_device, set_gpu_mode
 from robomimic.utils.lang_utils import get_lang_emb
 
+def is_success(obs):
+    return obs["obj_pose"][2] > 0.05
 
 @hydra.main(
     version_base=None, config_path="../../configs/", config_name="eval_robomimic_real"
@@ -68,6 +71,27 @@ def run_experiment(cfg):
 
     device = TorchUtils.get_torch_device(try_to_use_cuda=True)
 
+    if cfg.ckpt_path == "best_eval":
+        def get_best_validation_model(base_dir, exp_id):
+            exp_dir = os.path.join(base_dir, exp_id)
+            exp_id = next(os.walk(exp_dir))[1][0]
+            model_dir = os.path.join(exp_dir, exp_id, 'models')
+            model_files = [f for f in os.listdir(model_dir) if 'validation' in f]
+
+            latest_epoch = -1
+            best_model = None
+            for model in model_files:
+                epoch = int(re.search(r'epoch_(\d+)', model).group(1))
+                if epoch > latest_epoch:
+                    latest_epoch = epoch
+                    best_model = model
+
+            return os.path.join(model_dir, best_model)
+
+        base_dir = '/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/'
+        cfg.ckpt_path = get_best_validation_model(base_dir, cfg.exp_id)
+        print("Evaluating", cfg.ckpt_path)
+
     # load policy
     policy, ckpt_dict = FileUtils.policy_from_checkpoint(
         ckpt_path=cfg.ckpt_path,
@@ -89,7 +113,7 @@ def run_experiment(cfg):
         ),
         seed=cfg.seed,
         device_id=0,
-        verbose=True,
+        verbose=False,
     )
 
     assert cfg.robot.ip_address is None or env._num_cameras > 0, "ERROR: not camera(s) connected!"
@@ -122,7 +146,8 @@ def run_experiment(cfg):
 
     lang_embed = get_lang_emb(cfg.language_instruction)
 
-    obj_poses = []
+    # obj_poses = []
+    successes = []
 
     # open loop
     if cfg.open_loop:
@@ -146,7 +171,8 @@ def run_experiment(cfg):
             eval_traj = data["data"][demo_keys[i].astype(str)]
             cfg.robot.max_path_length = len(eval_traj["obs"]["action"])
 
-        for j in trange(cfg.robot.max_path_length-1):
+        # for j in trange(cfg.robot.max_path_length-1):
+        for j in range(cfg.robot.max_path_length-1):
 
             # save image and resize
             if len(camera_names):
@@ -216,14 +242,20 @@ def run_experiment(cfg):
                 print(
                     f"episode {i} | step {j} | abs error {error}"  #  | act {np.around(act,3)} | gt {np.around(gt_act,3)}",
                 )
-
+            
+            success = False
+            if not cfg.open_loop and is_success(obs):
+                success = True
+                break 
+        
         # dump rollout
         np.save(os.path.join(logdir, subdir, f"eval_episode_{i}.npy"), obss)
 
         # obj poses for success check
         if cfg.robot.ip_address is None:
-            print("final obs pose", obss[-1]["obj_pose"])
-            obj_poses.append(obss[-1]["obj_pose"].copy())
+            # print("final obs pose", obss[-1]["obj_pose"])
+            # obj_poses.append(obss[-1]["obj_pose"].copy())
+            successes.append(success)
 
         # T,C,H,W
         video = np.stack(imgs)[:, 0]
@@ -254,9 +286,11 @@ def run_experiment(cfg):
         )
 
     # import pdb; pdb.set_trace()
-    print("Success", np.mean(np.stack(obj_poses)[...,2] > 0.05))
+    print("Success", np.mean(successes))
+    
     logger.dump()
-    data.close()
+    if cfg.open_loop:
+        data.close()
 
 
 if __name__ == "__main__":

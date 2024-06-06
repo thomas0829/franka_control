@@ -14,16 +14,16 @@ class ObjWrapper(gym.Wrapper):
         obj_id="rod",
         obj_pose_init=None,
         obj_pose_noise_dict=None,
-        obj_rgba=[1., 0., 0., 1.],
+        obj_rgba=[1.0, 0.0, 0.0, 1.0],
         reset_data_on_reset=True,
-        obs_keys=None, # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
-        safety_penalty=0.,
+        obs_keys=None,  # ["lowdim_ee", "lowdim_qpos", "obj_pose"],
+        safety_penalty=0.0,
         flatten=True,
         verbose=False,
-        **kwargs
+        **kwargs,
     ):
         super(ObjWrapper, self).__init__(env)
-        
+
         if verbose:
             print(f"WARNING: ObjWrapper doesn't take {kwargs}!")
 
@@ -42,7 +42,6 @@ class ObjWrapper(gym.Wrapper):
         )
         self.obj_joint_id = self.env._robot.model.jnt_qposadr[self.obj_joint_id]
 
-
         self.obj_geom_id = mujoco.mj_name2id(
             self.env._robot.model, mujoco.mjtObj.mjOBJ_GEOM, f"{self.obj_id}_geom"
         )
@@ -53,7 +52,9 @@ class ObjWrapper(gym.Wrapper):
         # Object position
         self.obj_pose_noise_dict = obj_pose_noise_dict
         self.obj_pos_noise = obj_pose_noise_dict is not None
-        self.init_obj_pose = self.get_obj_pose() if obj_pose_init is None else obj_pose_init
+        self.init_obj_pose = (
+            self.get_obj_pose() if obj_pose_init is None else obj_pose_init
+        )
         self.curr_obj_pose = None
 
         # Reward
@@ -83,10 +84,8 @@ class ObjWrapper(gym.Wrapper):
             self.observation_space["obj_pose"] = gym.spaces.Box(
                 low=obj_pose_low, high=obj_pose_high
             )
-        
-        mujoco.mj_resetData(
-            self.env._robot.model, self.env._robot.data
-        )
+
+        mujoco.mj_resetData(self.env._robot.model, self.env._robot.data)
 
     def augment_observations(self, obs, flatten=True):
         obs["obj_pose"] = self.get_obj_pose()
@@ -100,18 +99,18 @@ class ObjWrapper(gym.Wrapper):
         return obs
 
     def obj_on_table(self):
-        return self.get_obj_pose()[2] > 0.
+        return self.get_obj_pose()[2] > 0.0
 
     def step(self, action):
 
         obs, reward, done, info = self.env.step(action)
 
         reward -= self.safety_penalty * int(not self.obj_on_table())
-        
+
         return self.augment_observations(obs, flatten=self.flatten), reward, done, info
 
     def reset(self, *args, **kwargs):
-        
+
         # randomize obj position |
         self.resample_obj_pose()
 
@@ -124,12 +123,14 @@ class ObjWrapper(gym.Wrapper):
 
         # reset robot |
         obs = self.env.reset()
-        
+
         return self.augment_observations(obs, flatten=self.flatten)
 
     def get_obj_pose(self):
-        return self.env._robot.data.qpos[self.obj_joint_id:self.obj_joint_id+7] # np.concatenate((self.env._robot.model.body_pos[self.obj_body_id],self.env._robot.model.body_quat[self.obj_body_id]))
-        
+        return self.env._robot.data.qpos[
+            self.obj_joint_id : self.obj_joint_id + 7
+        ]  # np.concatenate((self.env._robot.model.body_pos[self.obj_body_id],self.env._robot.model.body_quat[self.obj_body_id]))
+
     def set_obj_pose(self, obj_pose):
         self.obj_pos_noise = True
         self.init_obj_pose = obj_pose.copy()
@@ -137,7 +138,7 @@ class ObjWrapper(gym.Wrapper):
 
     def resample_obj_pose(self):
         pose = self.init_obj_pose.copy()
-       
+
         if self.obj_pos_noise:
             pose[0] += np.random.uniform(
                 self.obj_pose_noise_dict["x"]["min"],
@@ -158,16 +159,18 @@ class ObjWrapper(gym.Wrapper):
                     ).item(),
                 ]
             )
-            
 
         if self.verbose:
             print(f"Object pose: {pose} - seed {self.env._seed}")
         self.curr_obj_pose = pose.copy()
 
     def update_obj(self, qpos):
-        self.env._robot.data.qpos[self.obj_joint_id:self.obj_joint_id+7] = qpos
-        mujoco.mj_step(self.env._robot.model,self.env._robot.data,nstep=self.env.unwrapped._robot.frame_skip)
-        
+        self.env._robot.data.qpos[self.obj_joint_id : self.obj_joint_id + 7] = qpos
+        mujoco.mj_step(
+            self.env._robot.model,
+            self.env._robot.data,
+            nstep=self.env.unwrapped._robot.frame_skip,
+        )
+
         # self.env._robot.model.body_pos[self.obj_body_id] = qpos[:3]
         # self.env._robot.model.body_quat[self.obj_body_id] = qpos[3:]
-        

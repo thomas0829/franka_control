@@ -271,12 +271,12 @@ def run_experiment(cfg):
         env_cfg_dict["obj_rgba"] = colors[color_ids[0]]
         # env_cfg_dict["obj_pose_init"][1] = offsets[color_ids[0]]
         # env_cfg_dict["obj_pose_noise_dict"] = None
-        env_cfg_dict["obj_pose_noise_dict"] = {
-            "x": { "min": -0.1, "max": 0.1 },
-            "y": { "min": -0.1, "max": 0.1 },
-            # "yaw": { "min": -0., "max": 0.0 },
-            "yaw": { "min": -0.785, "max": 0.785 },
-        }
+        # env_cfg_dict["obj_pose_noise_dict"] = {
+        #     "x": { "min": -0.1, "max": 0.1 },
+        #     "y": { "min": -0.1, "max": 0.1 },
+        #     # "yaw": { "min": -0., "max": 0.0 },
+        #     "yaw": { "min": -0.785, "max": 0.785 },
+        # }
         env = make_env(
                 robot_cfg_dict=robot_cfg_dict,
                 env_cfg_dict=env_cfg_dict,
@@ -291,12 +291,12 @@ def run_experiment(cfg):
         dis_cfg_dict["obj_rgba"] = colors[color_ids[1]]
         # dis_cfg_dict["obj_pose_init"][1] = offsets[color_ids[1]]
         # dis_cfg_dict["obj_pose_noise_dict"] = None
-        env_cfg_dict["obj_pose_noise_dict"] = {
-            "x": { "min": -0.1, "max": 0.1 },
-            "y": { "min": -0.1, "max": 0.1 },
-            # "yaw": { "min": -0., "max": 0.0 },
-            "yaw": { "min": -0.785, "max": 0.785 },
-        }
+        # env_cfg_dict["obj_pose_noise_dict"] = {
+        #     "x": { "min": -0.1, "max": 0.1 },
+        #     "y": { "min": -0.1, "max": 0.1 },
+        #     # "yaw": { "min": -0., "max": 0.0 },
+        #     "yaw": { "min": -0.785, "max": 0.785 },
+        # }
         env = DistWrapper(env, **dis_cfg_dict)
 
         env = DataCollectionWrapper(

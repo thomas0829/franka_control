@@ -130,7 +130,7 @@ def move_to_cartesian_pose(
             steps += 1
          
 
-            image = obs[f"front_rgb"]
+            # image = obs[f"front_rgb"]
     
             # import cv2
             # cv2.imshow('Real-time video', cv2.cvtColor(image,
@@ -259,7 +259,7 @@ def run_experiment(cfg):
             "red",
             "blue"
         ]
-        offsets = [0.1, -0.1]
+        # offsets = [0.1, -0.1]
 
         language_instruction = f"pick up the {color_names[color_ids[0]]} cube"
 
@@ -271,12 +271,12 @@ def run_experiment(cfg):
         env_cfg_dict["obj_rgba"] = colors[color_ids[0]]
         # env_cfg_dict["obj_pose_init"][1] = offsets[color_ids[0]]
         # env_cfg_dict["obj_pose_noise_dict"] = None
-        env_cfg_dict["obj_pose_noise_dict"] = {
-            "x": { "min": -0.1, "max": 0.1 },
-            "y": { "min": -0.1, "max": 0.1 },
-            # "yaw": { "min": -0., "max": 0.0 },
-            "yaw": { "min": -0.785, "max": 0.785 },
-        }
+        # env_cfg_dict["obj_pose_noise_dict"] = {
+        #     "x": { "min": -0.1, "max": 0.1 },
+        #     "y": { "min": -0.1, "max": 0.1 },
+        #     # "yaw": { "min": -0., "max": 0.0 },
+        #     "yaw": { "min": -0.785, "max": 0.785 },
+        # }
         env = make_env(
                 robot_cfg_dict=robot_cfg_dict,
                 env_cfg_dict=env_cfg_dict,
@@ -291,12 +291,12 @@ def run_experiment(cfg):
         dis_cfg_dict["obj_rgba"] = colors[color_ids[1]]
         # dis_cfg_dict["obj_pose_init"][1] = offsets[color_ids[1]]
         # dis_cfg_dict["obj_pose_noise_dict"] = None
-        env_cfg_dict["obj_pose_noise_dict"] = {
-            "x": { "min": -0.1, "max": 0.1 },
-            "y": { "min": -0.1, "max": 0.1 },
-            # "yaw": { "min": -0., "max": 0.0 },
-            "yaw": { "min": -0.785, "max": 0.785 },
-        }
+        # env_cfg_dict["obj_pose_noise_dict"] = {
+        #     "x": { "min": -0.1, "max": 0.1 },
+        #     "y": { "min": -0.1, "max": 0.1 },
+        #     # "yaw": { "min": -0., "max": 0.0 },
+        #     "yaw": { "min": -0.785, "max": 0.785 },
+        # }
         env = DistWrapper(env, **dis_cfg_dict)
 
         env = DataCollectionWrapper(

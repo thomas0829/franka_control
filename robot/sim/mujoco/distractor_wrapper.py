@@ -82,9 +82,12 @@ class DistWrapper(gym.Wrapper):
         x1, y1 = existing_pos
         min_dist = 3 * size_k
 
-        valid = False
-        while not valid:
-          
+        # valid = False
+        # while not valid:
+        
+        x2, y2 = x1, y1
+        for _ in range(100):
+            
             # Randomly choose an angle and distance
             x_sign = np.random.choice([-1, 1])
             y_sign = np.random.choice([-1, 1])
@@ -96,10 +99,9 @@ class DistWrapper(gym.Wrapper):
             y2 = y1 + distance * np.sin(angle) * y_sign
 
             # Check if the new position is within the specified x and y ranges
-            if x_range[0] <= x2 <= x_range[1] and y_range[0] <= y2 <= y_range[1]:
-                valid = True
+            # if x_range[0] <= x2 <= x_range[1] and y_range[0] <= y2 <= y_range[1]:
+            #     valid = True
         
-
         return x2, y2
 
     def resample_dist_pose(self):

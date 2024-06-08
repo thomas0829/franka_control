@@ -33,7 +33,7 @@ from utils.system import get_device, set_gpu_mode
 from robomimic.utils.lang_utils import get_lang_emb
 from robot.sim.mujoco.distractor_wrapper import DistWrapper
 
-def make_multi_cube_env(cfg, color_ids=[0, 1, 2]):
+def make_multi_cube_env(cfg, color_ids=[0, 1, 2], savedir=None):
 
     colors = [
         [0., 0.9, 0., 1.],
@@ -45,9 +45,9 @@ def make_multi_cube_env(cfg, color_ids=[0, 1, 2]):
         "red",
         "blue"
     ]
+    offsets = [0.1, -0.1]
 
     language_instruction = f"pick up the {color_names[color_ids[0]]} cube"
-    offsets = [0.1, -0.1]
 
     robot_cfg_dict = hydra_to_dict(cfg.robot)
     robot_cfg_dict["model_name"] = "two_cubes_franka"
@@ -57,12 +57,12 @@ def make_multi_cube_env(cfg, color_ids=[0, 1, 2]):
     env_cfg_dict["obj_rgba"] = colors[color_ids[0]]
     # env_cfg_dict["obj_pose_init"][1] = offsets[color_ids[0]]
     # env_cfg_dict["obj_pose_noise_dict"] = None
-    env_cfg_dict["obj_pose_noise_dict"] = {
-        "x": { "min": -0.1, "max": 0.1 },
-        "y": { "min": -0.1, "max": 0.1 },
-        # "yaw": { "min": -0., "max": 0.0 },
-        "yaw": { "min": -0.785, "max": 0.785 },
-    }
+    # env_cfg_dict["obj_pose_noise_dict"] = {
+    #     "x": { "min": -0.1, "max": 0.1 },
+    #     "y": { "min": -0.1, "max": 0.1 },
+    #     # "yaw": { "min": -0., "max": 0.0 },
+    #     "yaw": { "min": -0.785, "max": 0.785 },
+    # }
     env = make_env(
             robot_cfg_dict=robot_cfg_dict,
             env_cfg_dict=env_cfg_dict,
@@ -77,12 +77,12 @@ def make_multi_cube_env(cfg, color_ids=[0, 1, 2]):
     dis_cfg_dict["obj_rgba"] = colors[color_ids[1]]
     # dis_cfg_dict["obj_pose_init"][1] = offsets[color_ids[1]]
     # dis_cfg_dict["obj_pose_noise_dict"] = None
-    env_cfg_dict["obj_pose_noise_dict"] = {
-        "x": { "min": -0.1, "max": 0.1 },
-        "y": { "min": -0.1, "max": 0.1 },
-        # "yaw": { "min": -0., "max": 0.0 },
-        "yaw": { "min": -0.785, "max": 0.785 },
-    }
+    # env_cfg_dict["obj_pose_noise_dict"] = {
+    #     "x": { "min": -0.1, "max": 0.1 },
+    #     "y": { "min": -0.1, "max": 0.1 },
+    #     # "yaw": { "min": -0., "max": 0.0 },
+    #     "yaw": { "min": -0.785, "max": 0.785 },
+    # }
     env = DistWrapper(env, **dis_cfg_dict)
 
     return env, language_instruction

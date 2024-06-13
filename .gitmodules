@@ -16,3 +16,6 @@
 [submodule "convert/weird_rlds_dataset_mod"]
 	path = convert/weird_rlds_dataset_mod
 	url = https://github.com/memmelma/weird_rlds_dataset_mod.git
+[submodule "robomimic"]
+	path = robomimic
+	url = git@github.com:Entongsu/robomimic.git

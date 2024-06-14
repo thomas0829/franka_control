@@ -130,7 +130,7 @@ def move_to_cartesian_pose(
             steps += 1
          
 
-            image = obs[f"front_rgb"]
+            # image = obs[f"front_rgb"]
     
             # import cv2
             # cv2.imshow('Real-time video', cv2.cvtColor(image,
@@ -259,7 +259,7 @@ def run_experiment(cfg):
             "red",
             "blue"
         ]
-        offsets = [0.1, -0.1]
+        # offsets = [0.1, -0.1]
 
         language_instruction = f"pick up the {color_names[color_ids[0]]} cube"
 

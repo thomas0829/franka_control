@@ -133,3 +133,10 @@ exp_id=clip_frozen_30x30_sim \
 robot.blocking_control=true robot.control_hz=1 robot.max_path_length=100 \
 data_path="data/red_cube_20x20_1k" \
 ckpt_path="/home/weirdlab/Projects/polymetis_franka/training/robomimic/robomimic/logdir/tmp/clip_frozen_30x30_sim/20240531144445/models/model_epoch_499_best_validation_-18.476616668701173.pth" env.obj_pose_init="[0.45, 0.0, 0.02, 0., 0., 0., 1.]" open_loop=false open_loop_split="train"
+
+
+
+python openrt/scripts_sim/collect_demos_sim_two_cube_curobo.py exp_id=red_blue_cube_20x20_1k episodes=1000 \
+    robot.control_hz=10 robot.max_path_length=100
+
+python openrt/scripts/convert_np_to_hdf5.py --config-name=convert_demos_sim input_datasets=["red_blue_cube_20x20_1k"] output_dataset="red_blue_cube_20x20_1k" splits=["train","eval"]

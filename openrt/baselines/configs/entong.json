@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_clip_frozen_normalize_20x20_cos",
+        "name": "clip_frozen_entong",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -12,7 +12,7 @@
         "save": {
             "enabled": true,
             "every_n_seconds": null,
-            "every_n_epochs": 100,
+            "every_n_epochs": 20,
             "epochs": [],
             "on_best_validation": true,
             "on_best_rollout_return": false,
@@ -37,14 +37,13 @@
     },
     "train": {
         "data": "data/red_cube_20x20_1k/demos.hdf5",
-        "data_co": [
-        ],
+        "data_co": [],
         "data_weights": [
             1
         ],
         "output_dir": "logdir/tmp",
         "num_data_workers": 16,
-        "hdf5_cache_mode": "low_dim",
+        "hdf5_cache_mode": "all",
         "hdf5_use_swmr": true,
         "hdf5_load_next_obs": false,
         "hdf5_normalize_obs": false,
@@ -61,8 +60,8 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 16,
-        "num_epochs": 2500,
+        "batch_size": 256,
+        "num_epochs": 1000,
         "seed": 1
     },
     "algo": {
@@ -86,8 +85,8 @@
             "cos_weight": 1.0
         },
         "actor_layer_dims": [
-            1024,
-            1024
+            512,
+            512
         ],
         "gaussian": {
             "enabled": false,
@@ -169,8 +168,7 @@
         "modalities": {
             "obs": {
                 "low_dim": [
-                    "lowdim_ee",
-                    "lowdim_qpos"
+                  
                 ],
                 "rgb": [
                     "front_rgb"
@@ -199,13 +197,29 @@
                 "core_kwargs": {
                     "backbone_class": "CLIPVision",
                     "backbone_kwargs": {
-                        "freeze": true,
-                        "normalize": true
+                        "freeze": true
                     },
                     "pool_class": null
                 },
-                "obs_randomizer_class": null,
-                "obs_randomizer_kwargs": {}
+                "obs_randomizer_class": "EverythingRandomizer",
+                "obs_randomizer_kwargs": {
+                    "crop_randomizer": false,
+                    "crop_height": 220,
+                    "crop_width": 220,
+                    "num_crops": 1,
+                    "pos_enc": false,
+                    "color_randomizer": true,
+                    "brightness": 0.5,
+                    "contrast": 0.5,
+                    "saturation": 0.5,
+                    "hue": 0.03,
+                    "color_num_samples": 1,
+                    "gaussian_randomizer": false,
+                    "noise_mean": 0.0,
+                    "noise_std": 0.3,
+                    "limits": null,
+                    "noise_num_samples": 1
+                }
             },
             "depth": {
                 "core_class": "VisualCore",

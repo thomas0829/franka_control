@@ -198,7 +198,7 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--config", "openrt/baselines/configs/clip_frozen_30x30_sim.json"
+                "--config", "openrt/baselines/configs/mlp_clip_frozen_pooler_sim.json"
             ],
         },
     ]

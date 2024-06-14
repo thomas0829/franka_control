@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_clip_frozen_normalize_20x20_cos",
+        "name": "mlp_clip_frozen_pooler_20x20_img_only_cos",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -169,8 +169,6 @@
         "modalities": {
             "obs": {
                 "low_dim": [
-                    "lowdim_ee",
-                    "lowdim_qpos"
                 ],
                 "rgb": [
                     "front_rgb"
@@ -200,7 +198,7 @@
                     "backbone_class": "CLIPVision",
                     "backbone_kwargs": {
                         "freeze": true,
-                        "normalize": true
+                        "mm_vision_select_layer": null
                     },
                     "pool_class": null
                 },

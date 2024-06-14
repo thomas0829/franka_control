@@ -58,16 +58,20 @@ def run_experiment(cfg):
     device = get_device()
 
     # load dataset for open loop execution
-    if cfg.open_loop:
-        data = h5py.File(
-            cfg.data_path+"/demos.hdf5",
-            # cfg.data_path,
-            "r",
-            swmr=True,
-            libver="latest",
-        )
-        demo_keys = np.asarray(data["mask"][cfg.open_loop_split])
-        print("Data loaded [robomimic].")
+    # if cfg.open_loop:
+    data = h5py.File(
+        cfg.data_path+"/demos.hdf5",
+        # cfg.data_path,
+        "r",
+        swmr=True,
+        libver="latest",
+    )
+
+    if not cfg.open_loop:
+        cfg.open_loop_split = "eval"
+
+    demo_keys = np.asarray(data["mask"][cfg.open_loop_split])
+    print("Data loaded [robomimic].")
 
     device = TorchUtils.get_torch_device(try_to_use_cuda=True)
 
@@ -142,6 +146,7 @@ def run_experiment(cfg):
             env,
             size=cfg.aug.camera_resize,
             image_keys=[cn + "_rgb" for cn in camera_names],
+            resize_render=True,
         )
 
     lang_embed = get_lang_emb(cfg.language_instruction)
@@ -150,10 +155,11 @@ def run_experiment(cfg):
     successes = []
 
     # open loop
-    if cfg.open_loop:
-        n_rollouts = min(len(demo_keys), cfg.n_rollouts)
-    else:
-        n_rollouts = cfg.n_rollouts
+    # if cfg.open_loop:
+    #     n_rollouts = min(len(demo_keys), cfg.n_rollouts)
+    # else:
+    #     n_rollouts = cfg.n_rollouts
+    n_rollouts = min(len(demo_keys), cfg.n_rollouts)
 
     for i in trange(n_rollouts):
 
@@ -164,15 +170,21 @@ def run_experiment(cfg):
 
         imgs = []
         acts = []
+        gt_acts = []
         obss = []
 
         # load eval traj
-        if cfg.open_loop:
-            eval_traj = data["data"][demo_keys[i].astype(str)]
-            cfg.robot.max_path_length = len(eval_traj["obs"]["action"])
+        # if cfg.open_loop:
+        eval_traj = data["data"][demo_keys[i].astype(str)]
+        cfg.robot.max_path_length = len(eval_traj["obs"]["action"])
+
+        # # set obj pose from eval traj
+        # env.env.env.set_obj_pose(eval_traj["obs"]["obj_pose"][0])
+        # # obs = env.reset()
+        # obs["front_rgb"] = env.render()
 
         # for j in trange(cfg.robot.max_path_length-1):
-        for j in range(cfg.robot.max_path_length-1):
+        for j in range(cfg.robot.max_path_length):
 
             # save image and resize
             if len(camera_names):
@@ -193,12 +205,13 @@ def run_experiment(cfg):
                     "lang_embed": eval_traj["obs"]["lang_embed"][j]
                 }
 
-            # preprocess imgs
-            for key in [cn + "_rgb" for cn in camera_names]:
-                obs[key] = obs[key].transpose(2, 0, 1) / 255
-
             with torch.no_grad():
+                
+                # preprocess imgs
+                for key in [cn + "_rgb" for cn in camera_names]:
+                    obs[key] = obs[key].transpose(2, 0, 1) / 255
 
+                # preprocess language
                 if "lang_embed" not in obs.keys():
                     obs["lang_embed"] = lang_embed
 
@@ -221,7 +234,7 @@ def run_experiment(cfg):
                 
                 # run policy and normalize actions
                 act = unnormalize(act, stats["action"])
-
+                print(act)
             # obs["front_rgb"] = env.render().transpose(2, 0, 1)
 
             # binarize gripper
@@ -238,6 +251,7 @@ def run_experiment(cfg):
             # compute error for open loop predictions
             if cfg.open_loop:
                 gt_act = unnormalize(eval_traj["actions"][j], stats["action"])
+                gt_acts.append(gt_act)
                 error = np.around(np.sum(np.abs(gt_act[:6] - act[:6])), 3)
                 print(
                     f"episode {i} | step {j} | abs error {error}"  #  | act {np.around(act,3)} | gt {np.around(gt_act,3)}",
@@ -259,20 +273,25 @@ def run_experiment(cfg):
 
         # T,C,H,W
         video = np.stack(imgs)[:, 0]
-        if cfg.open_loop:
-            video = np.concatenate((video, np.array(eval_traj["obs"]["front_rgb"]).transpose(0,3,1,2)), axis=2)
-
+        
         # save trajectory plot -> takes T,C,H,W
         plot_img = plot_trajectory(
             pred_actions=np.stack(acts),
-            true_actions=None,
+            true_actions=None if not cfg.open_loop else np.stack(gt_acts),
             imgs=video,
+        )
+        plt.imsave(
+            os.path.join(logdir, subdir, f"eval_{i}_plot.png"),
+            plot_img,
         )
         logger.record(
             f"images/eval_{i}",
             Image(plot_img, dataformats="HWC"),
             exclude=["stdout"],
         )
+
+        # if cfg.open_loop:
+        video = np.concatenate((video, np.array(eval_traj["obs"]["front_rgb"]).transpose(0,3,1,2)), axis=3)
 
         # save video local -> takes T,H,W,C
         imageio.mimsave(

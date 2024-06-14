@@ -62,7 +62,7 @@
         "goal_mode": null,
         "cuda": true,
         "batch_size": 16,
-        "num_epochs": 1000,
+        "num_epochs": 2500,
         "seed": 1
     },
     "algo": {
@@ -83,7 +83,7 @@
         "loss": {
             "l2_weight": 1.0,
             "l1_weight": 0.0,
-            "cos_weight": 0.0
+            "cos_weight": 1.0
         },
         "actor_layer_dims": [
             1024,

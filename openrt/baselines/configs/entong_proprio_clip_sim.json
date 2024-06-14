@@ -1,7 +1,7 @@
 {
     "algo_name": "bc",
     "experiment": {
-        "name": "mlp_clip_frozen_normalize_20x20_cos",
+        "name": "mlp_clip_frozen_pooler_20x20_entong",
         "validate": true,
         "logging": {
             "terminal_output_to_txt": true,
@@ -62,7 +62,7 @@
         "goal_mode": null,
         "cuda": true,
         "batch_size": 16,
-        "num_epochs": 2500,
+        "num_epochs": 2000,
         "seed": 1
     },
     "algo": {
@@ -83,7 +83,7 @@
         "loss": {
             "l2_weight": 1.0,
             "l1_weight": 0.0,
-            "cos_weight": 1.0
+            "cos_weight": 0.0
         },
         "actor_layer_dims": [
             1024,
@@ -200,12 +200,29 @@
                     "backbone_class": "CLIPVision",
                     "backbone_kwargs": {
                         "freeze": true,
-                        "normalize": true
+                        "mm_vision_select_layer": null
                     },
                     "pool_class": null
                 },
-                "obs_randomizer_class": null,
-                "obs_randomizer_kwargs": {}
+                "obs_randomizer_class": "EverythingRandomizer",
+                "obs_randomizer_kwargs": {
+                    "crop_randomizer": false,
+                    "crop_height": 220,
+                    "crop_width": 220,
+                    "num_crops": 1,
+                    "pos_enc": false,
+                    "color_randomizer": true,
+                    "brightness": 0.5,
+                    "contrast": 0.5,
+                    "saturation": 0.5,
+                    "hue": 0.03,
+                    "color_num_samples": 1,
+                    "gaussian_randomizer": false,
+                    "noise_mean": 0.0,
+                    "noise_std": 0.3,
+                    "limits": null,
+                    "noise_num_samples": 1
+                }
             },
             "depth": {
                 "core_class": "VisualCore",

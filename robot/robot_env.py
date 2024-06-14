@@ -434,7 +434,7 @@ class RobotEnv(gym.Env):
             self._robot.update_gripper(1.0, velocity=False, blocking=True)
         # reset to home pose
         for _ in range(3):
-            if self.sim:
+            if False: # self.sim:
                 self._robot.set_desired_joint_positions(self._reset_joint_qpos)
             else:
                 self._robot.update_joints(

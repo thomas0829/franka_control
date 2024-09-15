@@ -1,7 +1,7 @@
 # python=3.9
 # manually pip install dm-robotics-moma=0.6.0
 # mamba install pytorch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 pytorch-cuda=12.1 -c pytorch -c nvidia
-name: polymetis_franka
+name: polytf
 channels:
   - pytorch
   - nvidia

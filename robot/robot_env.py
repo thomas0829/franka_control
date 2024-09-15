@@ -90,7 +90,8 @@ class RobotEnv(gym.Env):
             ]
         )
 
-        self._reset_joint_qpos = np.array([-5.65335140e-05, -1.47445112e-01,  5.44415554e-03, -2.57991934e+00  , 2.13176832e-02,  2.43316126e+00,  7.82760382e-01])
+        self._reset_joint_qpos = np.array([-0.01998546, -0.62298596, -0.01995236, -1.44656372, -0.07003611,  1.56165755, 0.02428678]) # This is the config collected for all of our experiments
+        # self._reset_joint_qpos = np.array([ 0.61716306, -1.48035049, 0.82917732, -2.75267529, 0.53841865, 1.65110373, 0.52029693])
 
         if self.DoF == 2:
             self._reset_joint_qpos = np.array(
@@ -124,7 +125,8 @@ class RobotEnv(gym.Env):
         # action space
         # action_low, action_high = -1., 1.
         # TODO this limits rotation (euler) -> increase for angle!
-        action_low, action_high = -0.1, 0.1
+        #action_low, action_high = -0.1, 0.1
+        action_low, action_high = -1, 1
         self.action_space = Box(
             np.array(
                 [action_low] * (self.DoF + 1 if self.gripper else self.DoF),
@@ -138,9 +140,11 @@ class RobotEnv(gym.Env):
         self.action_shape = self.action_space.shape
 
         # EE position (x, y, z) + EE rot (roll, pitch, yaw) + gripper width
-        ee_space_low = np.array([0.12, -1.0, 0.11, -np.pi, -np.pi, -np.pi, 0.00])
-        ee_space_high = np.array([1.0, 1.0, 0.7, np.pi, np.pi, np.pi, 0.085])
-
+        # ee_space_low = np.array([0.12, -1.0, 0.11, -np.pi, -np.pi, -np.pi, 0.00])
+        # ee_space_high = np.array([1.0, 1.0, 0.7, np.pi, np.pi, np.pi, 0.085])
+        ee_space_low = np.array([-1.0, -1.0, -1.0, -np.pi, -np.pi, -np.pi, -1.0])
+        ee_space_high = np.array([1.0, 1.0, 1.0, np.pi, np.pi, np.pi, 1.0])
+        '''
         # EE position (x, y, fixed z)
         if self.DoF == 2:
             ee_space_low = ee_space_low[:3]
@@ -162,7 +166,7 @@ class RobotEnv(gym.Env):
         if self.gripper:
             ee_space_low = np.concatenate((ee_space_low, ee_space_low[-1:]))
             ee_space_high = np.concatenate((ee_space_high, ee_space_high[-1:]))
-
+        '''
         self.ee_space = Box(
             low=np.float32(ee_space_low), high=np.float32(ee_space_high)
         )
@@ -171,20 +175,20 @@ class RobotEnv(gym.Env):
         # https://frankaemika.github.io/docs/control_parameters.html
         if robot_type == "panda":
             self._jointmin = np.array(
-                [-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973, 0.0045],
+                [-2.8973, -1.7628, -2.8973, -3.0718, -2.8973, -0.0175, -2.8973, -1.0],
                 dtype=np.float32,
             )
             self._jointmax = np.array(
-                [2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973, 0.085],
+                [2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973, 1.0],
                 dtype=np.float32,
             )
         elif robot_type == "fr3":
             self._jointmin = np.array(
-                [-2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159, 0.0045],
+                [-2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159, -1.0],
                 dtype=np.float32,
             )
             self._jointmax = np.array(
-                [2.7437, 1.7837, 2.9007, -0.1518, 2.8065, 4.5169, 3.0159, 0.085],
+                [2.7437, 1.7837, 2.9007, -0.1518, 2.8065, 4.5169, 3.0159, 1.0],
                 dtype=np.float32,
             )
 
@@ -391,6 +395,52 @@ class RobotEnv(gym.Env):
 
         return obs, 0.0, done, {}
 
+    def step_with_pose(self, next_pose):
+        start_time = time.time()
+
+        if not self.gripper:
+            assert len(next_pose) == (
+                self.DoF
+            ), f"Expected action shape: ({self.DoF},) got {next_pose.shape}"
+        else:
+            assert len(next_pose) == (
+                self.DoF + 1
+            ), f"Expected action shape: ({self.DoF+1},) got {next_pose.shape}"
+        
+        # BLOCKING CONTROL -> for rvt2 inference
+        if self.blocking_control:
+            # self._update_robot(
+            #     next_pose,
+            #     action_space="cartesian_position",
+            #     blocking=True,
+            # )
+            self._update_robot(
+                next_pose,
+                action_space="cartesian_position",
+                blocking=True,
+            )
+
+            # sleep to maintain control_hz
+            comp_time = time.time() - start_time
+            sleep_left = max(0, (1 / self.control_hz) - comp_time)
+            if not self.sim:
+                time.sleep(sleep_left)
+            # self.desired_pos = desired_pos
+
+            # get observations
+            obs = self.get_observation()
+
+            self.curr_path_length += 1
+            done = False
+            if (
+                self._max_path_length is not None
+                and self.curr_path_length >= self._max_path_length
+            ):
+                done = True
+        else:
+            raise NotImplementedError
+        return obs, 0.0, done, {}
+    
     def normalize_ee_obs(self, obs):
         """Normalizes low-dim obs between [-1,1]."""
         # x_new = 2 * (x - min(x)) / (max(x) - min(x)) - 1
@@ -539,16 +589,21 @@ class RobotEnv(gym.Env):
 
         return pos
 
-    def _update_robot(self, action, action_space, blocking=False):
+    def _update_robot(self, action, action_space, blocking=False, verbose=False):
         assert action_space in [
             "cartesian_position",
             "joint_position",
             "cartesian_velocity",
             "joint_velocity",
         ]
+        
         action_info = self._robot.update_command(
             action, action_space=action_space, blocking=blocking
         )
+        if verbose:
+            print("action:", action)
+            print("action_info:", action_info)
+            print("-"*50)
         return action_info
 
     @property

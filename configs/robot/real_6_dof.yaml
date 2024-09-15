@@ -1,10 +1,10 @@
 control_hz: 10
-blocking_control: false
+blocking_control: true
 DoF: 6
 gripper: true
 
 # Franka model: 'panda' 'fr3'
-robot_type: "panda"
+robot_type: "fr3"
 
 # randomize arm position on reset
 randomize_ee_on_reset: 0.0
@@ -24,7 +24,7 @@ max_path_length: 20
 # camera type to use: 'realsense' 'zed'
 camera_model: "realsense"
 camera_resolution: null  # (128 128) -> HxW
-calibration_file: "perception/cameras/calibration/logs/aruco/most_recent_calib.json"
+calibration_file: "/home/yuquand/projects/franka_inference/polymetis_franka/perception/cameras/calibration/logs/aruco/most_recent_calib.json"
 # Mujoco: model name
 model_name: "base_franka"
 on_screen_rendering: false

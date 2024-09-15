@@ -7,8 +7,6 @@ defaults:
   - robot: real_6_dof
   - aug: crop_resize
 
-exp_id: null
-
 seed: 0
 gpu_id: 0
 
@@ -23,4 +21,17 @@ split: "train"
 # resume collection from traj index
 start_traj: 0
 
+# some basic overrides
+cam_name: 215122255213
+#base_dir: "/home/joel/projects/polymetis_franka/data/basement"
+# base_dir: "/home/joel/projects/polymetis_franka/data"
+base_dir : "/home/yuquand/projects/franka_inference/data"
+save_info: true
+control_hz: 5 # 10
+exp_id: null
+ckpt_path: null
+epoch_num: null
+eval_last: true
 language_instruction: "pick up the green cube"
+traj_length: 150
+trial_num: 3

@@ -11,13 +11,18 @@ from robot.wrappers.data_wrapper import DataCollectionWrapper
 from robot.wrappers.resize_wrapper import ResizeImageWrapper
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
+import cv2
 
+
+from absl import flags
+FLAGS = flags.FLAGS
+import sys
 
 @hydra.main(
     config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
 )
 def run_experiment(cfg):
-
+    FLAGS(sys.argv)
     logdir = os.path.join(cfg.log.dir, cfg.exp_id)
     os.makedirs(logdir, exist_ok=True)
 
@@ -50,17 +55,21 @@ def run_experiment(cfg):
         )
 
     # resize image observations
+    '''
     if cfg.aug.camera_resize is not None:
         env = ResizeImageWrapper(
             env,
             size=cfg.aug.camera_resize,
             image_keys=[cn + "_rgb" for cn in camera_names],
         )
-
+    '''
     obs = env.reset()
-    print("Observation keys", obs.keys())
 
-    savedir = f"data/{cfg.exp_id}/{cfg.split}"
+    from datetime import date
+    # creating the date object of today's date 
+    todays_date = date.today() 
+
+    savedir = f"{cfg.base_dir}/{todays_date.month}{todays_date.day}/{cfg.exp_id}/{cfg.split}"
     env = DataCollectionWrapper(
         env,
         language_instruction=cfg.language_instruction,
@@ -135,6 +144,9 @@ def run_experiment(cfg):
                         "gripper_position": gripper,
                     }
                 }
+                qpos = env.unwrapped._robot.get_joint_positions()
+                print(f'qpos: {qpos}')
+                print(f'gipper: {gripper}')
                 vel_act = oculus.forward(state)
 
                 # convert vel to delta actions
@@ -150,7 +162,16 @@ def run_experiment(cfg):
                 elif cfg.robot.DoF == 6:
                     act = np.concatenate((delta_act, vel_act[-1:]))
 
+                print(f"act: {act}")   
+                # convert all actions to zero
+                # act = np.zeros_like(act)   
+                # import pdb; pdb.set_trace()
+
                 next_obs, rew, done, _ = env.step(act)
+                cv2.imshow('Real-time video', cv2.cvtColor(next_obs["215122255213_rgb"], cv2.COLOR_BGR2RGB))
+                # Press 'q' on the keyboard to exit the loop
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
                 # emulate frequency in sim
                 if cfg.robot.ip_address == None:
                     time.sleep(1 / cfg.robot.control_hz)

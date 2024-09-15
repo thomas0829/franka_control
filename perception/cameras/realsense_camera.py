@@ -31,10 +31,15 @@ class RealSenseCamera:
         self._config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
         device_product_line = str(device.get_info(rs.camera_info.product_line))
 
+        # import pdb; pdb.set_trace()
         if device_product_line == "L500":
             self._config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
+        elif device_product_line == "D400":
+            self._config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 15) # 1280 × 720 
+            self._config.enable_stream(rs.stream.color,  640, 480, rs.format.bgr8, 15)
         else:
-            self._config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+            self._config.enable_stream(rs.stream.color,  480, 270, rs.format.bgr8, 30)
+        
 
         cfg = self._pipeline.start(self._config)
         self._align = rs.align(rs.stream.color)

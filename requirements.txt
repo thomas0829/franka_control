@@ -1,0 +1,13 @@
+dm-env
+dm-control
+dm-robotics-moma==0.8.1
+h5py
+termcolor
+# torchvision
+numba
+json-numpy
+draccus
+uvicorn
+fastapi
+timm
+accelerate

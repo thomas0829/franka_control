@@ -86,7 +86,8 @@ class ServerInterface:
         return np.array(self.server.get_joint_velocities())
 
     def get_gripper_state(self):
-        return self.server.get_gripper_state()
+        #return self.server.get_gripper_state()
+        return self.server.get_gripper_position()
     
     def get_gripper_position(self):
         return self.server.get_gripper_position()

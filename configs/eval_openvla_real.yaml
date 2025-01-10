@@ -1,0 +1,63 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - log: wandb
+
+  - robot: real_6_dof
+  - aug: crop_resize
+
+seed: 0
+gpu_id: 0
+
+n_rollouts: 10
+
+#folder_name: openvla_rand_location_re_ood
+#folder_name: openvla_bridge_latent_rand_location
+#folder_name: openvla_fullft_stage3_rand_location_ood
+folder_name: openvla_stack_blocks
+
+# msg: "pick up the device you can use to listen to music and put it in the sink"
+
+
+url: "http://127.0.1.1:8000/act"
+#openvla_path: /home/joel/projects/openvla/checkpoints/openvla-7b+franka_bridge_carrot+b16+lr-0.0005+lora-r32+dropout-0.0/ckpt_1000
+# openvla_path: /media/joel/X9 Pro/openvla_ckpts/openvla-7b+franka_bridge150+b16+lr-0.0005+lora-r32+dropout-0.0/ckpt_4500
+
+#openvla_path: /home/joel/seonghyeon/World-Model/checkpoints/811_openvla_finetune_multitask_image_aug_1000step
+# openvla_path: /home/joel/seonghyeon/World-Model/checkpoints/811_openvla_finetune_multitask_image_aug_4000steps
+
+# rand location
+#openvla_path: /home/joel/projects/openvla/checkpoints/openvla-7b+franka_bridge150_random+b16+lr-0.0005+lora-r32+dropout-0.0/ckpt_5000
+# openvla_path: /home/joel/projects/openvla/checkpoints/openvla-7b-bridge-fullft+franka_bridge150_random+b16+lr-0.0005+lora-r32+dropout-0.0/ckpt_5000 
+
+openvla_path: /home/joel/seonghyeon/World-Model/checkpoints/finetuning_bridge_latent_cluster_codebook2_seq4_freeze_llm_vision_new_lm_head_hugg
+# maximum timesteps to run before auto-reset
+max_episode_length: 1000
+
+# stuff to override
+base_dir: "/home/joel/projects/polymetis_franka/data"
+#exp_id: 811/multiobject_sink_eval
+exp_id: 817_robot/multiobject_sink_eval
+save_info: true
+traj_length: 1000
+# trial_num: 5
+# msg: "pick up an object that is a vegetable and put it in the sink"
+trial_num: 0
+
+msg: "stack the yellow block on the black block and the purple block on the yellow block"
+#msg: "pick up the milk and put it in the sink"
+#msg: "pick up the orange lego block and put it in the sink"
+#msg: "pick up the ketchup and put it in the sink"
+#msg: "pick up the corn and put it in the sink"
+#msg: "pick up the icecream and put it in the sink"
+#msg: "pick up the salt and put it in the sink"
+
+#msg: "pick up an object that is not edible and put it in the sink"
+#msg: "pick up an object that is green and put it in the sink"
+#msg: "pick up an object that is a fruit and put it in the sink"
+#msg: "pick up an object that is spicy and put it in the sink"
+#msg: "pick up an object that is round and put it in the sink"
+#msg: "pick up aobject that is a vegatable and put it in the sink"
+image_aug: false

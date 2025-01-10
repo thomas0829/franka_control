@@ -5,7 +5,7 @@ import numpy as np
 import pyrealsense2 as rs
 
 
-def gather_realsense_cameras(hardware_reset=False):
+def gather_realsense_cameras(hardware_reset=False, auto_exposure=True):
     context = rs.context()
     all_devices = list(context.devices)
     all_rs_cameras = []
@@ -14,14 +14,14 @@ def gather_realsense_cameras(hardware_reset=False):
         if hardware_reset:
             device.hardware_reset()
             time.sleep(1)
-        rs_camera = RealSenseCamera(device)
+        rs_camera = RealSenseCamera(device, auto_exposure=auto_exposure)
         all_rs_cameras.append(rs_camera)
 
     return all_rs_cameras
 
 
 class RealSenseCamera:
-    def __init__(self, device):
+    def __init__(self, device, auto_exposure=True):
         self._pipeline = rs.pipeline()
         self._serial_number = str(device.get_info(rs.camera_info.serial_number))
         self._config = rs.config()
@@ -40,8 +40,13 @@ class RealSenseCamera:
         else:
             self._config.enable_stream(rs.stream.color,  480, 270, rs.format.bgr8, 30)
         
-
+        try:
+            self._pipeline.stop()
+        except:
+            pass
         cfg = self._pipeline.start(self._config)
+            # pass
+        
         self._align = rs.align(rs.stream.color)
 
         profile = cfg.get_stream(rs.stream.color)
@@ -51,10 +56,16 @@ class RealSenseCamera:
         }
 
         color_sensor = device.query_sensors()[1]
-        color_sensor.set_option(rs.option.enable_auto_exposure, False)
-        color_sensor.set_option(rs.option.exposure, 500)
-        depth_sensor = device.query_sensors()[0]
-        depth_sensor.set_option(rs.option.enable_auto_exposure, False)
+
+        color_sensor.set_option(rs.option.enable_auto_exposure, auto_exposure)
+
+        # color_sensor.set_option(rs.option.exposure, 500)
+
+        color_sensor.set_option(rs.option.brightness, 56)
+        color_sensor.set_option(rs.option.contrast, 45)
+        # color_sensor.set_option(rs.option.exposure, 500)
+        # depth_sensor = device.query_sensors()[0]
+        # depth_sensor.set_option(rs.option.enable_auto_exposure, False)
 
         # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view
         # vertical FOV for a D455 and 1280x800 RGB
@@ -117,3 +128,6 @@ class RealSenseCamera:
     def disable_camera(self):
         self._pipeline.stop()
         self._config.disable_all_streams()
+
+    # def __del__(self):
+    #     self.disable_camera()

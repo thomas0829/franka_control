@@ -90,7 +90,15 @@ class RobotEnv(gym.Env):
             ]
         )
 
-        self._reset_joint_qpos = np.array([-0.01998546, -0.62298596, -0.01995236, -1.44656372, -0.07003611,  1.56165755, 0.02428678]) # This is the config collected for all of our experiments
+#         self._reset_joint_qpos = np.array([ 8.67323577e-02, -6.52816117e-01, -1.95950449e-01, -2.40176249e+00,
+#   2.39148620e-03,  1.75610685e+00, -2.33002019e+00])
+        self._reset_joint_qpos = np.array([-0.01872166, -0.48790166, -0.24952877, -2.24011278, -0.05866786,  1.79915857, -1.72799206]) # robotiq gripper
+
+        # self._reset_joint_qpos = np.array([-0.06389857, -0.26282755, -0.23478715, -2.02132177, -0.08170244,  1.79564273, -2.55621266]) # franka gripper 
+#         [-0.06389857 -0.26282755 -0.23478715 -2.02132177 -0.08170244  1.79564273
+#  -2.55621266]
+        # self._reset_joint_qpos = np.array([ 0.22326212, -1.05209494, -0.14739834, -2.6597085, -0.20228142, 1.82878792, -1.19218862]) # this is for the other two tasks, covering (robotiq gripper)
+        # self._reset_joint_qpos = np.array([-0.01998546, -0.62298596, -0.01995236, -1.44656372, -0.07003611,  1.56165755, 0.02428678]) # This is the config collected for all of our experiments
         # self._reset_joint_qpos = np.array([ 0.61716306, -1.48035049, 0.82917732, -2.75267529, 0.53841865, 1.65110373, 0.52029693])
 
         if self.DoF == 2:
@@ -205,6 +213,7 @@ class RobotEnv(gym.Env):
         else:
             calib_dict = None
 
+        # import pdb;pdb.set_trace()
         if ip_address is not None:
             from robot.real.franka import FrankaHardware
 
@@ -318,6 +327,79 @@ class RobotEnv(gym.Env):
     def get_spaces(self):
         return self.observation_space, self.action_space
 
+    def step_joint(self, joint_action):
+        """
+        Updates the Franka robot using joint positions and gripper action.
+
+        Args:
+            joint_action (np.ndarray): 8-dimensional array where
+                                    - first 7 values represent joint positions
+                                    - last value represents gripper action.
+
+        Returns:
+            obs (dict): Updated observation after applying the action.
+            reward (float): Always 0.0 for now.
+            done (bool): Whether the episode has ended due to reaching max path length.
+            info (dict): Additional information (empty for now).
+        """
+        assert joint_action.shape == (8,), "Expected action shape: (8,), got {}".format(joint_action.shape)
+
+        start_time = time.time()
+
+        # Split joint_action into joint positions and gripper action
+        desired_joints = joint_action[:7]
+        gripper_action = joint_action[7]
+
+        # # Clip the joint action to stay within joint limits
+        desired_joints = np.clip(desired_joints, self._jointmin[:7], self._jointmax[:7])
+        # gripper_action = np.clip(gripper_action, self._jointmin[7], self._jointmax[7])
+
+        # # Concatenate the clipped joint positions and gripper action
+        # desired_joint_positions = np.concatenate((desired_joints, [gripper_action]))
+
+        # # Send the desired joint positions to the robot
+        # self._update_robot(
+        #     desired_joints.tolist(),
+        #     action_space="joint_position",
+        #     blocking=self.blocking_control
+        # )
+
+        for _ in range(3):
+            self._robot.update_joints(
+                desired_joints.tolist(), velocity=False, blocking=False
+            )
+            self._robot.update_gripper(
+                gripper_action.tolist(), velocity=False, blocking=False
+            )
+            epsilon = 0.1
+            is_reset, joint_dist = self.is_robot_on_target(expect_joint_pos=desired_joints.tolist(), epsilon=epsilon)
+
+            if is_reset:
+                break
+            else:
+                print(
+                    f"WARNING: reset failed w/ joint_dist={np.round(joint_dist,4)} > {epsilon}, trying again"
+                )
+                time.sleep(0.5)
+
+        # Sleep to maintain control frequency
+        comp_time = time.time() - start_time
+        sleep_left = max(0, (1 / self.control_hz) - comp_time)
+        if not self.sim:
+            time.sleep(sleep_left)
+
+        # Increment path length and check for termination
+        self.curr_path_length += 1
+        done = False
+        if self._max_path_length is not None and self.curr_path_length >= self._max_path_length:
+            done = True
+
+        # Get the latest observation
+        obs = self.get_observation()
+
+        return obs, 0.0, done, {}
+
+
     def step(self, action):
         start_time = time.time()
 
@@ -395,7 +477,7 @@ class RobotEnv(gym.Env):
 
         return obs, 0.0, done, {}
 
-    def step_with_pose(self, next_pose):
+    def step_with_pose(self, next_pose, blocking=False):
         start_time = time.time()
 
         if not self.gripper:
@@ -414,32 +496,52 @@ class RobotEnv(gym.Env):
             #     action_space="cartesian_position",
             #     blocking=True,
             # )
+
+            # # sleep to maintain control_hz
+            # comp_time = time.time() - start_time
+            # sleep_left = max(0, (1 / self.control_hz) - comp_time)
+            # if not self.sim:
+            #     time.sleep(sleep_left)
+            # # self.desired_pos = desired_pos
+
+            # # get observations
+            # obs = self.get_observation()
+
+            # self.curr_path_length += 1
+            # done = False
+            # if (
+            #     self._max_path_length is not None
+            #     and self.curr_path_length >= self._max_path_length
+            # ):
+            #     done = True
+            # cartesian position control w/ blocking
             self._update_robot(
+                # np.concatenate((self._curr_pos + pos_action, add_angles(angle_action, self._curr_angle), [gripper])),
                 next_pose,
                 action_space="cartesian_position",
-                blocking=True,
+                blocking=blocking,
             )
-
-            # sleep to maintain control_hz
+            
             comp_time = time.time() - start_time
             sleep_left = max(0, (1 / self.control_hz) - comp_time)
             if not self.sim:
                 time.sleep(sleep_left)
-            # self.desired_pos = desired_pos
-
-            # get observations
-            obs = self.get_observation()
-
-            self.curr_path_length += 1
-            done = False
-            if (
-                self._max_path_length is not None
-                and self.curr_path_length >= self._max_path_length
-            ):
-                done = True
         else:
             raise NotImplementedError
+        
+        # get observations
+        obs = self.get_observation()
+
+        self.curr_path_length += 1
+        done = False
+        if (
+            self._max_path_length is not None
+            and self.curr_path_length >= self._max_path_length
+        ):
+            done = True
+
         return obs, 0.0, done, {}
+    
     
     def normalize_ee_obs(self, obs):
         """Normalizes low-dim obs between [-1,1]."""
@@ -538,6 +640,76 @@ class RobotEnv(gym.Env):
         self._episode_count += 1
 
         return self.get_observation()
+
+    def reset_simple(self):
+
+        # if self.sim and self._robot.visual_dr:
+        #     self._robot.randomize()
+
+        # # ensure robot releases grasp before reset
+        # if self.gripper:
+        #     self.reset_gripper()
+        # else:
+        #     # default is closed gripper if not self.gripper
+        #     self._robot.update_gripper(1.0, velocity=False, blocking=True)
+
+        # # reset to home pose
+        # for _ in range(3):
+        #     if False: # self.sim:
+        #         self._robot.set_desired_joint_positions(self._reset_joint_qpos)
+        #     else:
+        #         self._robot.update_joints(
+        #             self._reset_joint_qpos.tolist(), velocity=False, blocking=True
+        #         )
+
+        #     epsilon = 0.1
+        #     is_reset, joint_dist = self.is_robot_reset(epsilon=epsilon)
+
+        #     if is_reset:
+        #         break
+        #     else:
+        #         if self.verbose:
+        #             print(
+        #                 f"WARNING: reset failed w/ joint_dist={np.round(joint_dist,4)} > {epsilon}, trying again"
+        #             )
+        #         if not self.sim:
+        #             time.sleep(1.0)
+
+        # # fix default pos and angle at first joint reset
+        # if self._episode_count == 0:
+        #     self._default_pos = self._robot.get_ee_pos()
+        #     self._default_angle = self._robot.get_ee_angle()
+
+        #     # overwrite fixed z for 2DoF EE control with reset z
+        #     if self.DoF == 2:
+        #         self.ee_space.low[2] = self._default_pos[2]
+        #         self.ee_space.high[2] = self._default_pos[2]
+
+        #         # overwrite fixed z for 2DoF EE control with 0.13
+        #         self.ee_space.low[2] = 0.13
+        #         self.ee_space.high[2] = 0.13
+
+        # if self.blocking_control:
+        #     self._init_pos = self._default_pos.copy()
+        #     self._init_angle = self._default_angle.copy()
+
+        # if self._randomize_ee_on_reset:
+        #     self._randomize_reset_pos()
+        #     if not self.sim:
+        #         time.sleep(1)
+
+        # if self._pause_after_reset:
+        #     user_input = input(
+        #         "Enter (s) to wait 5 seconds & anything else to continue: "
+        #     )
+        #     if user_input in ["s", "S"]:
+        #         time.sleep(5)
+
+        self.curr_path_length = 0
+        self._episode_count += 1
+
+        return self.get_observation()
+    
 
     def _format_action(self, action):
         """Returns [x,y,z], [yaw, pitch, roll], close_gripper"""
@@ -821,6 +993,11 @@ class RobotEnv(gym.Env):
     def is_robot_reset(self, epsilon=0.1):
         curr_joints = self._robot.get_joint_positions()
         joint_dist = np.linalg.norm(curr_joints - self._reset_joint_qpos)
+        return joint_dist < epsilon, joint_dist
+
+    def is_robot_on_target(self, expect_joint_pos, epsilon=0.1):
+        curr_joints = self._robot.get_joint_positions()
+        joint_dist = np.linalg.norm(curr_joints - expect_joint_pos)
         return joint_dist < epsilon, joint_dist
 
     def seed(self, seed):

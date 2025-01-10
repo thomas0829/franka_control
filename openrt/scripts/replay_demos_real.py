@@ -12,13 +12,24 @@ from tqdm import tqdm
 
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
-from openrt.scripts.convert_np_to_hdf5 import normalize, unnormalize
+#from openrt.scripts.convert_np_to_hdf5 import normalize, unnormalize
 from robot.wrappers.crop_wrapper import CropImageWrapper
 from robot.wrappers.resize_wrapper import ResizeImageWrapper
+os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
+
+def normalize(arr, stats):
+    min_val, max_val = stats["min"], stats["max"]
+    return 2 * (arr - min_val) / (max_val - min_val) - 1
+
+
+def unnormalize(arr, stats):
+    min_val, max_val = stats["min"], stats["max"]
+    return 0.5 * (arr + 1) * (max_val - min_val) + min_val
+
 
 # config_name="collect_demos_real" for real robot config_name="collect_demos_sim" for simulation
 @hydra.main(
-    config_path="../../configs/", config_name="collect_demos_sim", version_base="1.1"
+    config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
 )
 def run_experiment(cfg):
 
@@ -26,8 +37,8 @@ def run_experiment(cfg):
     os.makedirs(logdir, exist_ok=True)
 
     cfg.robot.max_path_length = cfg.max_episode_length
-
-    assert cfg.robot.blocking_control==True and cfg.robot.control_hz<=1, "WARNING: please make sure to pass robot.blocking_control=true robot.control_hz=1 to run blocking control!"
+    print(cfg.robot.blocking_control, cfg.robot.control_hz)
+    #assert cfg.robot.blocking_control==True and cfg.robot.control_hz<=1, "WARNING: please make sure to pass robot.blocking_control=true robot.control_hz=1 to run blocking control!"
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env) if "env" in cfg.keys() else None,
@@ -60,35 +71,51 @@ def run_experiment(cfg):
             image_keys=[cn + "_rgb" for cn in camera_names],
         )
 
-    dataset_path = f"data/{cfg.exp_id}/"
+    #dataset_path = f"/media/marius/X9 Pro/0523_mujoco_data/{cfg.exp_id}/"
+    dataset_path = f"/home/joel/projects/polymetis_franka/data/{cfg.exp_id}/"
     
-    num_trajectories = 1
+    num_trajectories = 10
 
     file = h5py.File(os.path.join(dataset_path, "demos.hdf5"), 'r')
     dataset = file["data"]
     with open(os.path.join(dataset_path, "stats"),
               'rb') as file:
         stats = pickle.load(file)
-   
+    print(stats)
 
     for demo_key in list(dataset.keys())[:num_trajectories]:
         
         episode = dataset[demo_key]
 
-        obs = env.reset()
+        next_obs = env.reset()
+        obs = next_obs
 
         obss = []
         acts = []
 
         actions = np.array(episode["actions"])
         actions = unnormalize(actions, stats=stats["action"])
-
+        index = 0
         for act in tqdm(actions):
+            import cv2
+            
+            # image = np.concatenate((episode["obs"]["front_rgb"][index], next_obs["832112071644_rgb"]), axis=1)
+            # cv2.imshow('Real-time video', cv2.cvtColor(image,
+            #                                            cv2.COLOR_BGR2RGB))
 
             start_time = time.time()
 
-            # print(act)
+            #print(act[3:6])
+            #act[[3,4,5]] = act[[4,3,5]]
+            #act[4] = -act[4]
+            #act[3] = -act[3]
             next_obs, rew, done, _ = env.step(act)
+         
+            # writer.append_data(image)
+            index += 1
+            # Press 'q' on the keyboard to exit the loop
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #     break
 
             obss.append(obs)
             acts.append(act)
@@ -99,7 +126,9 @@ def run_experiment(cfg):
 
         # visualize traj
         img_obs = np.stack([obs[camera_names[0] + "_rgb"] for obs in obss])
-        img_demo = np.array(dataset[demo_key]["obs"]["front_rgb"])
+        img_keys = [key for key in dataset[demo_key]["obs"].keys() if "rgb" in key]
+        img_demo = np.array(dataset[demo_key]["obs"][img_keys[0]])
+        '''
         imageio.mimsave(os.path.join(logdir, f"demo_replay_{demo_key}.mp4"), np.concatenate((img_demo, img_obs), axis=2))
 
         # plot difference between demo and replay
@@ -112,9 +141,12 @@ def run_experiment(cfg):
         for j, (l,c) in enumerate(zip(labels[:n], colors[:n])):
             plt.plot(ee_demo [:,j], color=c, label=f"{l} demo")
             plt.plot(ee_obs[:,j], color=c, linestyle="dashed", label=f"{l} replay")
+        plt.plot(ee_demo [:,-1], color="red", label=f"gripper demo")
+        plt.plot(ee_obs[:,-1], color="red", linestyle="dashed", label=f"gripper replay")
         plt.legend()
         plt.savefig(os.path.join(logdir, f"poses_{demo_key}.png"))
         plt.close()
+        '''
 
     env.reset()
 

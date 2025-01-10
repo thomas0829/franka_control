@@ -13,16 +13,11 @@ from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
 import cv2
 
-
-from absl import flags
-FLAGS = flags.FLAGS
-import sys
-
 @hydra.main(
     config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
 )
 def run_experiment(cfg):
-    FLAGS(sys.argv)
+
     logdir = os.path.join(cfg.log.dir, cfg.exp_id)
     os.makedirs(logdir, exist_ok=True)
 
@@ -78,14 +73,13 @@ def run_experiment(cfg):
         save_dir=savedir,
     )
 
-    oculus = VRController()
-    assert oculus.get_info()["controller_on"], "ERROR: oculus controller off"
-    print("Oculus Connected")
 
     n_traj = int(cfg.start_traj)
     env.traj_count = n_traj
 
     while n_traj < cfg.episodes:
+        # sleep for 10 seconds
+        time.sleep(15)
 
         # reset w/o recording obs and w/o randomizing ee pos
         randomize_ee_on_reset = env.unwrapped._randomize_ee_on_reset
@@ -95,85 +89,68 @@ def run_experiment(cfg):
 
         # make sure at least 1 camera is connected
         assert env.unwrapped._num_cameras > 0, "ERROR: not camera(s) connected!"
+        obs = env.reset()
 
-        print(f"Press 'A' to Start Collecting")
-        # time to reset the scene
-        while True:
-            info = oculus.get_info()
-            if info["success"]:
-                # reset w/ recording obs after resetting the scene
-                obs = env.reset()
-                print("Start Collecting")
-                break
-
-        print(f"Press 'A' to Indicate SUCCESS, Press 'B' to Indicate FAILURE")
-
-        obss = []
-        acts = []
-
+        
         for j in tqdm(
             range(cfg.max_episode_length),
             desc=f"Collecting Trajectory {n_traj}/{cfg.episodes}",
         ):
 
-            # wait for controller input
-            info = oculus.get_info()
-            while (not info["success"] and not info["failure"]) and not info[
-                "movement_enabled"
-            ]:
-                info = oculus.get_info()
+        #     # wait for controller input
+        #     info = oculus.get_info()
+        #     while (not info["success"] and not info["failure"]) and not info[
+        #         "movement_enabled"
+        #     ]:
+        #         info = oculus.get_info()
 
-            # press 'A' to indicate success
-            save = False
-            if info["success"]:
-                save = True
-                continue
-            # press 'B' to indicate failure
-            elif info["failure"]:
-                continue
+        #     # press 'A' to indicate success
+        #     save = False
+        #     if info["success"]:
+        #         save = True
+        #         continue
+        #     # press 'B' to indicate failure
+        #     elif info["failure"]:
+        #         continue
 
-            # check if 'trigger' button is pressed
-            if info["movement_enabled"]:
+        #     # check if 'trigger' button is pressed
+        #     if info["movement_enabled"]:
 
-                # prepare obs for oculus
-                pose = env.unwrapped._robot.get_ee_pose()
-                gripper = env.unwrapped._robot.get_gripper_position()
-                state = {
-                    "robot_state": {
-                        "cartesian_position": pose,
-                        "gripper_position": gripper,
-                    }
-                }
-                qpos = env.unwrapped._robot.get_joint_positions()
-                # print(f'qpos: {qpos}')
-                # print(f'gipper: {gripper}')
-                vel_act = oculus.forward(state)
+        #         # prepare obs for oculus
+        #         pose = env.unwrapped._robot.get_ee_pose()
+        #         gripper = env.unwrapped._robot.get_gripper_position()
+        #         state = {
+        #             "robot_state": {
+        #                 "cartesian_position": pose,
+        #                 "gripper_position": gripper,
+        #             }
+        #         }
+        #         qpos = env.unwrapped._robot.get_joint_positions()
+        #         print(f'qpos: {qpos}')
+        #         print(f'gipper: {gripper}')
+        #         vel_act = oculus.forward(state)
 
-                # convert vel to delta actions
-                delta_act = env.unwrapped._robot._ik_solver.cartesian_velocity_to_delta(
-                    vel_act
-                )
+        #         # convert vel to delta actions
+        #         delta_act = env.unwrapped._robot._ik_solver.cartesian_velocity_to_delta(
+        #             vel_act
+        #         )
 
-                # prepare act
-                if cfg.robot.DoF == 3:
-                    act = np.concatenate((delta_act[:3], vel_act[-1:]))
-                elif cfg.robot.DoF == 4:
-                    act = np.concatenate((delta_act[:3], delta_act[5:6], vel_act[-1:]))
-                elif cfg.robot.DoF == 6:
-                    act = np.concatenate((delta_act, vel_act[-1:]))
+        #         # prepare act
+        #         if cfg.robot.DoF == 3:
+        #             act = np.concatenate((delta_act[:3], vel_act[-1:]))
+        #         elif cfg.robot.DoF == 4:
+        #             act = np.concatenate((delta_act[:3], delta_act[5:6], vel_act[-1:]))
+        #         elif cfg.robot.DoF == 6:
+        #             act = np.concatenate((delta_act, vel_act[-1:]))
 
-                print(f"act: {act}")   
+        #         print(f"act: {act}")   
                 # convert all actions to zero
+                act = np.zeros(7)   
                 # act = np.zeros_like(act)   
-                # import pdb; pdb.set_trace()
 
                 next_obs, rew, done, _ = env.step(act)
-                print("qpos", next_obs["lowdim_qpos"])
                 # cv2.imshow('Real-time video', cv2.cvtColor(next_obs["215122255213_rgb"], cv2.COLOR_BGR2RGB))
-                cv2.imshow('Real-time video', cv2.cvtColor(next_obs[f"{camera_names[0]}_rgb"], cv2.COLOR_BGR2RGB))
-                # Press 'q' on the keyboard to exit the loop
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
+
                 # emulate frequency in sim
                 if cfg.robot.ip_address == None:
                     time.sleep(1 / cfg.robot.control_hz)
@@ -184,18 +161,13 @@ def run_experiment(cfg):
                 #     if cn + "_depth" in obs:
                 #         del obs[cn + "_depth"]
 
-                obss.append(obs)
-                acts.append(act)
+                # obss.append(obs)
+                # acts.append(act)
 
-                obs = next_obs
+                # obs = next_obs
 
-        # save trajectory if success
-        if save:
-            env.save_buffer()
-            n_traj += 1
-            print("SUCCESS")
-        else:
-            print("FAILURE")
+        env.save_buffer()
+        n_traj += 1
 
     env.reset()
 

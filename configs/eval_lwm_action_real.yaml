@@ -1,0 +1,87 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - log: wandb
+
+  - robot: real_6_dof
+  - aug: crop_resize
+
+gpu_id: 0
+
+traj_length: 150
+n_rollouts: 10
+
+# maximum timesteps to run before auto-reset
+max_episode_length: 200
+
+# path to dataset for stats loading (unnormalize)
+data_path: ""
+# data_path: "data/NAME/demos.hdf5"
+
+#msg: "pick up the pepper and put it in the sink"
+# msg: "pick up the tennis ball and put it in the pot"
+# msg: "pick up the carrot and put it on the plate"
+
+# msg: "pick up the salt and put it in the sink"
+# msg: "pick up the milk and put it in the sink"
+# msg: "pick up the tennis ball and put it in the sink"
+# msg: "pick up the milk and put it in the sink"
+
+
+# msg: "pick up the milk and put it in the sink"
+
+url: "http://127.0.1.1:32820/act"
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_25traj_single_carrot2plate/streaming_params_500"
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_lwm_finetune_100traj_multitask2sink_15hz_imgaug/streaming_params_1000"
+#load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_lwm_finetune_100traj_multitask2sink_15hz_imgaug_245/streaming_params_1000"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_lwm_finetune_100traj_multitask2sink_15hz_imgaug_245/streaming_params_2000"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_lwm_finetune_100traj_multitask2sink_15hz_imgaug_245_bridge_epoch3/streaming_params_1000"
+
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0817_lwm_finetune_multitask2sink_rand_location_15hz_imgaug_245_bridge_epoch3_v2/streaming_params_2000"
+# folder_name: action_rand_location_semantic_ood
+
+load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0817_lwm_finetune_multitask2sink_rand_location_15hz_imgaug_245_bridge_epoch3_4000/streaming_params_4000"
+folder_name: action_rand_location_4000
+
+
+vqgan_checkpoint: "/home/joel/seonghyeon/World-Model/checkpoints/lwm_checkpoints/vqgan"
+seed: 1234
+mesh_dim: "1,1,1,1"
+dtype: "bf16"
+load_llama_config: "7b"
+update_llama_config: "dict(action_vocab_size=245,delta_vocab_size=8,sample_mode='text',theta=50000000,max_sequence_length=32768,scan_attention=False,scan_query_chunk_size=128,scan_key_chunk_size=128,scan_mlp=False,scan_mlp_chunk_size=8192,scan_layers=True)" 
+tokens_per_delta: 0
+tokens_per_action: 7
+vocab_file: "/home/joel/seonghyeon/World-Model/checkpoints/lwm_checkpoints/tokenizer.model"
+multi_image: 1
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0808_multiobject_sink_llava_5hz_action_preprocessed.csv"
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0808_tennisball_in_pot_llava_5hz_action_preprocessed.csv"
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0809_multiobject_sink_llava_256.csv"
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0809_multiobject_sink_llava_5hz_256.csv"
+
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0809_carrot_to_plate_llava_256.csv"
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0809_carrot_to_plate_llava_5hz_256.csv"
+
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0811_multiobject_sink_llava.csv"
+
+# @joel - this is the action_scale_file for lwm_action_trained. For scratch, use the one above
+action_scale_file: "/home/joel/seonghyeon/World-Model/data/817_multiobject_sink_rand_location_llava_245.csv"
+
+
+
+# image_aug: True
+base_dir: "/home/joel/projects/polymetis_franka/data"
+# exp_id: 89/multiobject_sink_eval
+# exp_id: 811/multiobject_sink_eval
+exp_id: 817_robot/multiobject_sink_eval
+save_info: true
+latent: false
+image_aug: true
+
+trial_num: 2
+msg: "pick up the ketchup and put it in the sink"

@@ -32,7 +32,7 @@ def run_experiment(cfg):
     from datetime import date
     todays_date = date.today() 
     #cfg.data_dir = f"{cfg.data_dir}{todays_date.month}{todays_date.day}/"
-    cfg.data_dir = f'{cfg.data_dir}99/'
+    cfg.data_dir = f"{cfg.data_dir}817_robot/"
 
     # create dataset paths
     dataset_paths = [
@@ -124,8 +124,31 @@ def run_experiment(cfg):
                     #actions[...,3] = -actions[...,3]
 
                 print(actions[...,:6].min(), actions[...,:6].max())
+                print(actions.shape)
+                coarse_map = {}
+                accum_action = None
+                accum_cnt = 0
+                for j in range(len(actions)):
+                    action = actions[j]
+                    if accum_action is None:
+                        accum_action = action 
+                    else:
+                        accum_action += action 
+                    if j!=0 and j%15 == 0:
+                        coarse_map[accum_cnt] = accum_action
+                        accum_action = None
+                        accum_cnt += 1
+                if accum_action is None:
+                    coarse_map[accum_cnt] = coarse_map[accum_cnt-1]
+                else:
+                    coarse_map[accum_cnt] = accum_action # the last remaining action accums
+                actions_accum = []
+                for j in range(len(actions)):
+                    actions_accum.append(coarse_map[j//15].tolist())
+                actions_accum = np.array(actions_accum)
                 # add action dataset
                 ep_data_grp.create_dataset("actions", data=actions)
+                ep_data_grp.create_dataset("actions_accum", data=actions_accum)
 
                 # add done dataset
                 dones = np.zeros(len(actions)).astype(bool)
@@ -150,12 +173,8 @@ def run_experiment(cfg):
                     obs = dic[obs_key]
                     if "_rgb" in obs_key:
                         # crop images for training
-                        x_min, x_max, y_min, y_max = cfg.aug.camera_crop
-                        obs = obs[:, x_min : x_max, y_min : y_max]
-                        # draw trajectory on obs[0], apply everything to obs[:]
-                    
-                        # include code to draw trajecotries, but trajectory draw only by seegin the first image
-
+                        # x_min, x_max, y_min, y_max = cfg.aug.camera_crop
+                        # obs = obs[:, x_min : x_max, y_min : y_max]
                         # # resize images for training
                         # obs = np.stack([cv2.resize(img, cfg.aug.camera_resize) for img in obs])
                         # print(f"WARNING: replacing '{obs_key}' with 'front_rgb'!")

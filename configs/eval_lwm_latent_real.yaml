@@ -1,0 +1,157 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - log: wandb
+
+  - robot: real_6_dof
+  - aug: crop_resize
+
+gpu_id: 0
+
+traj_length: 150
+n_rollouts: 10
+
+# maximum timesteps to run before auto-reset
+max_episode_length: 200
+
+# path to dataset for stats loading (unnormalize)
+data_path: ""
+# data_path: "data/NAME/demos.hdf5"
+
+#msg: "pick up the pepper and put it in the sink"
+# msg: "pick up the tennis ball and put it in the pot"
+# msg: "pick up the carrot and put it on the plate"
+
+# msg: "pick up the salt and put it in the sink"
+# msg: "pick up the milk and put it in the sink"
+# msg: "pick up the tennis ball and put it in the sink"
+# msg: "pick up the milk and put it in the sink"
+
+
+# msg: "pick up the milk and put it in the sink"
+
+url: "http://127.0.1.1:32820/act"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_150traj_multitask_to_sink_re/streaming_params_300"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_25traj_single_tennis_to_pot_re/streaming_params_200"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_25traj_single_carrot2plate/streaming_params_500"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_25traj_single_carrot2plate_15hz_imgaug/streaming_params_500"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_100traj_multitask2sink_15hz_imgaug_re/streaming_params_4000"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_100traj_multitask2sink_5hz_imgaug_filtered/streaming_params_500"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_100traj_multitask2sink_5hz_imgaug_filtered/streaming_params_1000"
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_25traj_single_carrot2plate/streaming_params_500"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_finetune_100traj_multitask2sink_15hz_imgaug_filtered/streaming_params_1000"
+# folder_name: latent_multi_15hz  
+
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_finetune_100traj_multitask2sink_15hz_imgaug_filtered_bridge_5epoch/streaming_params_1000"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0812_latent_play_data_multi2sink_mixture_finetune_15hz_imgaug_filtered/streaming_params_2000"
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_finetune_100traj_multitask2sink_15hz_imgaug_filtered_codeboook8_seq9_bridge_epoch3/streaming_params_1000"
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_multiobject_sink_llava_train_filtered_human_seen_delta8_seq1_epoch1/streaming_params_1000"
+# folder_name: latent_multi_15hz_human_only
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_multiobject_sink_llava_train_filtered_bridge_10percent_human_seen_mix_codebook8_seq1_epoch3/streaming_params_1000"
+# folder_name: latent_multi_15hz_human_bridge_mix
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/817_latent_c8_s4_epoch3_multiobject_sink_rand_location_llava_train_filtered_re2/streaming_params_2000"
+# # load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/817_latent_c8_s9_epoch3_multiobject_sink_rand_location_llava_train_filtered_re2/streaming_params_2000"
+# # folder_name: latent_multi_15hz_human_bridge_mix
+# # folder_name: latent_rand_location_ood
+# folder_name: latent_rand_location_semantic_ood
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/817_latent_c8_s4_epoch1_multiobject_sink_rand_location_llava_train_filtered_4000/streaming_params_4000"
+
+# # load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/817_latent_c8_s9_epoch3_multiobject_sink_rand_location_llava_train_filtered_4000/streaming_params_2000"
+
+# folder_name: latent_rand_location_4000_ood
+# folder_name: latent_s9_rand_location
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/821_latent_c8_s4_l4_40k_multiobject_sink_rand_location_llava_train_filtered_2000_stage2_5k/streaming_params_2000"
+# folder_name: latent_human_c8_s4_l4_40k_stage2_5k_rand_location_ood  
+
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/821_latent_c8_s4_l2_40k_epoch1_multiobject_sink_rand_location_llava_train_filtered_2000_stage2_10k/streaming_params_2000"
+# folder_name: latent_human_c8_s4_l2_40k_stage2_10k_rand_location_semantic  
+
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_bridge10_c8_s4_l4_40k_multiobject_sink_llava_train_filtered_10k/streaming_params_1000"
+# folder_name: latent_bridge10_c8_s4_l4_40k_10k
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_bridge10_c8_s4_l4_40k_multiobject_sink_llava_train_filtered_4k/streaming_params_1000"
+# folder_name: latent_bridge10_c8_s4_l4_40k_4k
+
+
+
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/817_latent_sthv2_100percent_c8_s4_l8_w30_100k_multiobject_sink_rand_location_llava_train_filtered_22k/streaming_params_4000"
+# folder_name: latent_sthv2_c8_s4_l8_w30_100k_22k_rand_location_semantic_ood_4000
+
+load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_sthv2_100percent_c8_s4_l8_w10_100k_multiobject_sink_llava_train_filtered_22k/streaming_params_1000"  
+folder_name: latent_sthv2_c8_s4_l8_w10_100k_22k_semantic_ood  
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_sthv2_100percent_c8_s4_l8_w30_100k_multiobject_sink_llava_train_filtered_22k/streaming_params_1000"  
+# folder_name: latent_sthv2_c8_s4_l8_w30_100k_22k_semantic_ood  
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_sthv2_100percent_c8_s4_l8_w30_100k_multiobject_sink_llava_train_filtered_22k_2000/streaming_params_1000"  
+# folder_name: latent_sthv2_c8_s4_l8_w30_100k_22k_2000_semantic_ood 
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/817_latent_sthv2_100percent_c8_s4_l8_w30_100k_multiobject_sink_rand_location_llava_train_filtered_22k/streaming_params_2000"
+# folder_name: latent_sthv2_c8_s4_l8_w30_100k_22k_rand_location_semantic_ood
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_sthv2_100percent_c8_s9_l8_w10_100k_multiobject_sink_llava_train_filtered_22k/streaming_params_1000"
+# folder_name: latent_sthv2_c8_s9_l8_w10_100k_22k
+
+
+
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_c8_s4_l2_40k_epoch1_multiobject_sink_location_llava_train_filtered_stage2_10k/streaming_params_1000"
+# folder_name: latent_human_c8_s4_l2_40k_10k
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_latent_human_c8_s4_l4_40k_multiobject_sink_llava_train_filtered_10k/streaming_params_1000"
+# folder_name: latent_human_c8_s4_l4_40k_10k 
+
+
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/821_latent_c8_s4_l2_40k_epoch1_multiobject_sink_rand_location_llava_train_filtered_2000/streaming_params_4000"
+# folder_name: latent_human_c8_s4_l2_40k_stage2_5k_rand_location_4000_semantic
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/0811_multiobject_sink_llava_train_filtered_bridge_10percent_codebook8_seq1/streaming_params_1000"
+# folder_name: latent_multi_15hz_bridge_10percent_only
+
+# load_checkpoint: "params::/home/joel/seonghyeon/World-Model/checkpoints/latent_finetune_100traj_multitask2sink_15hz_imgaug_false/streaming_params_1000"
+vqgan_checkpoint: "/home/joel/seonghyeon/World-Model/checkpoints/lwm_checkpoints/vqgan"
+seed: 1234
+mesh_dim: "1,-1,1,1"
+dtype: "bf16"
+load_llama_config: "7b"
+update_llama_config: "dict(action_vocab_size=256,delta_vocab_size=8,sample_mode='text',theta=50000000,max_sequence_length=32768,scan_attention=False,scan_query_chunk_size=128,scan_key_chunk_size=128,scan_mlp=False,scan_mlp_chunk_size=8192,scan_layers=True)" 
+tokens_per_delta: 4
+tokens_per_action: 7
+vocab_file: "/home/joel/seonghyeon/World-Model/checkpoints/lwm_checkpoints/tokenizer.model"
+multi_image: 1
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0808_multiobject_sink_llava_5hz_action_preprocessed.csv"
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0808_tennisball_in_pot_llava_5hz_action_preprocessed.csv"
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0809_multiobject_sink_llava_256.csv"
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0809_multiobject_sink_llava_5hz_256.csv"
+
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0809_carrot_to_plate_llava_256.csv"
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/0809_carrot_to_plate_llava_5hz_256.csv"
+
+action_scale_file: "/home/joel/seonghyeon/World-Model/data/0811_multiobject_sink_llava.csv"
+# action_scale_file: "/home/joel/seonghyeon/World-Model/data/817_multiobject_sink_rand_location_llava.csv"
+
+# image_aug: True
+base_dir: "/home/joel/projects/polymetis_franka/data"
+# exp_id: 817_robot/multiobject_sink_eval
+exp_id: 811/multiobject_sink_eval
+# exp_id: 812/play_data_eval
+save_info: true
+latent: true
+image_aug: true
+
+# trial_num: 1
+# msg: "pick up an object that is round and put it in the sink"
+
+trial_num: 5
+msg: "pick up an object that is a vegatable and put it in the sink"

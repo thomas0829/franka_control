@@ -120,7 +120,7 @@ class FrankaHardware(FrankaBase):
     def get_ee_angle(self):
         return self.get_ee_pose()[3:]
 
-    def get_gripper_state(self):
+    def get_gripper_state(self): 
         if self._gripper:
             return self._robot.get_gripper_state()
         else:

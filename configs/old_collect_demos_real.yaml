@@ -22,14 +22,11 @@ split: "train"
 start_traj: 0
 
 # some basic overrides
-# cam_name: 215122255213
-cam_name: 215122252864
+cam_name: 215122255213
 #base_dir: "/home/joel/projects/polymetis_franka/data/basement"
 # base_dir: "/home/joel/projects/polymetis_franka/data"
 # base_dir : "/home/yuquand/projects/franka_inference/data"
-# base_dir: "/media/yuquand/Extreme\ SSD/demo_data"
-# base_dir: "/home/prior/data_collection/data"
-base_dir: "/home/robot/real_data"
+base_dir: "/media/yuquand/Extreme\ SSD/demo_data"
 save_info: true
 control_hz: 5 # 10
 exp_id: null

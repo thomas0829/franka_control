@@ -26,8 +26,8 @@ max_path_length: 20
 camera_model: "realsense"
 camera_resolution: null  # (128 128) -> HxW
 # calibration_file: "/home/yuquand/projects/franka_inference/polymetis_franka/perception/cameras/calibration/logs/aruco/most_recent_calib.json"
-# calibration_file: "/home/prior/polymetis_franka/perception/cameras/calibration/logs/aruco/most_recent_calib.json"
-calibration_file: "/home/robot/polymetis_franka/perception/cameras/calibration/logs/aruco/most_recent_calib.json"
+calibration_file: "/home/prior/polymetis_franka/perception/cameras/calibration/logs/aruco/most_recent_calib.json"
+# calibration_file: "/home/robot/polymetis_franka/perception/cameras/calibration/logs/aruco/most_recent_calib.json"
 
 # Mujoco: model name
 model_name: "base_franka"

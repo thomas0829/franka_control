@@ -11,8 +11,7 @@ def run_threaded_command(command, args=(), daemon=True):
 
     return thread
 
-
-from utils.transformations import (add_angles, euler_to_quat, quat_diff,
+from robot.controllers.transformations import (add_angles, euler_to_quat, quat_diff,
                                    quat_to_euler, rmat_to_quat)
 
 
@@ -76,6 +75,11 @@ class VRController:
             # Read Controller
             time_since_read = time.time() - last_read_time
             poses, buttons = self.oculus_reader.get_transformations_and_buttons()
+
+            # print(f"poses: {poses}")
+            # print(f"buttons: {buttons}")
+            # print("-" * 50)
+            # import pdb;pdb.set_trace()
             self._state["controller_on"] = time_since_read < num_wait_sec
             if poses == {}:
                 continue
@@ -185,6 +189,10 @@ class VRController:
         info_dict = {
             "target_cartesian_position": target_cartesian,
             "target_gripper_position": target_gripper,
+            "delta_action": np.concatenate([pos_action, euler_action]),
+            "target_pos_offset": target_pos_offset,
+            "robot_pos_offset": robot_pos_offset,
+            
         }
         action = np.concatenate([lin_vel, rot_vel, [gripper_vel]])
         action = action.clip(-1, 1)
@@ -195,6 +203,83 @@ class VRController:
         else:
             return action
 
+    def _calculate_delta_action(self, state_dict, include_info=False):
+        # Read Sensor #
+        if self.update_sensor:
+            self._process_reading()
+            self.update_sensor = False
+
+        # Read Observation
+        robot_pos = np.array(state_dict["cartesian_position"][:3])
+        robot_euler = state_dict["cartesian_position"][3:]
+        robot_quat = euler_to_quat(robot_euler)
+        robot_gripper = state_dict["gripper_position"]
+
+        # Reset Origin On Release #
+        if self.reset_origin:
+            self.robot_origin = {"pos": robot_pos, "quat": robot_quat}
+            self.vr_origin = {
+                "pos": self.vr_state["pos"],
+                "quat": self.vr_state["quat"],
+            }
+            self.reset_origin = False
+            self.prev_vr_state = self.vr_origin.copy()
+
+
+        # # Calculate Positional Action #
+        # robot_pos_offset = robot_pos - self.robot_origin["pos"]
+        # target_pos_offset = self.vr_state["pos"] - self.vr_origin["pos"]
+        # pos_action = target_pos_offset - robot_pos_offset
+        
+        robot_pos_offset = robot_pos - self.robot_origin["pos"]
+        target_pos_offset = self.vr_state["pos"] - self.prev_vr_state["pos"]
+        pos_action = target_pos_offset
+        
+
+        # Calculate Euler Action #
+        robot_quat_offset = quat_diff(robot_quat, self.robot_origin["quat"])
+        target_quat_offset = quat_diff(self.vr_state["quat"], self.vr_origin["quat"])
+        quat_action = quat_diff(target_quat_offset, robot_quat_offset)
+        euler_action = quat_to_euler(quat_action)
+
+        # Calculate Gripper Action #
+        gripper_action = self.vr_state["gripper"] - robot_gripper
+
+        # Calculate Desired Pose #
+        target_pos = pos_action + robot_pos
+        target_euler = add_angles(euler_action, robot_euler)
+        target_cartesian = np.concatenate([target_pos, target_euler])
+        target_gripper = self.vr_state["gripper"]
+
+        # Scale Appropriately #
+        pos_action *= self.pos_action_gain
+        euler_action *= self.rot_action_gain
+        gripper_action *= self.gripper_action_gain
+        lin_vel, rot_vel, gripper_vel = self._limit_velocity(
+            pos_action, euler_action, gripper_action
+        )
+
+        # Prepare Return Values #
+        info_dict = {
+            "target_cartesian_position": target_cartesian,
+            "target_gripper_position": target_gripper,
+            "delta_action": np.concatenate([pos_action, euler_action]),
+            "target_pos_offset": target_pos_offset,
+            "robot_pos_offset": robot_pos_offset,
+            
+        }
+        action = np.concatenate([lin_vel, rot_vel, [gripper_vel]])
+        action = action.clip(-1, 1)
+        
+        # Update Previous VR State
+        self.prev_vr_state = self.vr_state.copy()
+
+        # Return #
+        if include_info:
+            return action, info_dict
+        else:
+            return action
+        
     def get_info(self):
         return {
             "success": self._state["buttons"]["A"],
@@ -203,7 +288,7 @@ class VRController:
             "controller_on": self._state["controller_on"],
         }
 
-    def forward(self, obs_dict, DoF=6, include_info=False):
+    def forward(self, obs_dict, DoF=6, include_info=False, method="delta_action"):
         if self._state["poses"] == {}:
             action = np.zeros(DoF + 1)
             if include_info:
@@ -211,9 +296,14 @@ class VRController:
             else:
                 return action
 
-        return self._calculate_action(
-            obs_dict["robot_state"], include_info=include_info
-        )
+        if method == "delta_action":
+            return self._calculate_delta_action(
+                obs_dict["robot_state"], include_info=include_info
+            )
+        else:
+            return self._calculate_action(
+                obs_dict["robot_state"], include_info=include_info
+            )
 
 
 def main():

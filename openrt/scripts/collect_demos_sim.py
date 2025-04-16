@@ -19,7 +19,7 @@ FLAGS = flags.FLAGS
 import sys
 
 @hydra.main(
-    config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
+    config_path="../../configs/", config_name="collect_demos_sim", version_base="1.1"
 )
 def run_experiment(cfg):
     FLAGS(sys.argv)
@@ -29,6 +29,7 @@ def run_experiment(cfg):
     cfg.robot.max_path_length = cfg.max_episode_length
     assert cfg.robot.imgs, "ERROR: set robot.imgs=true to record image observations!"
 
+    cfg.robot.control_hz = 128
     # create env
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
@@ -42,6 +43,7 @@ def run_experiment(cfg):
 
     print(f"Camera names: {camera_names}")
 
+    
     # crop image observations
     if cfg.aug.camera_crop is not None:
         env = CropImageWrapper(
@@ -69,7 +71,9 @@ def run_experiment(cfg):
     # creating the date object of today's date 
     todays_date = date.today() 
 
-    savedir = f"{cfg.base_dir}/{todays_date.month}{todays_date.day}/{cfg.exp_id}/{cfg.split}"
+    # savedir = f"{cfg.base_dir}/{todays_date.month}{todays_date.day}/{cfg.exp_id}/{cfg.split}"
+    savedir = f"/home/prior/data_collection/data/{todays_date.month}{todays_date.day}/{cfg.exp_id}/{cfg.split}"
+    
     env = DataCollectionWrapper(
         env,
         language_instruction=cfg.language_instruction,
@@ -127,6 +131,7 @@ def run_experiment(cfg):
             save = False
             if info["success"]:
                 save = True
+                time.sleep(1)
                 continue
             # press 'B' to indicate failure
             elif info["failure"]:
@@ -176,17 +181,28 @@ def run_experiment(cfg):
                 else:
                     act[-1] = 0
 
-                next_obs, rew, done, _ = env.step(act)
+
+                next_obs, rew, done, _ = env.step(act, add_noise=True)
                 # print("qpos", next_obs["lowdim_qpos"])
                 # cv2.imshow('Real-time video', cv2.cvtColor(next_obs["215122255213_rgb"], cv2.COLOR_BGR2RGB))
-                cv2.imshow('Real-time video', cv2.cvtColor(next_obs[f"{camera_names[0]}_rgb"], cv2.COLOR_BGR2RGB))
-                # Press 'q' on the keyboard to exit the loop
+
+                # import pdb;pdb.set_trace()
+                # print("rendering")
+                # # visual_img = env.render(mode="rgb_array")
+                # cv2.imshow('Real-time video', cv2.cvtColor(next_obs[f"{camera_names[0]}_rgb"], cv2.COLOR_BGR2RGB))
+                # # Press 'q' on the keyboard to exit the loop
+                # if cv2.waitKey(1) & 0xFF == ord('q'):
+                #     break
+                # breakpoint()
+                visual_img = env.unwrapped._robot.render()[0]["array"]
+                cv2.imshow('Real-time video', visual_img)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
+                    
+                
                 # emulate frequency in sim
                 if cfg.robot.ip_address == None:
                     time.sleep(1 / cfg.robot.control_hz)
-                    env.render()
 
                 # # remove depth from observations
                 # for cn in camera_names:

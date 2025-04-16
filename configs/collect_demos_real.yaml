@@ -28,8 +28,8 @@ cam_name: 215122252864
 # base_dir: "/home/joel/projects/polymetis_franka/data"
 # base_dir : "/home/yuquand/projects/franka_inference/data"
 # base_dir: "/media/yuquand/Extreme\ SSD/demo_data"
-# base_dir: "/home/prior/data_collection/data"
-base_dir: "/home/robot/real_data"
+base_dir: "/home/prior/data_collection/data"
+# base_dir: "/home/robot/real_data"
 save_info: true
 control_hz: 5 # 10
 exp_id: null

@@ -39,3 +39,8 @@ eval_last: true
 language_instruction: "pick up the green cube"
 traj_length: 150
 trial_num: 3
+
+mode: "standard" # ["practice", "standard"]
+no_ops_threshold: 0.004
+no_ops_last_detected_time: 3
+lock_rotation_detected_time: 1

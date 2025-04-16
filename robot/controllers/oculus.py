@@ -48,6 +48,8 @@ class VRController:
         self.global_to_env_mat = vec_to_reorder_mat(rmat_reorder)
         self.controller_id = "r" if right_controller else "l"
         self.reset_orientation = True
+        
+        self.lock_rotation = False
         self.reset_state()
 
         # Start State Listening Thread #
@@ -56,7 +58,7 @@ class VRController:
     def reset_state(self):
         self._state = {
             "poses": {},
-            "buttons": {"A": False, "B": False},
+            "buttons": {"A": False, "B": False, "X": False, "Y": False},
             "movement_enabled": False,
             "controller_on": True,
         }
@@ -237,11 +239,11 @@ class VRController:
         
 
         # Calculate Euler Action #
-        robot_quat_offset = quat_diff(robot_quat, self.robot_origin["quat"])
-        target_quat_offset = quat_diff(self.vr_state["quat"], self.vr_origin["quat"])
-        quat_action = quat_diff(target_quat_offset, robot_quat_offset)
-        euler_action = quat_to_euler(quat_action)
-
+        if self.lock_rotation:
+            euler_action = np.zeros(3)
+        else:
+            target_quat_offset = quat_diff(self.vr_state["quat"], self.prev_vr_state["quat"])
+            euler_action = quat_to_euler(target_quat_offset)
         # Calculate Gripper Action #
         gripper_action = self.vr_state["gripper"] - robot_gripper
 
@@ -284,6 +286,8 @@ class VRController:
         return {
             "success": self._state["buttons"]["A"],
             "failure": self._state["buttons"]["B"],
+            "X": self._state["buttons"]["X"],
+            "Y": self._state["buttons"]["Y"],
             "movement_enabled": self._state["movement_enabled"],
             "controller_on": self._state["controller_on"],
         }
@@ -305,6 +309,12 @@ class VRController:
                 obs_dict["robot_state"], include_info=include_info
             )
 
+    def toggle_lock_rotation(self):
+        """
+        Toggle the lock rotation state
+        """
+        self.lock_rotation = not self.lock_rotation
+        
 
 def main():
 

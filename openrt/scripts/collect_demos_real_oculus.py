@@ -5,7 +5,7 @@ import hydra
 import numpy as np
 from tqdm import tqdm
 
-from robot.controllers.oculus import VRController
+from robot.controllers.oculus import VRController, BimanualVRController
 from robot.wrappers.crop_wrapper import CropImageWrapper
 from robot.wrappers.data_wrapper import DataCollectionWrapper
 from robot.wrappers.resize_wrapper import ResizeImageWrapper
@@ -17,6 +17,69 @@ import cv2
 from absl import flags
 FLAGS = flags.FLAGS
 import sys
+from matplotlib import pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+
+# Initialize the 3D plot
+def initialize_3d_plot():
+    plt.ion()
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_title("3D Visualization of XYZ Position")
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_zlabel("Z (m)")
+    ax.grid()
+
+    range = [-0.05, 0.05]
+    # Set fixed axis ranges
+    ax.set_xlim(range)  # Adjust as needed
+    ax.set_ylim(range)  # Adjust as needed
+    ax.set_zlim(range)   # Adjust as needed
+
+    return fig, ax
+
+# Update the 3D plot with new data
+def update_3d_plot(ax, xyz, target_offset=None, robot_offset=None):
+    ax.clear()
+    ax.set_title("3D Visualization of XYZ Position")
+    ax.set_xlabel("X (m)")
+    ax.set_ylabel("Y (m)")
+    ax.set_zlabel("Z (m)")
+    ax.grid()
+
+    range = [-0.05, 0.05]
+    # Set fixed axis ranges
+    ax.set_xlim(range)  # Adjust as needed
+    ax.set_ylim(range)  # Adjust as needed
+    ax.set_zlim(range)   # Adjust as needed
+    # Plot the position as a vector from the origin
+    ax.quiver(
+        0, 0, 0,  # Origin
+        xyz[0], xyz[1], xyz[2],  # Vector components
+        length=1.0, color='r', label="Position Vector (XYZ)"
+    )
+
+    if target_offset is not None:
+        ax.quiver(
+            0, 0, 0,  # Origin
+            target_offset[0], target_offset[1], target_offset[2],  # Vector components
+            length=1.0, color='g', label="Target Pose Offset"
+        )
+
+    if robot_offset is not None:
+        ax.quiver(
+            0, 0, 0,  # Origin
+            robot_offset[0], robot_offset[1], robot_offset[2],  # Vector components
+            length=1.0, color='b', label="Robot Pose Offset"
+        )
+    
+    ax.legend()
+    plt.pause(0.01)  # Pause to update the plot
+
+
+
 
 @hydra.main(
     config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
@@ -78,7 +141,10 @@ def run_experiment(cfg):
         save_dir=savedir,
     )
 
-    oculus = VRController()
+    fig, ax = initialize_3d_plot()
+    oculus = VRController(pos_action_gain=10, rot_action_gain=4) # sensitivity 
+    # oculus = BimanualVRController(pos_action_gain=5)
+    # oculus = VRController()
     assert oculus.get_info()["controller_on"], "ERROR: oculus controller off"
     print("Oculus Connected")
 
@@ -104,6 +170,7 @@ def run_experiment(cfg):
                 # reset w/ recording obs after resetting the scene
                 obs = env.reset()
                 print("Start Collecting")
+                time.sleep(1)
                 break
 
         print(f"Press 'A' to Indicate SUCCESS, Press 'B' to Indicate FAILURE")
@@ -111,6 +178,20 @@ def run_experiment(cfg):
         obss = []
         acts = []
 
+        # no-ops related variables
+        first_no_ops_detected = True
+        no_ops_start_time = 0
+        no_ops_threshold = cfg.no_ops_threshold
+        mode = cfg.mode
+        no_ops_last_detected_time = cfg.no_ops_last_detected_time
+        print("no_ops_threshold", no_ops_threshold)
+        
+        # lock rotation configs
+        loc_rotation_start_time = 0
+        lock_rotation_detected_time = cfg.lock_rotation_detected_time
+        lock_rotation_first_detected = True
+        
+        print("mode", mode)
         for j in tqdm(
             range(cfg.max_episode_length),
             desc=f"Collecting Trajectory {n_traj}/{cfg.episodes}",
@@ -118,6 +199,13 @@ def run_experiment(cfg):
 
             # wait for controller input
             info = oculus.get_info()
+
+            # lock rotation when not movement enabled
+            if info["X"]:
+                oculus.toggle_lock_rotation()
+                print("lock rotation toggled")
+                time.sleep(0.1)
+                    
             while (not info["success"] and not info["failure"]) and not info[
                 "movement_enabled"
             ]:
@@ -132,9 +220,29 @@ def run_experiment(cfg):
             elif info["failure"]:
                 continue
 
+            # # lock rotation if needed
+            # if info["X"]:
+            #     # first lock rotation detected
+            #     if lock_rotation_first_detected:
+            #         loc_rotation_start_time = time.time()
+            #         lock_rotation_first_detected = False
+            #     # lock rotation detected
+            #     elif time.time() - loc_rotation_start_time >= lock_rotation_detected_time:
+            #         oculus.toggle_lock_rotation()
+            #         # reset lock rotation
+            #         lock_rotation_first_detected = True
+            #         loc_rotation_start_time = 0
+            #     print("LOCK ROTATION DETECTED!!!!!!!!!!!!!!!!!!!!!")
+            # # no lock rotation detected
+            # else:
+            #     lock_rotation_first_detected = True
+            #     loc_rotation_start_time = 0
+            #     print("no lock rotation detected")
+                    
+            
             # check if 'trigger' button is pressed
             if info["movement_enabled"]:
-
+                    
                 # prepare obs for oculus
                 pose = env.unwrapped._robot.get_ee_pose()
                 gripper = env.unwrapped._robot.get_gripper_position()
@@ -149,8 +257,12 @@ def run_experiment(cfg):
                 # qpos = env.unwrapped._robot.get_joint_positions()
                 # print(f'qpos: {qpos}')
                 # print(f'gipper: {gripper}')
-                vel_act, info = oculus.forward(state, include_info=True)
+                # vel_act, info = oculus.forward(state, include_info=True)
+                vel_act, info =  oculus.forward(state, include_info=True, method="delta_action")
 
+                update_3d_plot(ax, info["delta_action"][:3], info["target_pos_offset"][:3], info["robot_pos_offset"][:3])
+                # update_3d_plot(ax, info["delta_action"][:3])
+                
                 # convert vel to delta actions
                 delta_act = env.unwrapped._robot._ik_solver.cartesian_velocity_to_delta(
                     vel_act
@@ -170,19 +282,48 @@ def run_experiment(cfg):
                 # act = np.zeros_like(act)   
                 # import pdb; pdb.set_trace()
 
+                # if oculus.vr_state["r"]["gripper"] > 0.5:
                 if oculus.vr_state["gripper"] > 0.5:
-                    # hold
                     act[-1] = 0.5
                 else:
                     act[-1] = 0
 
+                
+
+                
+                # check if no-ops
+                if cfg.mode == "standard":
+                    act_norm = np.linalg.norm(act)
+                    
+                    # first no-ops detected
+                    if act_norm < no_ops_threshold and first_no_ops_detected:
+                        first_no_ops_detected = False
+                        no_ops_start_time = time.time() # start time of no-ops
+                    # no-ops detected
+                    elif act_norm < no_ops_threshold and not first_no_ops_detected:
+                        if time.time() - no_ops_start_time >= no_ops_last_detected_time:
+                            print("No-ops count exceeded threshold")
+                            break
+                    # no-ops not detected (reset)
+                    else:
+                        first_no_ops_detected = True
+                        no_ops_start_time = 0
+                
+                
                 next_obs, rew, done, _ = env.step(act)
+            
+                
                 # print("qpos", next_obs["lowdim_qpos"])
                 # cv2.imshow('Real-time video', cv2.cvtColor(next_obs["215122255213_rgb"], cv2.COLOR_BGR2RGB))
-                cv2.imshow('Real-time video', cv2.cvtColor(next_obs[f"{camera_names[0]}_rgb"], cv2.COLOR_BGR2RGB))
-                # Press 'q' on the keyboard to exit the loop
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
+                # cv2.imshow('Real-time video', cv2.cvtColor(next_obs[f"{camera_names[0]}_rgb"], cv2.COLOR_BGR2RGB))
+                
+                
+                # update_3d_plot(ax, act[:3], act[3:6])
+                
+                
+                # # Press 'q' on the keyboard to exit the loop
+                # if cv2.waitKey(1) & 0xFF == ord('q'):
+                #     break
                 # emulate frequency in sim
                 if cfg.robot.ip_address == None:
                     time.sleep(1 / cfg.robot.control_hz)

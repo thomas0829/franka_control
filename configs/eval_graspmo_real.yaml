@@ -1,0 +1,72 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - log: stdout
+  - robot: real_6_dof
+  - aug: crop_resize
+
+seed: 0
+gpu_id: 0
+
+episodes: 10
+# maximum timesteps to collect before auto-reset
+max_episode_length: 1000
+# std of action noise applied on top of input cmd
+act_noise_std: 0.001
+
+# data split \in ["train", "eval"]
+split: "train"
+# resume collection from traj index
+start_traj: 0
+
+# some basic overrides
+# cam_name: 215122255213
+cam_name: 215122252864
+#base_dir: "/home/joel/projects/polymetis_franka/data/basement"
+# base_dir: "/home/joel/projects/polymetis_franka/data"
+# base_dir : "/home/yuquand/projects/franka_inference/data"
+# base_dir: "/media/yuquand/Extreme\ SSD/demo_data"
+base_dir: "/home/prior/data_collection/data"
+# base_dir: "/home/robot/real_data"
+save_info: true
+control_hz: 5 # 10
+exp_id: null
+ckpt_path: null
+epoch_num: null
+eval_last: true
+language_instruction: "pick up the green cube"
+traj_length: 150
+trial_num: 3
+
+mode: "inference" # ["practice", "standard"]
+no_ops_threshold: 0.004
+no_ops_last_detected_time: 3
+lock_rotation_detected_time: 1
+
+
+
+recalibrate: true
+# task: "pick up the apple and put it in the basket"
+
+
+# cam info
+cam_info_file: "/home/prior/M2T2/camera_calibration/d435_cam_info.pkl"
+
+# load m2t2 config
+m2t2_config_path: "/home/prior/M2T2"
+m2t2_config_name: "config"
+m2t2_checkpoint: "/home/prior/m2t2_model_weight/m2t2/m2t2.pth"
+m2t2_num_runs: 5
+m2t2_mask_thresh: 0.4
+
+# load molmo config
+# grasp_molmo_url: "http://100.72.217.5:8080/api/predict_point"
+grasp_molmo_url: "http://100.120.4.79:32769/api/predict_point"
+vanila_molmo_url: "http://100.127.190.105:32770/api/predict_point"
+
+
+
+grasp_gpt_url: "http://100.81.7.63:32773/api/predict_grasp"
+

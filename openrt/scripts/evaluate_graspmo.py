@@ -377,8 +377,8 @@ def run_experiment(cfg):
     
     # load cam config
     cam_pose, cam_K = load_cam_info(cfg.cam_info_file)
-    cam_pose[1][3] -= 0.05 # fintune value
-    
+    # cam_pose[2][3] += 0.025 # fintune value lift 5cm, for kitchen sink
+
     
     # load m2t2 model
     from hydra import compose, initialize_config_dir
@@ -403,7 +403,7 @@ def run_experiment(cfg):
     mode = "inference"
     log_config(f"Mode: {mode}")
     visualize = True
-             
+    verbose = False
     if mode == "inference":
         # load grasp molmo model
         from m2t2.molmo_remote_pred import GraspMolmoBeaker
@@ -450,6 +450,9 @@ def run_experiment(cfg):
                     # generate grasps proposal (M2T2)
                     log_instruction(f"Generating grasps proposal...")
                     grasps_world, _ = m2t2_model.generate_grasps(cam_pose, depth, image, visualize=visualize, verbose=False)
+                    
+
+                    
                     grasps = np.linalg.inv(cam_pose)[None] @ grasps_world
                     
                     sub_continue_code = input("continue? (y/n): ")
@@ -471,13 +474,20 @@ def run_experiment(cfg):
                     log_instruction(f"GraspMolmo prediction...")
                     graspmo_input_image = Image.fromarray(image.copy())
                     pc_camera = depth_to_pc(depth / 1000, cam_K) # pc in camera frame
+                    start_time = time.time()
                     graspMolmo.pred_grasp([graspmo_input_image], [pc_camera], [task], [grasps], [cam_K], verbosity=3)[0]
+                    inference_time = time.time() - start_time
+                    log_success(f"GraspMolmo inference time: {inference_time:.2f} seconds")
                 if use_model in ["2", "4"]:
                     # graspGPT prediction
                     graspGPT_input_image = Image.fromarray(image.copy())
                     image_str = graspGPT.encode_image(graspGPT_input_image)
                     log_instruction(f"graspGPT prediction...")
-                    graspGPT.pred_grasp(image_str, depth / 1000, cam_K, grasps, task)        
+                    start_time = time.time()
+                    graspGPT.pred_grasp(image_str, depth / 1000, cam_K, grasps, task) 
+                    inference_time = time.time() - start_time
+                    log_success(f"graspGPT inference time: {inference_time:.2f} seconds")
+                        
                 if use_model in ["3", "4"]:
                     # vanilaMolmo prediction
                     log_instruction(f"VanilaMolmo prediction...")
@@ -485,10 +495,17 @@ def run_experiment(cfg):
                     pc_camera = depth_to_pc(depth / 1000, cam_K) # pc in camera frame
 
                     try:
+                        start_time = time.time()
                         vanilaMolmo.pred_grasp([vanilaMolmo_input_image], [pc_camera], [task], [grasps], [cam_K], verbosity=3)[0]
+                        inference_time = time.time() - start_time
+                        log_success(f"VanilaMolmo inference time: {inference_time:.2f} seconds")
                     except ValueError:
+                        inference_time = time.time() - start_time
+                        log_success(f"VanilaMolmo inference time: {inference_time:.2f} seconds")
                         task = input("Instruction: ")
+                        
                         continue
+ 
                         
                     
                 graspMolmo_image = graspMolmo.get_image()
@@ -534,8 +551,16 @@ def run_experiment(cfg):
                 pregraps_pose_matrix = target_pose_matrix.copy()
                 pregraps_pose_matrix[:3, 3] -= pregraps_pose_matrix[:3, 2] * 0.15
                 
+                
+                prepregrasp_pose_matrix = pregraps_pose_matrix.copy()
+                prepregrasp_pose_matrix[2, 3] += 0.2 # lift the object by 20 cm
+                
+                
                 if visualize:
-                    visualize_grasp_pose(target_pose_matrix, pregraps_pose_matrix, curr_pose_matrix, grasps_world[grasp_idx], image, depth, cam_K, cam_pose)
+                    # visualize_grasp_pose(target_pose_matrix, pregraps_pose_matrix, curr_pose_matrix, grasps_world[grasp_idx], image, depth, cam_K, cam_pose)
+                    visualize_grasp_pose(target_pose_matrix, prepregrasp_pose_matrix, curr_pose_matrix, grasps_world[grasp_idx], image, depth, cam_K, cam_pose)
+
+                
                 
 
                 execute_code = input("execute? (y/n):")
@@ -546,11 +571,19 @@ def run_experiment(cfg):
                     break
                     
                 # execute actions
+                log_instruction(f"Executing pre-pregrasp...")
+                next_obs, interpolated_motions = execute_interpolated_motion(env, curr_pose_matrix, prepregrasp_pose_matrix, obs, verbose=verbose, sleep_time=0.5)
+                
+                # breakpoint()
+                
                 log_instruction(f"Executing pregrasp...")
-                next_obs, interpolated_motions = execute_interpolated_motion(env, curr_pose_matrix, pregraps_pose_matrix, obs, verbose=True, sleep_time=0.5)
+                next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), pregraps_pose_matrix, obs, verbose=verbose, sleep_time=0.5)
 
+                # breakpoint()
+                
+                
                 log_instruction(f"Executing grasp...")
-                next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), target_pose_matrix, next_obs, verbose=True, sleep_time=0.5)
+                next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), target_pose_matrix, next_obs, verbose=verbose, sleep_time=0.5)
 
                 prompt = input("(1) grasp and lift the object (2) reset: ")
                 while prompt not in ["1", "2"]:
@@ -559,12 +592,12 @@ def run_experiment(cfg):
                     aftergrasp_pose_matrix = target_pose_matrix.copy()
                     aftergrasp_pose_matrix[2, 3] +=  0.1 # lift the object by 10 cm
                     close_gripper(env, next_obs["lowdim_ee"])
-                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), aftergrasp_pose_matrix, obs, verbose=True, sleep_time=0.5, close_gripper_state=True)
+                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), aftergrasp_pose_matrix, obs, verbose=verbose, sleep_time=0.5, close_gripper_state=True)
                 elif prompt == "2":
                     log_instruction(f"Back to home pose...")
 
-                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), pregraps_pose_matrix, next_obs, verbose=True, sleep_time=0)
-                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=True, sleep_time=0)
+                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), pregraps_pose_matrix, next_obs, verbose=verbose, sleep_time=0)
+                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=verbose, sleep_time=0)
                     # release_gripper(env, next_obs["lowdim_ee"])
                     
                 prompt = input("(1) release (2) reset: ")
@@ -578,7 +611,7 @@ def run_experiment(cfg):
                     log_instruction(f"Back to home pose...")
                     
                     # next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), pregraps_pose_matrix, next_obs, verbose=True, sleep_time=0)
-                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=True, sleep_time=0)
+                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=verbose, sleep_time=0)
                     # release_gripper(env, next_obs["lowdim_ee"])
                     
                     
@@ -588,10 +621,10 @@ def run_experiment(cfg):
                 while done_code not in ["y", "n", "reset"]:
                     done_code = input("done? (y/n): ")
                 if done_code == "reset":
-                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=True, sleep_time=0)
+                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=verbose, sleep_time=0)
                 if done_code == "y":
                     done = True
-                next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=True, sleep_time=0)
+                next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=verbose, sleep_time=0)
                 # release_gripper(env, next_obs["lowdim_ee"])
 
     elif mode == "debug":

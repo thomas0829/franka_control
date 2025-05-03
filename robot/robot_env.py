@@ -100,7 +100,11 @@ class RobotEnv(gym.Env):
         # self._reset_joint_qpos = np.array([ 0.22326212, -1.05209494, -0.14739834, -2.6597085, -0.20228142, 1.82878792, -1.19218862]) # this is for the other two tasks, covering (robotiq gripper)
         # self._reset_joint_qpos = np.array([-0.01998546, -0.62298596, -0.01995236, -1.44656372, -0.07003611,  1.56165755, 0.02428678]) # This is the config collected for all of our experiments
         # self._reset_joint_qpos = np.array([ 0.61716306, -1.48035049, 0.82917732, -2.75267529, 0.53841865, 1.65110373, 0.52029693])
-
+        # self._reset_joint_qpos = np.array([-0.08961181, -0.48736098,  0.09921399, -2.5791719,   0.0812972,   2.25685763, 0.76385087,  0.00342626])
+        self._reset_joint_qpos = np.array([-0.05065621, -0.35683179,  0.09318887, -2.59557033,  0.03949903,  2.31192923, 0.83653134])
+        # self._reset_joint_qpos = np.array([-0.02742143, -0.42438987,  0.09396406, -1.84430289,  0.07455353,  1.58630955,  0.98055446]) # kitchen grasp molmo
+        # self._reset_joint_qpos = np.array([-0.07754681, -0.74369407,  0.08529517, -1.94868267,  0.11395936,  1.4399184, 1.00746107]) # shelf env
+        
         if self.DoF == 2:
             self._reset_joint_qpos = np.array(
                 # [
@@ -228,7 +232,10 @@ class RobotEnv(gym.Env):
                 from perception.cameras.realsense_camera import \
                     gather_realsense_cameras
 
-                cameras = gather_realsense_cameras(hardware_reset=False)
+                try:
+                    cameras = gather_realsense_cameras(hardware_reset=False)
+                except Exception as e:
+                    cameras = None
             elif camera_model == "zed":
                 from perception.cameras.zed_camera import gather_zed_cameras
 
@@ -240,7 +247,10 @@ class RobotEnv(gym.Env):
             from perception.cameras.multi_camera_wrapper import \
                 MultiCameraWrapper
 
-            self._camera_reader = MultiCameraWrapper(cameras)
+            if cameras is None:
+                self._camera_reader = None
+            else:
+                self._camera_reader = MultiCameraWrapper(cameras)
 
             # TODO move to RobotHardware
             if calib_dict is not None:
@@ -491,30 +501,6 @@ class RobotEnv(gym.Env):
         
         # BLOCKING CONTROL -> for rvt2 inference
         if self.blocking_control:
-            # self._update_robot(
-            #     next_pose,
-            #     action_space="cartesian_position",
-            #     blocking=True,
-            # )
-
-            # # sleep to maintain control_hz
-            # comp_time = time.time() - start_time
-            # sleep_left = max(0, (1 / self.control_hz) - comp_time)
-            # if not self.sim:
-            #     time.sleep(sleep_left)
-            # # self.desired_pos = desired_pos
-
-            # # get observations
-            # obs = self.get_observation()
-
-            # self.curr_path_length += 1
-            # done = False
-            # if (
-            #     self._max_path_length is not None
-            #     and self.curr_path_length >= self._max_path_length
-            # ):
-            #     done = True
-            # cartesian position control w/ blocking
             self._update_robot(
                 # np.concatenate((self._curr_pos + pos_action, add_angles(angle_action, self._curr_angle), [gripper])),
                 next_pose,
@@ -804,10 +790,21 @@ class RobotEnv(gym.Env):
 
     def get_images(self):
         imgs = []
-        if self.sim and not self._robot.has_renderer:
+        if self.sim:
             imgs = self._robot.render()
         else:
-            imgs = self._camera_reader.read_cameras()
+            if self._camera_reader is not None:
+                imgs = self._camera_reader.read_cameras()
+            else:
+                imgs = []
+                
+        # if self.sim and not self._robot.has_renderer:
+        #     imgs = self._robot.render()
+        # else:
+        #     if self._camera_reader is not None:
+        #         imgs = self._camera_reader.read_cameras()
+        #     else:
+        #         imgs = []
 
         img_dict = {}
         for img in imgs:

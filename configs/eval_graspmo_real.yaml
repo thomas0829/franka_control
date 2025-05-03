@@ -52,7 +52,8 @@ recalibrate: true
 
 
 # cam info
-cam_info_file: "/home/prior/M2T2/camera_calibration/d435_cam_info.pkl"
+# cam_info_file: "/home/prior/M2T2/camera_calibration/d435_cam_info.pkl"
+cam_info_file: "/home/prior/polymetis_franka/camera_calibration/d435_cam_info.pkl"
 
 # load m2t2 config
 m2t2_config_path: "/home/prior/M2T2"
@@ -63,7 +64,9 @@ m2t2_mask_thresh: 0.4
 
 # load molmo config
 # grasp_molmo_url: "http://100.72.217.5:8080/api/predict_point"
-grasp_molmo_url: "http://100.120.4.79:32769/api/predict_point"
+# grasp_molmo_url: "http://100.120.4.79:32769/api/predict_point"
+grasp_molmo_url: "http://100.120.4.79:32770/api/predict_point"
+
 vanila_molmo_url: "http://100.127.190.105:32770/api/predict_point"
 
 

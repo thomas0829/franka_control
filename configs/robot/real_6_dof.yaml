@@ -19,7 +19,10 @@ normalize: false
 
 # pass IP if not running on NUC "localhost" if running on NUC None if running sim
 # ip_address: "172.16.0.1"
-ip_address: "192.168.1.6"
+# ip_address: "192.168.1.6" # kitchen NUC
+
+ip_address: "192.168.1.104"
+
 # specify path length if resetting after a fixed length
 max_path_length: 20
 # camera type to use: 'realsense' 'zed'

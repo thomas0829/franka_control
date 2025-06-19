@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 import imageio
 import os
+<<<<<<< HEAD
 import argparse
 from PIL import Image, ImageDraw, ImageFont
 from concurrent.futures import ProcessPoolExecutor
@@ -63,6 +64,58 @@ def main():
 
 if __name__ == "__main__":
     main()
+=======
+
+
+dirs = "/media/prior/moDataset/molmoact_dataset/date_*/npy/*/train/episode_1.npy"
+demo_npy_paths = glob.glob(dirs)
+
+filter_words = ["debug", "test", "try_it_out", "practice"]
+
+for episode_path in tqdm(demo_npy_paths):
+    if any(word in episode_path for word in filter_words):
+        continue
+    
+    demo = np.load(episode_path, allow_pickle=True)
+    if len(demo) == 0:
+        continue
+
+    language_instruction = demo[0]["language_instruction"].replace(" ", "_")
+    logdir = episode_path.replace("npy/", "").replace("train/", "").replace(".npy", f"_{language_instruction}.mp4").replace("/episode", "_episode")
+    logdir = logdir.replace(episode_path.split("/")[-5], "videos")
+
+    os.makedirs(os.path.dirname(logdir), exist_ok=True)
+    # breakpoint()
+    
+    video_frames = []
+    for obs in demo:
+        video_frame = np.concatenate([obs[key] for key in obs.keys() if "rgb" in key], axis=1)
+        video_frames.append(video_frame)
+    imageio.mimsave(logdir, video_frames)
+    
+    print(f"save {logdir}")
+
+
+# print(f"found {len(demo_npy_paths)} demos")
+# for episode_path in tqdm(demo_npy_paths):
+#     demo = np.load(episode_path, allow_pickle=True)
+#     language_instruction = demo[0]["language_instruction"].replace(" ", "_")
+#     # logdir = "/home/robots/yuquand/video/debug.mp4"
+#     logdir = episode_path.replace("npy/", "video/").replace("train/", "").replace(".npy", f"_{language_instruction}.mp4").replace("/episode", "_episode")
+
+#     os.makedirs(os.path.dirname(logdir), exist_ok=True)
+#     # breakpoint()
+    
+#     video_frames = []
+#     for obs in demo:
+#         video_frame = np.concatenate([obs[key] for key in obs.keys() if "rgb" in key], axis=1)
+#         video_frames.append(video_frame)
+#     imageio.mimsave(logdir, video_frames)
+    
+#     print(f"save {logdir}")
+
+#     # breakpoint()
+>>>>>>> af979c6 ([EDIT] graspmolmo script; cam calibration; video saving; simulation teleop; two langs; new data saving format)
 
 
 

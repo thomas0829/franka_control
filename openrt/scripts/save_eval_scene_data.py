@@ -376,8 +376,13 @@ def run_experiment(cfg):
     
     
     # load cam config
-    cam_pose, cam_K = load_cam_info(cfg.cam_info_file)
-    cam_pose[1][3] -= 0.05 # fintune value
+    _, cam_K = load_cam_info(cfg.cam_info_file)
+    cam_xyz_quat = np.array([0.6387081759989455, -0.5014268282817443, 0.6004536248254595, -0.8868666454504597, -0.10902485164815467, -0.009865742834768699, 0.4488694710368091])
+
+    
+    cam_pose = np.eye(4)
+    cam_pose[:3, 3] = cam_xyz_quat[:3]
+    cam_pose[:3, :3] = R.from_quat(cam_xyz_quat[3:]).as_matrix()
     
     
     # load m2t2 model

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from robot.controllers.oculus import VRController
 from robot.wrappers.crop_wrapper import CropImageWrapper
-from robot.wrappers.data_wrapper import DataCollectionWrapper
+from robot.wrappers.data_wrapper import MultiTasksDataCollectionWrapper
 from robot.wrappers.resize_wrapper import ResizeImageWrapper
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
@@ -158,7 +158,7 @@ def get_input_action(env, oculus, cfg):
 
 
 @hydra.main(
-    config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
+    config_path="../../configs/", config_name="collect_demos_real_two_lang", version_base="1.1"
 )
 def run_experiment(cfg):
     FLAGS(sys.argv)
@@ -166,12 +166,19 @@ def run_experiment(cfg):
     assert cfg.robot.imgs, "ERROR: set robot.imgs=true to record image observations!"
 
     # configs
-    log_config(f"language instruction: {cfg.language_instruction}")
+    # log_config(f"language instruction: {cfg.language_instruction}")
     log_config(f"number of episodes: {cfg.episodes}")
     log_config(f"control hz: {cfg.robot.control_hz}")
-    log_config(f"dataset name: {cfg.exp_id}")
-    savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/npy/{cfg.exp_id}/{cfg.split}"
-    log_config(f"save directory: {savedir}")
+    # log_config(f"dataset name: {cfg.exp_id}")
+    log_config(f"dataset even: {cfg.exp_id_even}")
+    log_config(f"dataset odd: {cfg.exp_id_odd}")
+    even_savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/npy/{cfg.exp_id_even}/{cfg.split}"
+    odd_savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/npy/{cfg.exp_id_odd}/{cfg.split}"
+    log_config(f"save directory(even): {even_savedir}")
+    log_config(f"save directory(odd): {odd_savedir}")
+    log_config(f"language instruction(even): {cfg.lang_even}")
+    log_config(f"language_instruction (odd): {cfg.lang_odd}")
+    
 
     # No-ops related variables
     no_ops_threshold = cfg.no_ops_threshold
@@ -189,12 +196,14 @@ def run_experiment(cfg):
         verbose=True,
     )
     
-    env = DataCollectionWrapper(
+    env = MultiTasksDataCollectionWrapper(
         env,
-        language_instruction=cfg.language_instruction,
+        lang_even=cfg.lang_even,
+        lang_odd=cfg.lang_odd,
         fake_blocking=False,
         act_noise_std=cfg.act_noise_std,
-        save_dir=savedir,
+        even_savedir=even_savedir,
+        odd_savedir=odd_savedir,
     )
     obs = env.reset()
     log_success("Resetting env")
@@ -315,6 +324,7 @@ def run_experiment(cfg):
                         no_ops_start_time = 0
                 
                 next_obs, rew, done, _ = env.step(act)
+                env.curr_obs["note"] = cfg.note
                 obs = next_obs
                 
                 

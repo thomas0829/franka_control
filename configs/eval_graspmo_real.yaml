@@ -4,7 +4,7 @@ hydra:
   
 defaults:
   - log: stdout
-  - robot: real_6_dof
+  - robot: real_6_dof_kitchen
   - aug: crop_resize
 
 seed: 0

@@ -33,18 +33,20 @@ base_dir: "/home/prior/dataset"
 # base_dir: "/home/robot/real_data"
 save_info: true
 control_hz: 5 # 10
-exp_id: null
+# exp_id: null
 ckpt_path: null
 epoch_num: null
 eval_last: true
-language_instruction: "pick up the green cube"
+# language_instruction: "pick up the green cube"
 
 exp_id_even: null
 exp_id_odd: null
-
+lang_even: "place holder"
+lang_odd: "place_holder"
 
 traj_length: 150
 trial_num: 3
+note: ""
 
 mode: "standard" # ["practice", "standard"]
 no_ops_threshold: 0.004

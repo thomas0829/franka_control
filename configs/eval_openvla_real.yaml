@@ -61,3 +61,5 @@ msg: "stack the yellow block on the black block and the purple block on the yell
 #msg: "pick up an object that is round and put it in the sink"
 #msg: "pick up aobject that is a vegatable and put it in the sink"
 image_aug: false
+action_chunking: False
+camera_name: None

@@ -147,6 +147,26 @@ def get_pose_matrix(pose: np.ndarray) -> np.ndarray:
     curr_pose_matrix[:3, :3] = R.from_euler('xyz', pose[3:6], degrees=False).as_matrix()
     return curr_pose_matrix
 
+def get_xyzrpy_from_matrix(T: np.ndarray) -> np.ndarray:
+    """
+    Convert a 4x4 homogeneous transformation matrix into a 6D pose vector (x, y, z, roll, pitch, yaw).
+
+    Assumes:
+        - T[:3, 3]: translation (x, y, z)
+        - T[:3, :3]: rotation matrix
+        - Rotation order: 'xyz' intrinsic (roll → pitch → yaw)
+
+    Args:
+        T (np.ndarray): A 4x4 transformation matrix.
+
+    Returns:
+        np.ndarray: Array of shape (6,) representing [x, y, z, roll, pitch, yaw].
+    """
+    translation = T[:3, 3]
+    rotation = R.from_matrix(T[:3, :3])
+    rpy = rotation.as_euler('xyz', degrees=False)
+    return np.concatenate([translation, rpy])
+
 
 def interpolate_6d_poses(pose1: np.ndarray, pose2: np.ndarray, distance_threshold: float = 0.1) -> List[np.ndarray]:
     """Interpolate between two 6D poses (translation + rotation) into intermediate poses."""

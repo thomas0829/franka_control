@@ -25,33 +25,6 @@ import requests
 import json_numpy
 json_numpy.patch()
 import re
-# def send_request(image: Image.Image, instruction: str, server_url: str):
-#     """
-#     Send the captured image and instruction to the inference server using json_numpy.
-#     Returns the action output as received from the server.
-#     """
-#     # Convert PIL image to a NumPy array
-#     image_np = np.array(image)
-    
-#     # Prepare the payload with the image and instruction from the script
-#     payload = {
-#         "image": image_np,
-#         "instruction": instruction
-#     }
-    
-#     headers = {"Content-Type": "application/json"}
-#     response = requests.post(server_url, headers=headers, data=json_numpy.dumps(payload))
-
-#     if response.status_code != 200:
-#         raise Exception(f"Server error: {response.text}")
-#     print("response: ", response)
-#     response_data = response.json()
-
-#     import pdb;pdb.set_trace()
-#     # action = json_numpy.loads(response_data)
-#     # print(action)
-#     return response_data
-
 def send_request(image: Image.Image, instruction: str, server_url: str):
     """
     Send the captured image and instruction to the inference server using json_numpy.
@@ -59,22 +32,49 @@ def send_request(image: Image.Image, instruction: str, server_url: str):
     """
     # Convert PIL image to a NumPy array
     image_np = np.array(image)
-    # Prepare the payload with the image (as 'full_image') and instruction
+    
+    # Prepare the payload with the image and instruction from the script
     payload = {
-        "observation": {
-             "full_image": image_np
-        },
+        "image": image_np,
         "instruction": instruction
     }
+    
     headers = {"Content-Type": "application/json"}
     response = requests.post(server_url, headers=headers, data=json_numpy.dumps(payload))
+
     if response.status_code != 200:
         raise Exception(f"Server error: {response.text}")
     print("response: ", response)
-    response_data = np.array(response.json())
-    print("response_data: ", response_data)
-    
+    response_data = response.json()
+
+    # import pdb;pdb.set_trace()
+    # action = json_numpy.loads(response_data)
+    # print(action)
     return response_data
+
+# def send_request(image: Image.Image, instruction: str, server_url: str):
+#     """
+#     Send the captured image and instruction to the inference server using json_numpy.
+#     Returns the action output as received from the server.
+#     """
+#     # Convert PIL image to a NumPy array
+#     image_np = np.array(image)
+#     # Prepare the payload with the image (as 'full_image') and instruction
+#     payload = {
+#         "image": {
+#              "full_image": image_np
+#         },
+#         "instruction": instruction
+#     }
+#     headers = {"Content-Type": "application/json"}
+#     response = requests.post(server_url, headers=headers, data=json_numpy.dumps(payload))
+#     if response.status_code != 200:
+#         raise Exception(f"Server error: {response.text}")
+#     print("response: ", response)
+#     response_data = np.array(response.json())
+#     print("response_data: ", response_data)
+    
+#     return response_data
 
 def parse_pose_output(output):
     """
@@ -127,71 +127,66 @@ def get_dict(demo):
         dic[key] = np.stack([d[key] for d in demo])
     return dic
 
-# def action_preprocessing(dic, actions):
-#         # compute actual deltas s_t+1 - s_t (keep gripper actions)
-#     actions_tmp = actions.copy()
-#     actions_tmp[:-1, ..., :6] = (
-#         dic["lowdim_ee"][1:, ..., :6] - dic["lowdim_ee"][:-1, ..., :6]
-#     )
-#     actions = actions_tmp[:-1]
-    
-
-#         # compute shortest angle -> avoid wrap around
-#     actions[..., 3:6] = shortest_angle(actions[..., 3:6])
-
-#     # real data source
-#     #actions[..., [3,4,5]] = actions[..., [4,3,5]]
-#     #actions[...,4] = -actions[...,4]
-#     # actions[...,3] = -actions[...,3] this is a bug
-
-#     print(f'Action min & max: {actions[...,:6].min(), actions[...,:6].max()}')
-
-#     return actions
-
-def action_preprocessing(dic, actions, interval=1):
-    """
-    Compute action deltas based on a specified interval.
-    
-    Args:
-        dic (dict): Dictionary containing stacked episode data.
-        actions (np.array): Original actions of shape (N, 7).
-        interval (int): Step size for computing differences (default=1).
-    
-    Returns:
-        np.array: Processed actions of shape (N - interval, 7).
-    """
+def action_preprocessing(dic, actions):
+        # compute actual deltas s_t+1 - s_t (keep gripper actions)
     actions_tmp = actions.copy()
-
-    # Compute deltas with interval steps
-    actions_tmp[:-interval, ..., :6] = (
-        dic["lowdim_ee"][interval:, ..., :6] - dic["lowdim_ee"][:-interval, ..., :6]
+    actions_tmp[:-1, ..., :6] = (
+        dic["lowdim_ee"][1:, ..., :6] - dic["lowdim_ee"][:-1, ..., :6]
     )
+    actions = actions_tmp[:-1]
+    
 
-    # Keep only actions that have valid deltas
-    actions = actions_tmp[:-interval]
-
-    # Compute shortest angle to avoid wrap-around issues
+        # compute shortest angle -> avoid wrap around
     actions[..., 3:6] = shortest_angle(actions[..., 3:6])
 
-    print(f'Action min & max: {actions[..., :6].min(), actions[..., :6].max()}')
+    # real data source
+    #actions[..., [3,4,5]] = actions[..., [4,3,5]]
+    #actions[...,4] = -actions[...,4]
+    # actions[...,3] = -actions[...,3] this is a bug
+
+    print(f'Action min & max: {actions[...,:6].min(), actions[...,:6].max()}')
 
     return actions
 
+# def action_preprocessing(dic, actions, interval=1):
+#     """
+#     Compute action deltas based on a specified interval.
+    
+#     Args:
+#         dic (dict): Dictionary containing stacked episode data.
+#         actions (np.array): Original actions of shape (N, 7).
+#         interval (int): Step size for computing differences (default=1).
+    
+#     Returns:
+#         np.array: Processed actions of shape (N - interval, 7).
+#     """
+#     actions_tmp = actions.copy()
+
+#     # Compute deltas with interval steps
+#     actions_tmp[:-interval, ..., :6] = (
+#         dic["lowdim_ee"][interval:, ..., :6] - dic["lowdim_ee"][:-interval, ..., :6]
+#     )
+
+#     # Keep only actions that have valid deltas
+#     actions = actions_tmp[:-interval]
+
+#     # Compute shortest angle to avoid wrap-around issues
+#     actions[..., 3:6] = shortest_angle(actions[..., 3:6])
+
+#     print(f'Action min & max: {actions[..., :6].min(), actions[..., :6].max()}')
+
+#     return actions
+
 
     
-def replay_episode(demo, env, length=-1, interval=1, visual=False):
+def replay_episode(demo, env, visual=False):
     # stack data
     dic = get_dict(demo)
     actions = np.stack([d["action"] for d in demo])
-    actions = action_preprocessing(dic, actions, interval=interval) # delta action
+    actions = action_preprocessing(dic, actions) # delta action
     demo_length = actions.shape[0]
 
-    if length == -1:
-        length = demo_length
-    else:
-        length = length
-
-    for step_idx in tqdm(range(0, length-1)):
+    for step_idx in tqdm(range(demo_length)):
         act = actions[step_idx]
 
         obs = env.get_observation()
@@ -200,9 +195,9 @@ def replay_episode(demo, env, length=-1, interval=1, visual=False):
             cv2.imshow("Camera View", obs["215122252864_rgb"])
             cv2.waitKey(1)  # Small delay to allow the image to refresh
         
-        next_obs, reward, done, info = env.step(act)
-        # print("action: ", act)
-
+        if step_idx == 15:
+            breakpoint() 
+        env.step(act)
     cv2.destroyAllWindows()
 
 def set_random_seed(seed):
@@ -236,18 +231,25 @@ def run_experiment(cfg):
     camera_names = [k for k in env.get_images().keys()]
 
     print(f"Camera names: {camera_names}")
+    
+    # breakpoint()
 
-    # crop image observations
-    if cfg.aug.camera_crop is not None:
-        env = CropImageWrapper(
-            env,
-            x_min=cfg.aug.camera_crop[0],
-            x_max=cfg.aug.camera_crop[1],
-            y_min=cfg.aug.camera_crop[2],
-            y_max=cfg.aug.camera_crop[3],
-            image_keys=[cn + "_rgb" for cn in camera_names],
-            crop_render=True,
-        )
+    # breakpoint()
+    # pick the camera_name
+    # https://fb25-71-41-244-70.ngrok-free.app
+
+
+    # # crop image observations
+    # if cfg.aug.camera_crop is not None:
+    #     env = CropImageWrapper(
+    #         env,
+    #         x_min=cfg.aug.camera_crop[0],
+    #         x_max=cfg.aug.camera_crop[1],
+    #         y_min=cfg.aug.camera_crop[2],
+    #         y_max=cfg.aug.camera_crop[3],
+    #         image_keys=[cn + "_rgb" for cn in camera_names],
+    #         crop_render=True,
+    #     )
 
     # resize image observations
     '''
@@ -259,52 +261,74 @@ def run_experiment(cfg):
         )
     '''
 
-    def image_preprocessing(image):
-        image = cv2.resize(image, [360, 360])
-        return image
+    # def image_preprocessing(image):
+    #     image = cv2.resize(image, [360, 360])
+        # return image
     
     env.seed(cfg.seed)
     obs = env.reset()
 
 
-    
-
-    mode = "close_loop" # replay, close_loop, open_loop
-    # demo_dir = "/home/prior/data_collection/data/38/pick_duster_npy/pick_duster_1/train/episode_2.npy"
-
-
-    demo_dir = "/home/prior/rlds_dataset_builder/pick_mango/data/pick_mango_1/train/episode_2.npy"
+    mode = "replay" # replay, close_loop, open_loop
+    demo_dir = "/home/prior/dataset/date_618/npy/pick_banana_0/train/episode_15.npy"
     print("[WARN] hardcode demo directory")
 
     url = cfg.url
     print("[INFO] mode: ", mode)
     print("[INFO] url: ", url)
+    print("[INFO] action chunking: ", cfg.action_chunking)
+    print("[INFO] msg: ", cfg.msg)
+    
+    # camera_id = "213522250587_rgb"
+    CAMERA2NAMES = {
+        "side": "215122256044_rgb", # side view
+        "front": "213522250587_rgb", # front view
+        "wrist": "215222073684_rgb", # wrist view
+    }
+    
+    # camera_id = "215122256044_rgb" # side view
+    if cfg.camera_name not in CAMERA2NAMES.keys():
+        raise ValueError(f"Invalid camera name: {cfg.camera_name}. Choose from {list(CAMERA2NAMES.keys())}.")
+    camera_id = CAMERA2NAMES[cfg.camera_name]
+    print(f"[INFO] Using camera: {camera_id}")
+    # breakpoint()
     if mode == "replay":
         print('[INFO] demo_dir: ', demo_dir)
         demo = np.load(demo_dir, allow_pickle=True)
-        replay_episode(demo, env, interval=1, visual=True)
+        replay_episode(demo, env, visual=False)
     elif mode == "close_loop":
         for i in range(cfg.traj_length): 
             print(f'Step: {i} | lang: {cfg.msg}')
             start = time.time()
-            img = image_preprocessing(obs[camera_names[0]+"_rgb"])
             msg = cfg.msg
 
             # sanity check            
-            # from PIL import Image
-            # Image.fromarray(img).save("/home/prior/tmp/groundvla_eval.png")
-            # print("Image saved as /home/prior/tmp/groundvla_eval.png")
+            Image.fromarray(img).save("/home/prior/tmp/groundvla_eval.png")
+            print("Image saved as /home/prior/tmp/groundvla_eval.png")
 
+            # img = 
+            img = obs[camera_id]
             # ground vla inference
+            start = time.time()
             act = send_request(img, msg, url)
-            print(f"[OpenVLA Client] Received Action (deltas): {act}")
-            
-            # step
-            next_obs, reward, done, info = env.step(act)
-            print(
-                f"Time {np.around(time.time()-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(act,3)}"
-            )
-            obs = next_obs
+            print(f"[Molmo Act Client] Received Action (deltas): {act}")
+            end = time.time()          
+
+            if cfg.action_chunking:
+                # execute h actions at once
+                for chunk in act:
+                    next_obs = env.step(chunk)[0]
+                    obs = next_obs  
+                print(
+                    f"Time {np.around(end-start, 3)/ len(act)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(chunk,3)}"
+                )
+            else:       
+                # step
+                next_obs = env.step(act)[0]
+                print(
+                    f"Time {np.around(end-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(act,3)}"
+                )
+                obs = next_obs
 
     elif mode == "open_loop":
         print('[INFO] demo_dir: ', demo_dir)
@@ -314,23 +338,32 @@ def run_experiment(cfg):
         inference_mean = []
         for i in range(len(demo)):
             print(f'Step: {i} | lang: {cfg.msg}')
-            start = time.time()
-            img = image_preprocessing(dic[camera_names[0]+"_rgb"][i])
+
+            # img = image_preprocessing(dic[camera_names[0]+"_rgb"][i])
+            img = dic[camera_id][i]
             msg = cfg.msg
 
+            start = time.time()
             # ground vla inference
             act = send_request(img, msg, url)
-            # print(f"[OpenVLA Client] Received Action (deltas): {act}")
-            
-            # step
-            _, _, _, _ = env.step(act)
-            # print(
-            #     f"Time {np.around(time.time()-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)}"
-            # )
-            inference_mean.append(act)
-            print(
-                f"Time {np.around(time.time()-start, 3)} | Mean: {np.array(inference_mean).mean()} | Act {act}"
-            )
+            print(f"[Molmo Act Client] Received Action (deltas): {act}")
+            end = time.time()
+            if cfg.action_chunking:
+                # execute h actions at once
+                for chunk in act:
+                    # step
+                    env.step(chunk)[0]
+                print(
+                    f"Time {np.around(end-start, 3)/ len(act)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(chunk,3)}"
+                )
+                
+            else:       
+                # step
+                env.step(act)[0]
+                print(
+                    f"Time {np.around(end-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(act,3)}"
+                )
+
 
     elif mode == "mix":
         print('[INFO] demo_dir: ', demo_dir)

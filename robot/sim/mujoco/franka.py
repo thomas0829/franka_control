@@ -86,7 +86,8 @@ class MujocoManipulatorEnv(FrankaBase):
             has_renderer and has_offscreen_renderer
         ) is False, "both has_renderer and has_offscreen_renderer not supported"
         self.has_renderer = has_renderer
-        self.has_offscreen_renderer = has_offscreen_renderer
+        # self.has_offscreen_renderer = has_offscreen_renderer
+        self.has_offscreen_renderer = True
         self.use_rgb = use_rgb
         self.use_depth = use_depth
         self.img_width = img_width
@@ -267,6 +268,8 @@ class MujocoManipulatorEnv(FrankaBase):
                 R = np.eye(4)
                 R[:3, :3] = np.array(self.calib_dict[sn]["extrinsic"]["ori"])
                 R[:3, 3] = np.array(self.calib_dict[sn]["extrinsic"]["pos"]).reshape(-1)
+                R[2, 2] += 0.5
+                # R[2, 1]
                 self.set_camera_extrinsic(camera_name, R)
             self.img_width = self.calib_dict[sn]["intrinsic"]["width"]
             self.img_height = self.calib_dict[sn]["intrinsic"]["height"]
@@ -459,6 +462,7 @@ class MujocoManipulatorEnv(FrankaBase):
                 R[:3, :3] = ori_mat
                 R[:3, 3] = pos
                 self.set_camera_extrinsic(camera_name, R)
+            
             
             # no need to change these
             # self.img_width = self.calib_dict[sn]["intrinsic"]["width"]

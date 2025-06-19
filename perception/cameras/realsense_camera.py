@@ -5,15 +5,19 @@ import numpy as np
 import pyrealsense2 as rs
 
 
-def gather_realsense_cameras(hardware_reset=False, auto_exposure=True):
+def gather_realsense_cameras(hardware_reset=False, auto_exposure=False):
     context = rs.context()
     all_devices = list(context.devices)
     all_rs_cameras = []
 
+    if len(all_devices) == 0:
+        raise RuntimeError("No RealSense devices were found.")
+    
     for device in all_devices:
-        if hardware_reset:
-            device.hardware_reset()
-            time.sleep(1)
+        # if hardware_reset:
+        # device.hardware_reset()
+        # time.sleep(0.5)
+        # print(f"reset device: {device.get_info(rs.camera_info.name)}")
         rs_camera = RealSenseCamera(device, auto_exposure=auto_exposure)
         all_rs_cameras.append(rs_camera)
 

@@ -342,8 +342,19 @@ def close_gripper(env, lowdim_ee, time_sleep=3):
         sub_pose = np.zeros(7)
         sub_pose[:6] = lowdim_ee[:6]
         sub_pose[6] = 1
-        env.step_with_pose(sub_pose)
+        obs = env.step_with_pose(sub_pose)[0]
+        curr_gripper_pose = obs["lowdim_ee"][-1]
+        print("curr_gripper_pose", curr_gripper_pose)
     time.sleep(time_sleep)
+    # time.sleep(0.5)
+    # last_gripper_pos = obs["lowdim_ee"][-1]
+    # while True:
+    #     obs = env.get_observation()["lowdim_ee"]
+    #     gripper_pos = obs[-1]
+    #     if abs(gripper_pos - last_gripper_pos) < 0.01:
+    #         break
+    #     last_gripper_pos = gripper_pos
+    #     time.sleep(0.05)
     
 GRIPPER_Z_OFFSET = 0.177
 OFFSET_ANGLE = 135
@@ -376,9 +387,23 @@ def run_experiment(cfg):
     
     
     # load cam config
-    cam_pose, cam_K = load_cam_info(cfg.cam_info_file)
+    # cam_pose, cam_K = load_cam_info(cfg.cam_info_file)
+    _, cam_K = load_cam_info(cfg.cam_info_file)
     # cam_pose[2][3] += 0.025 # fintune value lift 5cm, for kitchen sink
 
+    # # french press scene
+    # cam_xyz_quat = np.array([0.450737889363482, -0.7131772697552032, 0.6151328122745958, -0.8464723448187612 ,0.04838533218781138, -0.04917726657163038, 0.5279441500183957])
+    # cam_xyz_quat = np.array([0.6934172335669154, -0.722375006104487, 0.6334000320504721 ,-0.8807822072465884 ,0.04425334876825765 ,-0.0010122794464820916, 0.4714481093513318])
+    # cam_xyz_quat = np.array([0.6247573626542071, -0.6607367254706702, 0.7411889448327271, -0.8275062558029497, 0.0499899131213678, 0.00846184475726133, 0.5591625902869448 ]) # dsicard
+    cam_xyz_quat = np.array([0.47487141338500566 ,-0.6675357886492268, 0.7403910223341804 ,-0.8296365983661756, 0.06519069723536608, 0.010238200500663739 ,0.5543901756848475  ]) # dsicard
+    
+    
+    cam_pose = np.eye(4)
+    cam_pose[:3, 3] = cam_xyz_quat[:3]
+    cam_pose[:3, :3] = R.from_quat(cam_xyz_quat[3:]).as_matrix()
+    
+    # breakpoint()
+    
     
     # load m2t2 model
     from hydra import compose, initialize_config_dir
@@ -546,21 +571,31 @@ def run_experiment(cfg):
                 target_pose_matrix = rotate_pose_z_axis_counterclockwise(grasps_world[grasp_idx], OFFSET_ANGLE)
                 target_pose_matrix[:3, 3] -= target_pose_matrix[:3, 2] * 0.01 # gripper offset
                 
+                target_pose_matrix[2, 3] += 0.015 # lift the object by 3 cm
+                
+                
+                # target_pose_matrix[:3, 3] += target_pose_matrix[:3, 2] * 0.07 # pick up the phone call
+                
+                # # calibration issue (sink scene)
+                # target_pose_matrix[1, 3] += 0.04 # y axis offset
+                
                 
                 curr_pose_matrix = get_pose_matrix(env.get_observation()["lowdim_ee"])
                 pregraps_pose_matrix = target_pose_matrix.copy()
-                pregraps_pose_matrix[:3, 3] -= pregraps_pose_matrix[:3, 2] * 0.15
+                # pregraps_pose_matrix[:3, 3] -= pregraps_pose_matrix[:3, 2] * 0.15
+                pregraps_pose_matrix[:3, 3] -= pregraps_pose_matrix[:3, 2] * 0.10
+                
                 
                 
                 prepregrasp_pose_matrix = pregraps_pose_matrix.copy()
-                prepregrasp_pose_matrix[2, 3] += 0.2 # lift the object by 20 cm
+                # prepregrasp_pose_matrix[2, 3] += 0.2 # lift the object by 20 cm
+                prepregrasp_pose_matrix[2, 3] += 0.1 # lift the object by 20 cm
                 
                 
                 if visualize:
                     # visualize_grasp_pose(target_pose_matrix, pregraps_pose_matrix, curr_pose_matrix, grasps_world[grasp_idx], image, depth, cam_K, cam_pose)
                     visualize_grasp_pose(target_pose_matrix, prepregrasp_pose_matrix, curr_pose_matrix, grasps_world[grasp_idx], image, depth, cam_K, cam_pose)
 
-                
                 
 
                 execute_code = input("execute? (y/n):")
@@ -572,12 +607,12 @@ def run_experiment(cfg):
                     
                 # execute actions
                 log_instruction(f"Executing pre-pregrasp...")
-                next_obs, interpolated_motions = execute_interpolated_motion(env, curr_pose_matrix, prepregrasp_pose_matrix, obs, verbose=verbose, sleep_time=0.5)
+                next_obs, interpolated_motions = execute_interpolated_motion(env, curr_pose_matrix, prepregrasp_pose_matrix, obs, verbose=verbose, sleep_time=0.0)
                 
                 # breakpoint()
                 
                 log_instruction(f"Executing pregrasp...")
-                next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), pregraps_pose_matrix, obs, verbose=verbose, sleep_time=0.5)
+                next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), pregraps_pose_matrix, obs, verbose=verbose, sleep_time=0.0)
 
                 # breakpoint()
                 
@@ -585,20 +620,39 @@ def run_experiment(cfg):
                 log_instruction(f"Executing grasp...")
                 next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), target_pose_matrix, next_obs, verbose=verbose, sleep_time=0.5)
 
-                prompt = input("(1) grasp and lift the object (2) reset: ")
-                while prompt not in ["1", "2"]:
-                    prompt = input("(1) grasp and lift the object (2) reset: ")
-                if prompt == "1":
-                    aftergrasp_pose_matrix = target_pose_matrix.copy()
-                    aftergrasp_pose_matrix[2, 3] +=  0.1 # lift the object by 10 cm
-                    close_gripper(env, next_obs["lowdim_ee"])
-                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), aftergrasp_pose_matrix, obs, verbose=verbose, sleep_time=0.5, close_gripper_state=True)
-                elif prompt == "2":
-                    log_instruction(f"Back to home pose...")
 
-                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), pregraps_pose_matrix, next_obs, verbose=verbose, sleep_time=0)
-                    next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=verbose, sleep_time=0)
-                    # release_gripper(env, next_obs["lowdim_ee"])
+                close_gripper(env, next_obs["lowdim_ee"])
+
+                # lift the object by 10 cm
+                aftergrasp_pose_matrix = target_pose_matrix.copy()
+                aftergrasp_pose_matrix[2, 3] +=  0.1 # lift the object by 10 cm
+                next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), aftergrasp_pose_matrix, obs, verbose=verbose, sleep_time=0.5, close_gripper_state=True)
+
+                # # move right 0.04 m
+                # aftergrasp_pose_matrix = target_pose_matrix.copy()
+                # aftergrasp_pose_matrix[1, 3] -=  0.04 # lift the object by 10 cm
+                # next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), aftergrasp_pose_matrix, obs, verbose=verbose, sleep_time=0.5, close_gripper_state=True)
+                    
+                # release_gripper(env, next_obs["lowdim_ee"])
+                # aftergrasp_pose_matrix = get_pose_matrix(next_obs["lowdim_ee"]).copy()
+                # aftergrasp_pose_matrix[2, 3] +=  0.05 # lift the object by 5 cm
+                # next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), aftergrasp_pose_matrix, obs, verbose=verbose, sleep_time=0.5, close_gripper_state=True)
+                  
+                
+                # prompt = input("(1) grasp and lift the object (2) reset: ")
+                # while prompt not in ["1", "2"]:
+                #     prompt = input("(1) grasp and lift the object (2) reset: ")
+                # if prompt == "1":
+                #     aftergrasp_pose_matrix = target_pose_matrix.copy()
+                #     aftergrasp_pose_matrix[2, 3] +=  0.1 # lift the object by 10 cm
+                #     close_gripper(env, next_obs["lowdim_ee"])
+                #     next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), aftergrasp_pose_matrix, obs, verbose=verbose, sleep_time=0.5, close_gripper_state=True)
+                # elif prompt == "2":
+                #     log_instruction(f"Back to home pose...")
+
+                #     next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), pregraps_pose_matrix, next_obs, verbose=verbose, sleep_time=0)
+                #     next_obs, interpolated_motions = execute_interpolated_motion(env, get_pose_matrix(next_obs["lowdim_ee"]), get_pose_matrix(home_pose), next_obs, verbose=verbose, sleep_time=0)
+                #     # release_gripper(env, next_obs["lowdim_ee"])
                     
                 prompt = input("(1) release (2) reset: ")
                 while prompt not in ["1", "2"]:

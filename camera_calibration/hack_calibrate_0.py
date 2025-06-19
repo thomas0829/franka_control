@@ -13,6 +13,47 @@ from utils.pointclouds import *
 from matplotlib import pyplot as plt    
 
 
+def get_pose_matrix(pose: np.ndarray) -> np.ndarray:
+    """
+    Convert a 6D pose (translation + rotation) into a 4x4 transformation matrix.
+
+    Assumes:
+        - pose[:3]: (x, y, z) translation
+        - pose[3:6]: (roll, pitch, yaw) rotation angles in radians
+        - Rotation order: applied as 'xyz' intrinsic rotations (roll → pitch → yaw)
+    
+    Args:
+        pose (np.ndarray): Array of shape (6,) representing translation and rotation.
+
+    Returns:
+        np.ndarray: A 4x4 homogeneous transformation matrix.
+    """
+    curr_pose_matrix = np.eye(4)
+    curr_pose_matrix[:3, 3] = pose[:3]
+    curr_pose_matrix[:3, :3] = R.from_euler('xyz', pose[3:6], degrees=False).as_matrix()
+    return curr_pose_matrix
+
+def get_xyzrpy_from_matrix(T: np.ndarray) -> np.ndarray:
+    """
+    Convert a 4x4 homogeneous transformation matrix into a 6D pose vector (x, y, z, roll, pitch, yaw).
+
+    Assumes:
+        - T[:3, 3]: translation (x, y, z)
+        - T[:3, :3]: rotation matrix
+        - Rotation order: 'xyz' intrinsic (roll → pitch → yaw)
+
+    Args:
+        T (np.ndarray): A 4x4 transformation matrix.
+
+    Returns:
+        np.ndarray: Array of shape (6,) representing [x, y, z, roll, pitch, yaw].
+    """
+    translation = T[:3, 3]
+    rotation = R.from_matrix(T[:3, :3])
+    rpy = rotation.as_euler('xyz', degrees=False)
+    return np.concatenate([translation, rpy])
+
+
 def calibrate_cameras(args):
     # configs
     marker_size = args.marker_size  # 137mm
@@ -43,8 +84,8 @@ def calibrate_cameras(args):
         undistorted_image = cv2.undistort(rgb, intrinsics, dist_coeffs)
         pose_image = cv2.drawFrameAxes(undistorted_image, intrinsics, dist_coeffs, rotmat, tvec, length=0.1, thickness=3)
         
-        plt.imshow(pose_image)
-        plt.show()
+        # plt.imshow(pose_image)
+        # plt.show()
         # cv2.imwrite('pose_image.png', pose_image)
         
         # camera in apriltag frame -> world frame
@@ -68,6 +109,19 @@ def calibrate_cameras(args):
             ]
         )
         extrinsics_inv[:3, 3] += aruco_offset
+        
+        
+        # # TODO: 
+        extrinsics_inv[0, 3] -= 0.034 # x forward
+        extrinsics_inv[1, 3] -= 0.03
+        # extrinsics_inv[1, 3] -= 0.01
+        extrinsics_inv[2, 3] -= 0.045
+        
+        
+        # ex_pose = get_xyzrpy_from_matrix(extrinsics_inv)
+        # ex_pose[-1] -= 0.07
+        # extrinsics_inv = get_pose_matrix(ex_pose)
+        
 
         # save camera info
         calib_dict.append(

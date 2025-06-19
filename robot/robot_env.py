@@ -100,8 +100,8 @@ class RobotEnv(gym.Env):
         # self._reset_joint_qpos = np.array([ 0.22326212, -1.05209494, -0.14739834, -2.6597085, -0.20228142, 1.82878792, -1.19218862]) # this is for the other two tasks, covering (robotiq gripper)
         # self._reset_joint_qpos = np.array([-0.01998546, -0.62298596, -0.01995236, -1.44656372, -0.07003611,  1.56165755, 0.02428678]) # This is the config collected for all of our experiments
         # self._reset_joint_qpos = np.array([ 0.61716306, -1.48035049, 0.82917732, -2.75267529, 0.53841865, 1.65110373, 0.52029693])
-        # self._reset_joint_qpos = np.array([-0.08961181, -0.48736098,  0.09921399, -2.5791719,   0.0812972,   2.25685763, 0.76385087,  0.00342626])
-        self._reset_joint_qpos = np.array([-0.05065621, -0.35683179,  0.09318887, -2.59557033,  0.03949903,  2.31192923, 0.83653134])
+        self._reset_joint_qpos = np.array([-0.08961181, -0.48736098,  0.09921399, -2.5791719,   0.0812972,   2.25685763, 0.76385087]) # tabletop reset
+        # self._reset_joint_qpos = np.array([-0.05065621, -0.35683179,  0.09318887, -2.59557033,  0.03949903,  2.31192923, 0.83653134])
         # self._reset_joint_qpos = np.array([-0.02742143, -0.42438987,  0.09396406, -1.84430289,  0.07455353,  1.58630955,  0.98055446]) # kitchen grasp molmo
         # self._reset_joint_qpos = np.array([-0.07754681, -0.74369407,  0.08529517, -1.94868267,  0.11395936,  1.4399184, 1.00746107]) # shelf env
         

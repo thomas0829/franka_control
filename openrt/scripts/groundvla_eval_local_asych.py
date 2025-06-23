@@ -31,10 +31,9 @@ import re
 CAMERA2NAMES = {
     "side": "215122256044_rgb", # side view
     "front": "213522250587_rgb", # front view
-    "wrist": "128422272697_rgb", # wrist view
+    "wrist": "215222073684_rgb", # wrist view
 }
-from concurrent.futures import ThreadPoolExecutor, as_completed
-executor = ThreadPoolExecutor(max_workers=1)
+from concurrent.futures import ThreadPoolExecutor
 
 def send_request(images: List[np.ndarray], instruction: str, server_url: str, multi_views: bool = False):
     """
@@ -63,7 +62,6 @@ def send_request(images: List[np.ndarray], instruction: str, server_url: str, mu
         payload = {
             "image": scene_img_np, # scene cam
             "wrist": wrist_img_np, # wrist cam
-            "timestamp": time.time(), # add timestamp for debugging
             "instruction": instruction
         }
     
@@ -228,32 +226,6 @@ def replay_episode(demo, env, visual=False):
         env.step(act)
     cv2.destroyAllWindows()
 
-def replay_episode_pickle(demo_dir, env, visual=False):
-    # stack data
-    # dic = get_dict(demo)
-    with open(demo_dir, 'rb') as f:
-        demo = pickle.load(f)
-    
-    # actions = np.stack([d["action"] for d in demo])
-    actions = demo["action"]
-    actions = action_preprocessing(demo, actions) # delta action
-    demo_length = actions.shape[0]
-
-    for step_idx in tqdm(range(demo_length)):
-        act = actions[step_idx]
-
-        obs = env.get_observation()
-
-        if visual:
-            cv2.imshow("Camera View", obs["215122252864_rgb"])
-            cv2.waitKey(1)  # Small delay to allow the image to refresh
-        
-        if step_idx == 15:
-            breakpoint() 
-        env.step(act)
-    cv2.destroyAllWindows()
-
-
 def set_random_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -343,22 +315,7 @@ def run_experiment(cfg):
 
 
     mode = "close_loop" # replay, close_loop, open_loop
-    # demo_dir = "/home/prior/dataset/date_618/npy/pick_banana_0/train/episode_15.npy"
-    # demo_dir = "/home/prior/dataset/date_618/npy/push_apple_0/train/000000.pkl"
-    # demo_dir = "/home/prior/dataset/date_620/push_button_pickle/000000.pkl"
-    # root_dir = "/home/prior/dataset/date_620/push_button"
-    # episode_number = "000009"
-    # root_dir = "/home/prior/dataset/date_620/stack_bowl"
-    # episode_number = "000035"
-    # root_dir = "/home/prior/dataset/date_621/put_sponge_pink_bowl"
-    # episode_number = "000008"
-    root_dir = "/home/prior/dataset/date_621/put_sponge_pink_bowl"
-    episode_number = "000000"
-    
-    # root_dir = "/home/prior/dataset/date_621/push_button_failure_recovery"
-    # episode_number = "000004"
-    demo_dir = f"{root_dir}_pickle/{episode_number}.pkl"
-    
+    demo_dir = "/home/prior/dataset/date_618/npy/pick_banana_0/train/episode_15.npy"
     print("[WARN] hardcode demo directory")
 
     url = cfg.url
@@ -368,6 +325,7 @@ def run_experiment(cfg):
     print("[INFO] msg: ", cfg.msg)
     
 
+    action_queue = []
     prev_gripper = 0
     # camera_id = "215122256044_rgb" # side view
     if cfg.camera_name not in CAMERA2NAMES.keys():
@@ -375,91 +333,88 @@ def run_experiment(cfg):
     camera_id = CAMERA2NAMES[cfg.camera_name]
     print(f"[INFO] Using camera: {camera_id} | Corresponding name: {cfg.camera_name}")
     print(f"multi views: {cfg.multi_views}")
-    
-    
     # breakpoint()
     if mode == "replay":
         print('[INFO] demo_dir: ', demo_dir)
-        # demo = np.load(demo_dir, allow_pickle=True)
-        # replay_episode(demo, env, visual=False)
-        replay_episode_pickle(demo_dir, env, visual=False)
+        demo = np.load(demo_dir, allow_pickle=True)
+        replay_episode(demo, env, visual=False)
     elif mode == "close_loop":
-        
-        for i in range(cfg.traj_length): 
-            try:
-                print(f'Step: {i} | lang: {cfg.msg}')
-                start = time.time()
-                msg = cfg.msg
+        executor = ThreadPoolExecutor(max_workers=1)
 
-                start = time.time()
-                act = model_inference(obs, msg, url, cfg.multi_views, camera_id)
-                end = time.time()
-                if cfg.action_chunking:
-                    # execute h actions at once
-                    
-                    for i in range(len(act)):
-                        # chunk = action_queue.pop(0)
-                        chunk = act[i]
-                        chunk = invert_gripper(chunk)
-                        next_obs = env.step(chunk)[0]
-                        if prev_gripper != chunk[-1]:
-                            time.sleep(2)
-                        obs = next_obs 
-                        prev_gripper = chunk[-1]
-                    
-                        print(
-                            f"Time {np.around(end-start, 3)/ len(act)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(chunk,3)}"
-                        )
-                else:       
-                    # step
-                    next_obs = env.step(act)[0]
-                    print(
-                        f"Time {np.around(end-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(act,3)}"
-                    )
-                    obs = next_obs
-            except KeyboardInterrupt:
-                env.reset()
+        # Step 1: run the first inference synchronously to fill queue
+        act = model_inference(obs, cfg.msg, url, cfg.multi_views, camera_id)
+        action_queue = list(act)  # 8 actions
+        prev_gripper = 0
+
+        future = None  # placeholder for next async call
+
+        print("[INFO] Pipelined close_loop with 8-actions batch, trigger after 4")
+
+        for step in range(cfg.traj_length):
+            # Pop next action to execute
+            if len(action_queue) == 0:
+                # If queue empty, wait for next inference if not done yet
+                act = future.result()
+                action_queue.extend(act)
+                future = None
+
+            chunk = action_queue.pop(0)
+            chunk = invert_gripper(chunk)
+
+            # If we've just executed the 4th action in this batch, fire next inference async
+            batch_size = 8
+            mid_trigger = batch_size // 2  # == 4
+            # Compute position in current batch:
+            pos_in_batch = batch_size - len(action_queue)
+            if pos_in_batch == mid_trigger and future is None:
+                future = executor.submit(model_inference, obs, cfg.msg, url, cfg.multi_views, camera_id)
+
+            # Execute
+            next_obs = env.step(chunk)[0]
+
+            if prev_gripper != chunk[-1]:
+                time.sleep(2)
+            prev_gripper = chunk[-1]
+
+            obs = next_obs
+
+        executor.shutdown(wait=True)
+        
 
     elif mode == "open_loop":
-        # front_view_dir = f"/home/prior/dataset/date_620/push_button/{CAMERA2NAMES['front']}/000000"
-        # wrist_view_dir = f"/home/prior/dataset/date_620/push_button/{CAMERA2NAMES['wrist']}/000000"
-        front_view_dir = f"{root_dir}/{CAMERA2NAMES['front']}/{episode_number}"
-        wrist_view_dir = f"{root_dir}/{CAMERA2NAMES['wrist']}/{episode_number}"
+        print('[INFO] demo_dir: ', demo_dir)
+        demo = np.load(demo_dir, allow_pickle=True)
+        dic = get_dict(demo)
         
-        
-        front_rgb_paths = sorted(glob.glob(os.path.join(front_view_dir, "*.png")))
-        wrist_rgb_paths = sorted(glob.glob(os.path.join(wrist_view_dir, "*.png")))
-        
-        assert len(front_rgb_paths) == len(wrist_rgb_paths), "Front and wrist view images must have the same number of frames."
-
-        
-        for i in range(0, len(front_rgb_paths)-1, 8):
+        inference_mean = []
+        for i in range(len(demo)):
             print(f'Step: {i} | lang: {cfg.msg}')
+
+            # img = image_preprocessing(dic[camera_names[0]+"_rgb"][i])
+            img = dic[camera_id][i]
             msg = cfg.msg
+
             start = time.time()
-            
-            training_obs = {}
-            training_obs[CAMERA2NAMES["front"]] = Image.open(front_rgb_paths[i])
-            training_obs[CAMERA2NAMES["wrist"]] = Image.open(wrist_rgb_paths[i])
-            
-            
-            act = model_inference(training_obs, msg, url, cfg.multi_views, camera_id)
+            # ground vla inference
+            raise NotImplementedError(" add multi view feature in send_request open loop")
+            act = send_request(img, msg, url)
+            print(f"[Molmo Act Client] Received Action (deltas): {act}")
             end = time.time()
             if cfg.action_chunking:
                 # execute h actions at once
-                # action_queue.extend([chunk for chunk in act])   
+                for chunk in act:
+                    # step
+                    env.step(chunk)[0]
+                print(
+                    f"Time {np.around(end-start, 3)/ len(act)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(chunk,3)}"
+                )
                 
-                for i in range(len(act)):
-                    # chunk = action_queue.pop(0)
-                    chunk = act[i]
-                    chunk = invert_gripper(chunk)
-                    next_obs = env.step(chunk)[0]
-                    if prev_gripper != chunk[-1]:
-                        time.sleep(2)
-                    prev_gripper = chunk[-1]
-                    print(
-                        f"Time {np.around(end-start, 3)/ len(act)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(chunk,3)}"
-                    )
+            else:       
+                # step
+                env.step(act)[0]
+                print(
+                    f"Time {np.around(end-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(act,3)}"
+                )
     else:
         raise NotImplementedError
 

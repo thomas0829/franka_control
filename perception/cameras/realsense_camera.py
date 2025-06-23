@@ -15,12 +15,12 @@ def gather_realsense_cameras(hardware_reset=False, auto_exposure=False):
     
     for device in all_devices:
         # if hardware_reset:
-        # device.hardware_reset()
-        # time.sleep(0.5)
+        #     device.hardware_reset() 
+        # time.sleep(0.3)
         # print(f"reset device: {device.get_info(rs.camera_info.name)}")
         rs_camera = RealSenseCamera(device, auto_exposure=auto_exposure)
         all_rs_cameras.append(rs_camera)
-
+    
     return all_rs_cameras
 
 
@@ -35,6 +35,7 @@ class RealSenseCamera:
         self._config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
         device_product_line = str(device.get_info(rs.camera_info.product_line))
 
+        self.camera_name = device.get_info(rs.camera_info.name)
         # import pdb; pdb.set_trace()
         if device_product_line == "L500":
             self._config.enable_stream(rs.stream.color, 960, 540, rs.format.bgr8, 30)
@@ -58,15 +59,8 @@ class RealSenseCamera:
         self._intrinsics = {
             self._serial_number: self._process_intrinsics(intr),
         }
-
-        color_sensor = device.query_sensors()[1]
-
-        color_sensor.set_option(rs.option.enable_auto_exposure, auto_exposure)
-
+        
         # color_sensor.set_option(rs.option.exposure, 500)
-
-        color_sensor.set_option(rs.option.brightness, 56)
-        color_sensor.set_option(rs.option.contrast, 45)
         # color_sensor.set_option(rs.option.exposure, 500)
         # depth_sensor = device.query_sensors()[0]
         # depth_sensor.set_option(rs.option.enable_auto_exposure, False)
@@ -74,6 +68,12 @@ class RealSenseCamera:
         # https://support.stereolabs.com/hc/en-us/articles/360007395634-What-is-the-camera-focal-length-and-field-of-view
         # vertical FOV for a D455 and 1280x800 RGB
         self._fovy = 65
+        
+        if self.camera_name != "Intel RealSense D405":
+            color_sensor = device.query_sensors()[1]
+            color_sensor.set_option(rs.option.enable_auto_exposure, auto_exposure)
+            color_sensor.set_option(rs.option.brightness, 56)
+            color_sensor.set_option(rs.option.contrast, 45)
 
     def _process_intrinsics(self, params):
         intrinsics = {}

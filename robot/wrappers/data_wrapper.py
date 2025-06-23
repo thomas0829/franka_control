@@ -291,73 +291,64 @@ class DataCollectionWrapper(gym.Wrapper):
                     
 
         for key in dic.keys():
-            if not "rgb" in key and not "depth" in key:
+            # if not "rgb" in key and not "depth" in key:
+            #     continue
+            # save_dir = os.path.join(self.save_dir, f'{self.traj_count:06d}', key)
+            if not "rgb" in key:
                 continue
-            save_dir = os.path.join(self.save_dir, f'{self.traj_count:06d}', key)
+            save_dir = os.path.join(self.save_dir, key, f'{self.traj_count:06d}')
+            
             os.makedirs(save_dir, exist_ok=True)
 
             paths = []
             tasks = []
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                if "rgb" in key:
-                    for i, img in enumerate(dic[key]):
-                        img_path = os.path.join(save_dir, f'{i:06d}.png')
-                        tasks.append(executor.submit(self.save_image, img, img_path))
-                        paths.append(img_path)
+                for i, img in enumerate(dic[key]):
+                    img_path = os.path.join(save_dir, f'{i:06d}.png')
+                    tasks.append(executor.submit(self.save_image, img, img_path))
+                    paths.append(img_path)
 
-                elif "depth" in key:
-                    for i, depth in enumerate(dic[key]):
-                        depth_uint16 = (depth * 1000).astype(np.uint16)
-                        depth_path = os.path.join(save_dir, f'{i:06d}.png')
-                        tasks.append(executor.submit(self.save_image, depth_uint16, depth_path, 'I;16'))
-                        # paths.append(depth_path)
+                # elif "depth" in key:
+                #     for i, depth in enumerate(dic[key]):
+                #         depth_uint16 = (depth * 1000).astype(np.uint16)
+                #         depth_path = os.path.join(save_dir, f'{i:06d}.png')
+                #         tasks.append(executor.submit(self.save_image, depth_uint16, depth_path, 'I;16'))
+                #         # paths.append(depth_path)
 
                 # Wait for all parallel tasks to complete
                 concurrent.futures.wait(tasks)
-
-            if "rgb"  in key:
                 img_paths.setdefault(key, []).extend(paths)
-                
-        # for key in dic.keys():
-        #     if "rgb" in key:
-        #         save_dir = os.path.join(self.save_dir, f'{self.traj_count:06d}', key)
-        #         os.makedirs(save_dir, exist_ok=True)
-        #         for i, img in enumerate(dic[key]):
-        #             pil_img = Image.fromarray(img)
-        #             img_path = os.path.join(save_dir, f'{i:06d}.png')
-        #             pil_img.save(img_path)
-        #             img_paths.setdefault(key, []).append(img_path)
 
-        #     elif "depth" in key:
-        #         save_dir = os.path.join(self.save_dir, f'{self.traj_count:06d}', key)
-        #         os.makedirs(save_dir, exist_ok=True)
-        #         for i, depth in enumerate(dic[key]):
-        #             depth_uint16 = (depth * 1000).astype(np.uint16)  # scale to mm
-        #             depth_path = os.path.join(save_dir, f'{i:06d}.png')
-        #             Image.fromarray(depth_uint16, mode='I;16').save(depth_path)
-        #             # img_paths.setdefault(key, []).append(depth_path)
-        
         json_data = []
         for i in range(len(actions)):
             json_data_obs = {
                 "task": task_name[i],
                 "raw_action": str(actions[i].tolist()),
             }
-            for key in img_paths.keys():
-                json_data_obs[key] = img_paths[key][i]
+            json_data_obs["image"] = img_paths["213522250587_rgb"][i]  # front view image path
             json_data.append(json_data_obs)
 
-        json_save_path = os.path.join(self.save_dir, f'{self.traj_count:06d}.json')
+        json_save_path = os.path.join(self.save_dir, 'unified.json')
         os.makedirs(os.path.dirname(json_save_path), exist_ok=True)
-        with open(json_save_path, "w") as f:
-            json.dump(json_data, f, indent=4)
-        print(f"Saved {json_save_path}")
-        
+
+        if not os.path.exists(json_save_path):
+            with open(json_save_path, "w") as f:
+                json.dump(json_data, f, indent=4)
+        else:
+            # Append new json_data to existing JSON array
+            with open(json_save_path, "r") as f:
+                existing_data = json.load(f)
+            existing_data.extend(json_data)
+            with open(json_save_path, "w") as f:
+                json.dump(existing_data, f, indent=4)
+    
+        # save pickle as backup
         rgb_or_depth_keys = [k for k in dic.keys() if "_rgb" in k or "_depth" in k]
         for key in rgb_or_depth_keys:
             del dic[key]
-        pickle_save_path = os.path.join(self.save_dir, f'{self.traj_count:06d}.pkl')
+        pickle_save_path = os.path.join(self.save_dir + "_pickle", f'{self.traj_count:06d}.pkl')
+        os.makedirs(os.path.dirname(pickle_save_path), exist_ok=True)
         with open(pickle_save_path, 'wb') as f:
             pickle.dump(dic, f)
         print(f"Saved {pickle_save_path}")

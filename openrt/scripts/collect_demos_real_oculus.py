@@ -170,7 +170,8 @@ def run_experiment(cfg):
     log_config(f"number of episodes: {cfg.episodes}")
     log_config(f"control hz: {cfg.robot.control_hz}")
     log_config(f"dataset name: {cfg.exp_id}")
-    savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/npy/{cfg.exp_id}/{cfg.split}"
+    # savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/npy/{cfg.exp_id}/{cfg.split}"
+    savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/{cfg.exp_id}"
     log_config(f"save directory: {savedir}")
 
     # No-ops related variables

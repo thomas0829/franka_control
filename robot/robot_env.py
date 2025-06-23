@@ -232,10 +232,11 @@ class RobotEnv(gym.Env):
                 from perception.cameras.realsense_camera import \
                     gather_realsense_cameras
 
-                try:
-                    cameras = gather_realsense_cameras(hardware_reset=False)
-                except Exception as e:
-                    cameras = None
+                # try:
+                #     cameras = gather_realsense_cameras(hardware_reset=False)
+                # except Exception as e:
+                #     cameras = None
+                cameras = gather_realsense_cameras(hardware_reset=False)
             elif camera_model == "zed":
                 from perception.cameras.zed_camera import gather_zed_cameras
 
@@ -268,7 +269,6 @@ class RobotEnv(gym.Env):
                         ori=calib_dict[sn]["extrinsic"]["ori"],
                     )
             self.depth_scale = 1000.0
-
             self.sim = False
 
         else:

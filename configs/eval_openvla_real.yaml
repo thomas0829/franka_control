@@ -63,3 +63,4 @@ msg: "stack the yellow block on the black block and the purple block on the yell
 image_aug: false
 action_chunking: False
 camera_name: None
+multi_views: False

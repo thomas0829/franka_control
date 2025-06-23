@@ -50,6 +50,8 @@ def send_request(images: List[np.ndarray], instruction: str, server_url: str, mu
             "image": image_np, # scene cam
             "instruction": instruction
         }
+        
+        Image.fromarray(image_np).save("/home/prior/tmp/scene_cam.png")
     else:
         # Convert PIL image to a NumPy array
         scene_img_np = np.array(images[0])
@@ -66,7 +68,6 @@ def send_request(images: List[np.ndarray], instruction: str, server_url: str, mu
             "timestamp": time.time(), # add timestamp for debugging
             "instruction": instruction
         }
-    
     headers = {"Content-Type": "application/json"}
     response = requests.post(server_url, headers=headers, data=json_numpy.dumps(payload))
 
@@ -270,12 +271,12 @@ def invert_gripper(chunk):
     result[-1] = curr_gripper
     return result
 
-def model_inference(obs, msg, url, multi_views, camera_id):
+def model_inference(obs, msg, url, multi_views, camera_id, model):
     # sanity check            
     img = obs[camera_id]
     wrist_img = obs[CAMERA2NAMES["wrist"]]
     act = send_request([img, wrist_img], msg, url, multi_views=multi_views)
-    print(f"[Molmo Act Client] Received Action (deltas): {act}")
+    print(f"[{model}] Received Action (deltas): {act}")
     return act
             
 # config_name="collect_demos_real" for real robot config_name="collect_demos_sim" for simulation
@@ -284,15 +285,9 @@ def model_inference(obs, msg, url, multi_views, camera_id):
     config_path="../../configs/", config_name="eval_openvla_real", version_base="1.1"
 )
 def run_experiment(cfg):
-
-    # logdir = os.path.join(cfg.log.dir, cfg.exp_id)
-    # os.makedirs(logdir, exist_ok=True)
-
     set_random_seed(cfg.seed)
     assert cfg.robot.imgs, "ERROR: set robot.imgs=true to record image observations!"
     cfg.robot.max_path_length = cfg.max_episode_length
-    print("[INFO]", cfg.robot.blocking_control, cfg.robot.control_hz)
-    #assert cfg.robot.blocking_control==True and cfg.robot.control_hz<=1, "WARNING: please make sure to pass robot.blocking_control=true robot.control_hz=1 to run blocking control!"
     env = make_env(
         robot_cfg_dict=hydra_to_dict(cfg.robot),
         env_cfg_dict=hydra_to_dict(cfg.env) if "env" in cfg.keys() else None,
@@ -300,102 +295,132 @@ def run_experiment(cfg):
         device_id=0,
         verbose=True,
     )
-
     camera_names = [k for k in env.get_images().keys()]
-
-    print(f"Camera names: {camera_names}")
-    
-    # breakpoint()
-
-    # breakpoint()
-    # pick the camera_name
-    # https://fb25-71-41-244-70.ngrok-free.app
-
-
-    # # crop image observations
-    # if cfg.aug.camera_crop is not None:
-    #     env = CropImageWrapper(
-    #         env,
-    #         x_min=cfg.aug.camera_crop[0],
-    #         x_max=cfg.aug.camera_crop[1],
-    #         y_min=cfg.aug.camera_crop[2],
-    #         y_max=cfg.aug.camera_crop[3],
-    #         image_keys=[cn + "_rgb" for cn in camera_names],
-    #         crop_render=True,
-    #     )
-
-    # resize image observations
-    '''
-    if cfg.aug.camera_resize is not None:
-        env = ResizeImageWrapper(
-            env,
-            size=cfg.aug.camera_resize,
-            image_keys=[cn for cn in camera_names],
-        )
-    '''
-
-    # def image_preprocessing(image):
-    #     image = cv2.resize(image, [360, 360])
-        # return image
-    
     env.seed(cfg.seed)
-    obs = env.reset()
-
-
-    mode = "close_loop" # replay, close_loop, open_loop
-    # demo_dir = "/home/prior/dataset/date_618/npy/pick_banana_0/train/episode_15.npy"
-    # demo_dir = "/home/prior/dataset/date_618/npy/push_apple_0/train/000000.pkl"
-    # demo_dir = "/home/prior/dataset/date_620/push_button_pickle/000000.pkl"
-    # root_dir = "/home/prior/dataset/date_620/push_button"
-    # episode_number = "000009"
-    # root_dir = "/home/prior/dataset/date_620/stack_bowl"
-    # episode_number = "000035"
-    # root_dir = "/home/prior/dataset/date_621/put_sponge_pink_bowl"
-    # episode_number = "000008"
-    root_dir = "/home/prior/dataset/date_621/put_sponge_pink_bowl"
-    episode_number = "000000"
-    
-    # root_dir = "/home/prior/dataset/date_621/push_button_failure_recovery"
-    # episode_number = "000004"
-    demo_dir = f"{root_dir}_pickle/{episode_number}.pkl"
-    
-    print("[WARN] hardcode demo directory")
-
+    print(f"Camera names: {camera_names}")
+    print("[INFO]", cfg.robot.blocking_control, cfg.robot.control_hz)
+        
     url = cfg.url
-    print("[INFO] mode: ", mode)
-    print("[INFO] url: ", url)
-    print("[INFO] action chunking: ", cfg.action_chunking)
-    print("[INFO] msg: ", cfg.msg)
-    
+    mode = input("Enter mode (1: replay, 2: close_loop, 3: open_loop): ")
+    while mode != "1" and mode != "2" and mode != "3":
+        mode = input("Invalid input. Please enter 1 for replay, 2 for close_loop, or 3 for open_loop: ")
+    if mode == "1":
+        mode = "replay"
+    elif mode == "2":
+        mode = "close_loop"
+    elif mode == "3":
+        mode = "open_loop"
 
     prev_gripper = 0
-    # camera_id = "215122256044_rgb" # side view
     if cfg.camera_name not in CAMERA2NAMES.keys():
         raise ValueError(f"Invalid camera name: {cfg.camera_name}. Choose from {list(CAMERA2NAMES.keys())}.")
     camera_id = CAMERA2NAMES[cfg.camera_name]
+
+    # demo_dir = "/home/prior/dataset/date_618/npy/pick_banana_0/train/episode_15.npy"
+    # demo_dir = "/home/prior/dataset/date_618/npy/push_apple_0/train/000000.pkl"
+    # root_dir = "/home/prior/dataset/date_622/pick_banana_batch_2"
+    # episode_number = "000001"
+    root_dir = "/home/prior/dataset/date_620/push_button"
+    episode_number = "000009"
+    demo_dir = f"{root_dir}_pickle/{episode_number}.pkl"
+    
+    print("[WARN] hardcode demo directory")
+    print("[INFO] mode: ", mode)
+    print("[INFO] url: ", url)
+    print("[INFO] action chunking: ", cfg.action_chunking)
+
     print(f"[INFO] Using camera: {camera_id} | Corresponding name: {cfg.camera_name}")
     print(f"multi views: {cfg.multi_views}")
     
     
-    # breakpoint()
     if mode == "replay":
+        obs = env.reset()
         print('[INFO] demo_dir: ', demo_dir)
         # demo = np.load(demo_dir, allow_pickle=True)
         # replay_episode(demo, env, visual=False)
         replay_episode_pickle(demo_dir, env, visual=False)
     elif mode == "close_loop":
-        
-        for i in range(cfg.traj_length): 
-            try:
-                print(f'Step: {i} | lang: {cfg.msg}')
-                start = time.time()
-                msg = cfg.msg
+        # reset env
+        obs = env.reset()
+        while True:
+            model = input("Choose model: (1) Molmo-Act (2) OpenVLA: ")
+            while model != "1" and model != "2":
+                model = input("Choose model: (1) Molmo-Act (2) OpenVLA")
+            if model == "1":
+                model = "molmo_act"
+            else:
+                model = "openvla"
 
+            try:
+                count = 0
+                msg = input("Enter the instruction: ")
+                print("[INFO] msg: ", msg)
+                while True:
+                    start = time.time()
+                    act = model_inference(obs, msg, url, cfg.multi_views, camera_id, model)
+                    end = time.time()
+                    if cfg.action_chunking:
+                        if cfg.action_chunking and (model == "openvla"):
+                            raise ValueError(f"Didn't implement action chunking on openvla.")
+                        # execute h actions at once
+                        for i in range(len(act)):
+                            # chunk = action_queue.pop(0)
+                            chunk = act[i]
+                            chunk = invert_gripper(chunk)
+                            next_obs = env.step(chunk)[0]
+                            if prev_gripper != chunk[-1]:
+                                time.sleep(2)
+                            obs = next_obs 
+                            prev_gripper = chunk[-1]
+                        
+                            print(
+                                f"Time {np.around(end-start, 3)/ len(act)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(chunk,3)}"
+                            )
+                    else:
+                        # step
+                        if model == "openvla":
+                            act = invert_gripper(act)
+                        next_obs = env.step(act)[0]
+                        print(
+                            f"Model: {model} | Time {np.around(end-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(act,3)}"
+                        )
+                        obs = next_obs
+            except Exception as e:
+                reset = input("reset(y/n)?")
+                if reset.lower() == "y":
+                    obs = env.reset()
+                    print("[INFO] Resetting environment...")
+                continue
+
+    elif mode == "open_loop":
+        obs = env.reset()
+        model = input("Choose model: (1) Molmo-Act (2) OpenVLA: ")
+        msg = input("Enter the instruction: ")
+        front_view_dir = f"{root_dir}/{CAMERA2NAMES['front']}/{episode_number}"
+        wrist_view_dir = f"{root_dir}/{CAMERA2NAMES['wrist']}/{episode_number}"
+    
+        
+        front_rgb_paths = sorted(glob.glob(os.path.join(front_view_dir, "*.png")))
+        wrist_rgb_paths = sorted(glob.glob(os.path.join(wrist_view_dir, "*.png")))
+        
+        assert len(front_rgb_paths) == len(wrist_rgb_paths), "Front and wrist view images must have the same number of frames."
+
+        if model == "molmo_act":
+            for i in range(0, len(front_rgb_paths)-1, 8):
+                print(f'Step: {i} | lang: {msg}')
                 start = time.time()
-                act = model_inference(obs, msg, url, cfg.multi_views, camera_id)
+                
+                training_obs = {}
+                print("front rgb paths: ", front_rgb_paths[i])
+                training_obs[CAMERA2NAMES["front"]] = Image.open(front_rgb_paths[i])
+                training_obs[CAMERA2NAMES["wrist"]] = Image.open(wrist_rgb_paths[i])
+                
+                
+                act = model_inference(training_obs, msg, url, cfg.multi_views, camera_id, model=model)
                 end = time.time()
                 if cfg.action_chunking:
                     # execute h actions at once
+                    # action_queue.extend([chunk for chunk in act])   
                     
                     for i in range(len(act)):
                         # chunk = action_queue.pop(0)
@@ -404,62 +429,54 @@ def run_experiment(cfg):
                         next_obs = env.step(chunk)[0]
                         if prev_gripper != chunk[-1]:
                             time.sleep(2)
-                        obs = next_obs 
                         prev_gripper = chunk[-1]
-                    
                         print(
                             f"Time {np.around(end-start, 3)/ len(act)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(chunk,3)}"
                         )
-                else:       
+                else:
                     # step
-                    next_obs = env.step(act)[0]
+                    if model == "openvla":
+                        act = invert_gripper(act)
+                    env.step(act)[0]
                     print(
-                        f"Time {np.around(end-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(act,3)}"
+                        f"Model: {model} | Time {np.around(end-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(act,3)}"
                     )
-                    obs = next_obs
-            except KeyboardInterrupt:
-                env.reset()
-
-    elif mode == "open_loop":
-        # front_view_dir = f"/home/prior/dataset/date_620/push_button/{CAMERA2NAMES['front']}/000000"
-        # wrist_view_dir = f"/home/prior/dataset/date_620/push_button/{CAMERA2NAMES['wrist']}/000000"
-        front_view_dir = f"{root_dir}/{CAMERA2NAMES['front']}/{episode_number}"
-        wrist_view_dir = f"{root_dir}/{CAMERA2NAMES['wrist']}/{episode_number}"
-        
-        
-        front_rgb_paths = sorted(glob.glob(os.path.join(front_view_dir, "*.png")))
-        wrist_rgb_paths = sorted(glob.glob(os.path.join(wrist_view_dir, "*.png")))
-        
-        assert len(front_rgb_paths) == len(wrist_rgb_paths), "Front and wrist view images must have the same number of frames."
-
-        
-        for i in range(0, len(front_rgb_paths)-1, 8):
-            print(f'Step: {i} | lang: {cfg.msg}')
-            msg = cfg.msg
-            start = time.time()
-            
-            training_obs = {}
-            training_obs[CAMERA2NAMES["front"]] = Image.open(front_rgb_paths[i])
-            training_obs[CAMERA2NAMES["wrist"]] = Image.open(wrist_rgb_paths[i])
-            
-            
-            act = model_inference(training_obs, msg, url, cfg.multi_views, camera_id)
-            end = time.time()
-            if cfg.action_chunking:
-                # execute h actions at once
-                # action_queue.extend([chunk for chunk in act])   
+        else:
+            for i in range(0, len(front_rgb_paths)-1, 1):
+                print(f'Step: {i} | lang: {msg}')
+                start = time.time()
                 
-                for i in range(len(act)):
-                    # chunk = action_queue.pop(0)
-                    chunk = act[i]
-                    chunk = invert_gripper(chunk)
-                    next_obs = env.step(chunk)[0]
-                    if prev_gripper != chunk[-1]:
-                        time.sleep(2)
-                    prev_gripper = chunk[-1]
+                training_obs = {}
+                print("front rgb paths: ", front_rgb_paths[i])
+                training_obs[CAMERA2NAMES["front"]] = Image.open(front_rgb_paths[i])
+                training_obs[CAMERA2NAMES["wrist"]] = Image.open(wrist_rgb_paths[i])
+                
+                
+                act = model_inference(training_obs, msg, url, cfg.multi_views, camera_id, model=model)
+                end = time.time()
+                if cfg.action_chunking:
+                    # execute h actions at once
+                    # action_queue.extend([chunk for chunk in act])   
+                    
+                    for i in range(len(act)):
+                        # chunk = action_queue.pop(0)
+                        chunk = act[i]
+                        chunk = invert_gripper(chunk)
+                        next_obs = env.step(chunk)[0]
+                        if prev_gripper != chunk[-1]:
+                            time.sleep(2)
+                        prev_gripper = chunk[-1]
+                        print(
+                            f"Time {np.around(end-start, 3)/ len(act)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(chunk,3)}"
+                        )
+                else:
+                    # step
+                    if model == "openvla":
+                        act = invert_gripper(act)
+                    env.step(act)[0]
                     print(
-                        f"Time {np.around(end-start, 3)/ len(act)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(chunk,3)}"
-                    )
+                        f"Model: {model} | Time {np.around(end-start, 3)} EE {np.around(obs['lowdim_ee'][:3],3)} Act {np.around(act,3)}"
+                    )  
     else:
         raise NotImplementedError
 

@@ -168,11 +168,11 @@ class DataCollectionWrapper(gym.Wrapper):
             os.makedirs(self.save_dir, exist_ok=True)
         self.traj_count = 0
 
-    def reset(self, qpos=None):
+    def reset(self):
         
         self.reset_buffer()
 
-        obs = self.env.reset(qpos)
+        obs = self.env.reset()
         
         # self.gripper_state = self.env.unwrapped._robot.get_gripper_state()
 
@@ -180,19 +180,6 @@ class DataCollectionWrapper(gym.Wrapper):
         self.curr_obs = obs.copy()
         
         return obs
-
-    def reset_demo(self):
-        
-        self.reset_buffer()
-
-        obs = self.env.reset_demo()
-        
-
-        # store obs
-        self.curr_obs = obs.copy()
-        
-        return obs
-    
 
     def step(self, act, add_noise=False):
         
@@ -240,53 +227,6 @@ class DataCollectionWrapper(gym.Wrapper):
         self.curr_obs = obs.copy()
 
         return obs, reward, done, info
-
-    def step_joint(self, act, add_noise=False):
-        # extend obs and push to buffer
-        self.curr_obs["language_instruction"] = self.language_instruction
-        self.curr_obs["target_joint"] = act
-
-        self.buffer.append(self.curr_obs)
-        
-        # apply noise to executed action, not to saved one
-        if add_noise:
-            act[:-1] += np.random.normal(loc=0.0, scale=self.act_noise_std, size=act[:-1].shape)
-        
-        # binarize gripper
-        act[-1] = 1. if act[-1] > 0. else 0.
-
-        obs, reward, done, info = self.env.step_joint(act)
-
-        # overwrite action with actual delta
-        if self.fake_blocking:
-            act[:-1] = obs["lowdim_ee"][:-1] - self.curr_obs["lowdim_ee"][:-1]
-            act[-1] = act[-1]
-            
-        # ############################ -> buggy af
-        # # pause until gripper is done
-        # max_gripper_width = 0.08 if act[-1] == 1. else 0.0
-        
-        # start = time.time()
-        # while True:
-        #     gripper_state_curr = self.env.unwrapped._robot.get_gripper_state()
-        #     # print("States", self.gripper_state, gripper_state_curr, np.abs(self.gripper_state - gripper_state_curr))
-        #     # if gripper is moving, sleep for control cycle
-        #     # print("Gripper is moving", np.abs(self.gripper_state - gripper_state_curr))
-        #     if np.abs(self.gripper_state - gripper_state_curr) > 1e-4:
-        #         self.gripper_state = gripper_state_curr
-        #         time.sleep(0.2)
-        #     else:
-        #         break
-        # # print(f"Waited for gripper for {time.time() - start} seconds")
-        # # get new observation
-        # obs = self.env.unwrapped.get_observation()
-        # ############################
-
-        self.curr_obs["action"] = act
-
-        self.curr_obs = obs.copy()
-
-        return obs, reward, done, info
     
     def get_buffer(self):
         return self.buffer
@@ -303,12 +243,8 @@ class DataCollectionWrapper(gym.Wrapper):
     def _get_buffer_dic(self):
         dic = {}
         keys = self.buffer[0].keys()
-        
         for key in keys:
-            # if key == "action":
-            #     continue
             dic[key] = np.stack([d[key] for d in self.buffer])
-
         return dic
 
     def shortest_angle(self, angles):
@@ -340,34 +276,8 @@ class DataCollectionWrapper(gym.Wrapper):
             Image.fromarray(img, mode).save(path)
         else:
             Image.fromarray(img).save(path)
-      
-    # def save_buffer_joint(self, pickle_only=False, path_name=None):
-    #     dic = self._get_buffer_dic()
         
-    #     # actions = dic["action"]
-    #     # actions = self.action_preprocessing(dic, actions)  # delta action
-    #     img_paths = {}
-    #     task_name = dic["language_instruction"]
-
-    #     dir_path = os.path.join(self.save_dir, f'{self.traj_count:06d}')
-    #     if os.path.exists(dir_path):
-    #         shutil.rmtree(dir_path)
-                    
-    #     # save pickle as backup
-    #     rgb_or_depth_keys = [k for k in dic.keys() if "_rgb" in k or "_depth" in k]
-    #     for key in rgb_or_depth_keys:
-    #         del dic[key]
-    #     if path_name is not None:
-    #         pickle_save_path = os.path.join(self.save_dir + "_pickle", f'{path_name}.pkl')
-    #     else:
-    #         pickle_save_path = os.path.join(self.save_dir + "_pickle", f'{self.traj_count:06d}.pkl')
-    #     os.makedirs(os.path.dirname(pickle_save_path), exist_ok=True)
-    #     with open(pickle_save_path, 'wb') as f:
-    #         pickle.dump(dic, f)
-    #     print(f"Saved {pickle_save_path}")
-    #     self.traj_count += 1
-
-    def save_buffer(self, pickle_only=False, path_name=None):
+    def save_buffer(self):
         dic = self._get_buffer_dic()
         
         actions = dic["action"]
@@ -379,69 +289,65 @@ class DataCollectionWrapper(gym.Wrapper):
         if os.path.exists(dir_path):
             shutil.rmtree(dir_path)
                     
-        if not pickle_only:
-            for key in dic.keys():
-                # if not "rgb" in key and not "depth" in key:
-                #     continue
-                # save_dir = os.path.join(self.save_dir, f'{self.traj_count:06d}', key)
-                if not "rgb" in key:
-                    continue
-                save_dir = os.path.join(self.save_dir, key, f'{self.traj_count:06d}')
-                
-                os.makedirs(save_dir, exist_ok=True)
 
-                paths = []
-                tasks = []
+        for key in dic.keys():
+            # if not "rgb" in key and not "depth" in key:
+            #     continue
+            # save_dir = os.path.join(self.save_dir, f'{self.traj_count:06d}', key)
+            if not "rgb" in key:
+                continue
+            save_dir = os.path.join(self.save_dir, key, f'{self.traj_count:06d}')
+            
+            os.makedirs(save_dir, exist_ok=True)
 
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    for i, img in enumerate(dic[key]):
-                        img_path = os.path.join(save_dir, f'{i:06d}.png')
-                        tasks.append(executor.submit(self.save_image, img, img_path))
-                        paths.append(img_path)
+            paths = []
+            tasks = []
 
-                    # elif "depth" in key:
-                    #     for i, depth in enumerate(dic[key]):
-                    #         depth_uint16 = (depth * 1000).astype(np.uint16)
-                    #         depth_path = os.path.join(save_dir, f'{i:06d}.png')
-                    #         tasks.append(executor.submit(self.save_image, depth_uint16, depth_path, 'I;16'))
-                    #         # paths.append(depth_path)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                for i, img in enumerate(dic[key]):
+                    img_path = os.path.join(save_dir, f'{i:06d}.png')
+                    tasks.append(executor.submit(self.save_image, img, img_path))
+                    paths.append(img_path)
 
-                    # Wait for all parallel tasks to complete
-                    concurrent.futures.wait(tasks)
-                    img_paths.setdefault(key, []).extend(paths)
+                # elif "depth" in key:
+                #     for i, depth in enumerate(dic[key]):
+                #         depth_uint16 = (depth * 1000).astype(np.uint16)
+                #         depth_path = os.path.join(save_dir, f'{i:06d}.png')
+                #         tasks.append(executor.submit(self.save_image, depth_uint16, depth_path, 'I;16'))
+                #         # paths.append(depth_path)
 
-            json_data = []
-            for i in range(len(actions)):
-                json_data_obs = {
-                    "task": task_name[i],
-                    "state": str(dic["lowdim_qpos"][i].tolist()),
-                    "raw_action": str(actions[i].tolist()),
-                }
-                json_data_obs["image"] = img_paths["215122252864_rgb"][i]  # front view image path
-                json_data.append(json_data_obs)
+                # Wait for all parallel tasks to complete
+                concurrent.futures.wait(tasks)
+                img_paths.setdefault(key, []).extend(paths)
 
-            json_save_path = os.path.join(self.save_dir, 'unified.json')
-            os.makedirs(os.path.dirname(json_save_path), exist_ok=True)
+        json_data = []
+        for i in range(len(actions)):
+            json_data_obs = {
+                "task": task_name[i],
+                "raw_action": str(actions[i].tolist()),
+            }
+            json_data_obs["image"] = img_paths["213522250587_rgb"][i]  # front view image path
+            json_data.append(json_data_obs)
 
-            if not os.path.exists(json_save_path):
-                with open(json_save_path, "w") as f:
-                    json.dump(json_data, f, indent=4)
-            else:
-                # Append new json_data to existing JSON array
-                with open(json_save_path, "r") as f:
-                    existing_data = json.load(f)
-                existing_data.extend(json_data)
-                with open(json_save_path, "w") as f:
-                    json.dump(existing_data, f, indent=4)
+        json_save_path = os.path.join(self.save_dir, 'unified.json')
+        os.makedirs(os.path.dirname(json_save_path), exist_ok=True)
+
+        if not os.path.exists(json_save_path):
+            with open(json_save_path, "w") as f:
+                json.dump(json_data, f, indent=4)
+        else:
+            # Append new json_data to existing JSON array
+            with open(json_save_path, "r") as f:
+                existing_data = json.load(f)
+            existing_data.extend(json_data)
+            with open(json_save_path, "w") as f:
+                json.dump(existing_data, f, indent=4)
     
         # save pickle as backup
         rgb_or_depth_keys = [k for k in dic.keys() if "_rgb" in k or "_depth" in k]
         for key in rgb_or_depth_keys:
             del dic[key]
-        if path_name is not None:
-            pickle_save_path = os.path.join(self.save_dir + "_pickle", f'{path_name}.pkl')
-        else:
-            pickle_save_path = os.path.join(self.save_dir + "_pickle", f'{self.traj_count:06d}.pkl')
+        pickle_save_path = os.path.join(self.save_dir + "_pickle", f'{self.traj_count:06d}.pkl')
         os.makedirs(os.path.dirname(pickle_save_path), exist_ok=True)
         with open(pickle_save_path, 'wb') as f:
             pickle.dump(dic, f)
@@ -507,20 +413,20 @@ class MultiTasksDataCollectionWrapper(gym.Wrapper):
     def get_buffer(self):
         return self.buffer
 
-    # def save_buffer(self):
-    #     assert self.even_savedir is not None or self.odd_savedir is not None, "save_dir is not set"
+    def save_buffer(self):
+        assert self.even_savedir is not None or self.odd_savedir is not None, "save_dir is not set"
         
-    #     if self.is_even:
-    #         filename = os.path.join(self.even_savedir, f"episode_{self.even_traj_count}.npy")
-    #         self.even_traj_count += 1
-    #         self.is_even = False
-    #     else:
-    #         filename = os.path.join(self.odd_savedir, f"episode_{self.odd_traj_count}.npy")
-    #         self.odd_traj_count += 1
-    #         self.is_even = True
+        if self.is_even:
+            filename = os.path.join(self.even_savedir, f"episode_{self.even_traj_count}.npy")
+            self.even_traj_count += 1
+            self.is_even = False
+        else:
+            filename = os.path.join(self.odd_savedir, f"episode_{self.odd_traj_count}.npy")
+            self.odd_traj_count += 1
+            self.is_even = True
 
-    #     np.save(filename, self.buffer)
-    #     print(f"Buffer saved to {filename} with language instruction '{self.buffer[-1]['language_instruction']}'")
+        np.save(filename, self.buffer)
+        print(f"Buffer saved to {filename} with language instruction '{self.buffer[-1]['language_instruction']}'")
 
     def reset_buffer(self):
         self.buffer = []

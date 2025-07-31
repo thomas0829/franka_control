@@ -158,6 +158,7 @@ def get_input_action(env, oculus, cfg):
 
 
 @hydra.main(
+    # config_path="../../configs/", config_name="collect_demos_real", version_base="1.1"
     config_path="../../configs/", config_name="collect_demos_real_thinkpad", version_base="1.1"
 )
 def run_experiment(cfg):
@@ -170,8 +171,7 @@ def run_experiment(cfg):
     log_config(f"number of episodes: {cfg.episodes}")
     log_config(f"control hz: {cfg.robot.control_hz}")
     log_config(f"dataset name: {cfg.exp_id}")
-    # savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/npy/{cfg.exp_id}/{cfg.split}"
-    savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/{cfg.exp_id}"
+    savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/npy/{cfg.exp_id}/{cfg.split}"
     log_config(f"save directory: {savedir}")
 
     # No-ops related variables
@@ -222,8 +222,7 @@ def run_experiment(cfg):
     # TODO: (yuquan) better logging
     camera_names = [k for k in env.get_images().keys()]
     log_success(f"Initialized {len(camera_names)} camera(s): {camera_names}")
-    # assert len(camera_names) == 3, "Make sure 3 cameras are connected!"
-    
+    assert len(camera_names) == 3
     
     # initialize oculus controller
     oculus = VRController(pos_action_gain=10, rot_action_gain=4) # sensitivity 
@@ -236,12 +235,16 @@ def run_experiment(cfg):
     n_traj = int(cfg.start_traj)
     env.traj_count = n_traj
     while n_traj < cfg.episodes:
-
         # reset w/o recording obs and w/o randomizing ee pos
         randomize_ee_on_reset = env.unwrapped._randomize_ee_on_reset
         env.unwrapped._set_randomize_ee_on_reset(0.0)
         env.unwrapped.reset()
         env.unwrapped._set_randomize_ee_on_reset(randomize_ee_on_reset)
+
+        env.language_instruction = input("Enter your language instruction: ")
+        env.note = input("special note for the scene")
+        print("language instruction: ", env.language_instruction)
+        print("note: ", env.note)
 
     #    # make sure at least 1 camera is connected
     #     assert env.unwrapped._num_cameras > 0, "ERROR: not camera(s) connected!"
@@ -268,6 +271,8 @@ def run_experiment(cfg):
 
             # wait for controller input
             info = oculus.get_info()
+
+            # breakpoint()
 
             # lock rotation when not movement enabled
             if info["X"]:
@@ -322,22 +327,14 @@ def run_experiment(cfg):
                 qpos = env.unwrapped._robot.get_joint_positions()
                 print("qpos: ", qpos)
                 
-                visual_img = None
-                for camera_name in camera_names:
-                    if visual_img is None:
-                        visual_img = obs[f"{camera_name}_rgb"]
-                    else:
-                        visual_img = np.concatenate(
-                            (visual_img, obs[f"{camera_name}_rgb"]), axis=1
-                        )
-                        
-                cv2.imshow('Real-time video', cv2.cvtColor(visual_img, cv2.COLOR_BGR2RGB))
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
+                if f"{camera_names[0]}_rgb" in next_obs.keys():
+                    # visualize
+                    cv2.imshow('Real-time video', cv2.cvtColor(next_obs[f"{camera_names[0]}_rgb"], cv2.COLOR_BGR2RGB))
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
 
         # save trajectory if success
         if save:
-            # env.save_buffer()
             env.save_buffer()
             n_traj += 1
             log_success("SUCCESS")

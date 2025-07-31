@@ -100,11 +100,11 @@ class RobotEnv(gym.Env):
         # self._reset_joint_qpos = np.array([ 0.22326212, -1.05209494, -0.14739834, -2.6597085, -0.20228142, 1.82878792, -1.19218862]) # this is for the other two tasks, covering (robotiq gripper)
         # self._reset_joint_qpos = np.array([-0.01998546, -0.62298596, -0.01995236, -1.44656372, -0.07003611,  1.56165755, 0.02428678]) # This is the config collected for all of our experiments
         # self._reset_joint_qpos = np.array([ 0.61716306, -1.48035049, 0.82917732, -2.75267529, 0.53841865, 1.65110373, 0.52029693])
-        self._reset_joint_qpos = np.array([-0.08961181, -0.48736098,  0.09921399, -2.5791719,   0.0812972,   2.25685763, 0.76385087]) # tabletop reset
+        # self._reset_joint_qpos = np.array([-0.08961181, -0.48736098,  0.09921399, -2.5791719,   0.0812972,   2.25685763, 0.76385087]) # tabletop reset
         # self._reset_joint_qpos = np.array([-0.05065621, -0.35683179,  0.09318887, -2.59557033,  0.03949903,  2.31192923, 0.83653134])
         # self._reset_joint_qpos = np.array([-0.02742143, -0.42438987,  0.09396406, -1.84430289,  0.07455353,  1.58630955,  0.98055446]) # kitchen grasp molmo
         # self._reset_joint_qpos = np.array([-0.07754681, -0.74369407,  0.08529517, -1.94868267,  0.11395936,  1.4399184, 1.00746107]) # shelf env
-        
+        self._reset_joint_qpos = np.array([-0.08541366, -0.5965547,   0.08149833, -2.47330618,  0.09316936,  1.97661602, 0.76252055])
         if self.DoF == 2:
             self._reset_joint_qpos = np.array(
                 # [
@@ -374,7 +374,7 @@ class RobotEnv(gym.Env):
         #     blocking=self.blocking_control
         # )
 
-        for _ in range(3):
+        for _ in range(1):
             self._robot.update_joints(
                 desired_joints.tolist(), velocity=False, blocking=False
             )
@@ -384,13 +384,13 @@ class RobotEnv(gym.Env):
             epsilon = 0.1
             is_reset, joint_dist = self.is_robot_on_target(expect_joint_pos=desired_joints.tolist(), epsilon=epsilon)
 
-            if is_reset:
-                break
-            else:
-                print(
-                    f"WARNING: reset failed w/ joint_dist={np.round(joint_dist,4)} > {epsilon}, trying again"
-                )
-                time.sleep(0.5)
+            # if is_reset:
+            #     break
+            # else:
+            #     print(
+            #         f"WARNING: reset failed w/ joint_dist={np.round(joint_dist,4)} > {epsilon}, trying again"
+            #     )
+            #     time.sleep(0.5)
 
         # Sleep to maintain control frequency
         comp_time = time.time() - start_time
@@ -559,25 +559,79 @@ class RobotEnv(gym.Env):
     def reset_gripper(self):
         self._robot.update_gripper(0.0, velocity=False, blocking=True)
 
-    def reset(self):
+    def reset_demo(self):
+        # self.reset_gripper()
+        # reset to home pose
+        for _ in range(3):
+            self._robot.update_joints(
+                self._reset_joint_qpos.tolist(), velocity=False, blocking=True
+            )
+
+            epsilon = 0.1
+            is_reset, joint_dist = self.is_robot_reset(epsilon=epsilon)
+
+            if is_reset:
+                break
+            else:
+                if self.verbose:
+                    print(
+                        f"WARNING: reset failed w/ joint_dist={np.round(joint_dist,4)} > {epsilon}, trying again"
+                    )
+                if not self.sim:
+                    time.sleep(1.0)
+
+        # fix default pos and angle at first joint reset
+        if self._episode_count == 0:
+            self._default_pos = self._robot.get_ee_pos()
+            self._default_angle = self._robot.get_ee_angle()
+
+        if self.blocking_control:
+            self._init_pos = self._default_pos.copy()
+            self._init_angle = self._default_angle.copy()
+
+        # if self._randomize_ee_on_reset:
+        #     self._randomize_reset_pos()
+        #     if not self.sim:
+        #         time.sleep(1)
+
+        if self._pause_after_reset:
+            user_input = input(
+                "Enter (s) to wait 5 seconds & anything else to continue: "
+            )
+            if user_input in ["s", "S"]:
+                time.sleep(5)
+
+        self.curr_path_length = 0
+        self._episode_count += 1
+        return self.get_observation()
+
+
+    def reset(self, qpos=None):
 
         if self.sim and self._robot.visual_dr:
             self._robot.randomize()
 
-        # ensure robot releases grasp before reset
-        if self.gripper:
-            self.reset_gripper()
-        else:
-            # default is closed gripper if not self.gripper
-            self._robot.update_gripper(1.0, velocity=False, blocking=True)
+        # # ensure robot releases grasp before reset
+        # if self.gripper:
+        #     self.reset_gripper()
+        # else:
+        #     # default is closed gripper if not self.gripper
+        #     self._robot.update_gripper(1.0, velocity=False, blocking=True)
+        self.reset_gripper()
+        
         # reset to home pose
         for _ in range(3):
             if False: # self.sim:
                 self._robot.set_desired_joint_positions(self._reset_joint_qpos)
             else:
-                self._robot.update_joints(
-                    self._reset_joint_qpos.tolist(), velocity=False, blocking=True
-                )
+                if qpos is not None:
+                    self._robot.update_joints(
+                        qpos.tolist(), velocity=False, blocking=True
+                    )
+                else:
+                    self._robot.update_joints(
+                        self._reset_joint_qpos.tolist(), velocity=False, blocking=True
+                    )
 
             epsilon = 0.1
             is_reset, joint_dist = self.is_robot_reset(epsilon=epsilon)

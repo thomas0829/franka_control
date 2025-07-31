@@ -1,0 +1,50 @@
+hydra:
+  job:
+    chdir: false
+  
+defaults:
+  - log: stdout
+  - robot: real_6_dof_thinkpad
+  - aug: crop_resize
+
+seed: 0
+gpu_id: 0
+
+episodes: 10
+# maximum timesteps to collect before auto-reset
+max_episode_length: 1000
+# std of action noise applied on top of input cmd
+act_noise_std: 0.001
+
+# data split \in ["train", "eval"]
+split: "train"
+# resume collection from traj index
+start_traj: 0
+
+# some basic overrides
+# cam_name: 215122255213
+cam_name: 215122252864
+#base_dir: "/home/joel/projects/polymetis_franka/data/basement"
+# base_dir: "/home/joel/projects/polymetis_franka/data"
+# base_dir : "/home/yuquand/projects/franka_inference/data"
+# base_dir: "/media/yuquand/Extreme\ SSD/demo_data"
+base_dir: "/home/robots/yuquand/data"
+# base_dir: "/home/robot/real_data"
+save_info: true
+control_hz: 5 # 10
+exp_id: null
+ckpt_path: null
+epoch_num: null
+eval_last: true
+language_instruction: "pick up the green cube"
+traj_length: 150
+trial_num: 3
+
+mode: "standard" # ["practice", "standard"]
+no_ops_threshold: 0.004
+no_ops_last_detected_time: 3
+lock_rotation_detected_time: 1
+note: null
+
+# joint_angle: [None, None, None, None, None, None, None]
+gt_joint_pos_filepath: /home/robots/sim_to_real/gt_joint_pos.npy

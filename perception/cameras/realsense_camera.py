@@ -18,7 +18,7 @@ def gather_realsense_cameras(hardware_reset=False, auto_exposure=False):
         #     device.hardware_reset() 
         # time.sleep(0.3)
         # print(f"reset device: {device.get_info(rs.camera_info.name)}")
-        rs_camera = RealSenseCamera(device, auto_exposure=auto_exposure)
+        rs_camera = RealSenseCamera(device, auto_exposure=True)
         all_rs_cameras.append(rs_camera)
     
     return all_rs_cameras
@@ -72,8 +72,10 @@ class RealSenseCamera:
         if self.camera_name != "Intel RealSense D405":
             color_sensor = device.query_sensors()[1]
             color_sensor.set_option(rs.option.enable_auto_exposure, auto_exposure)
-            color_sensor.set_option(rs.option.brightness, 56)
-            color_sensor.set_option(rs.option.contrast, 45)
+            # color_sensor.set_option(rs.option.brightness, 56)
+            # color_sensor.set_option(rs.option.contrast, 45)
+            color_sensor.set_option(rs.option.brightness, 1)
+            color_sensor.set_option(rs.option.contrast, 1)
 
     def _process_intrinsics(self, params):
         intrinsics = {}

@@ -76,51 +76,51 @@ def send_request(images: List[np.ndarray], instruction: str, server_url: str, mu
             "instruction": instruction
         }
     
-    headers = {"Content-Type": "application/json"}
-    response = requests.post(server_url, headers=headers, data=json_numpy.dumps(payload))
-
-    if response.status_code != 200:
-        raise Exception(f"Server error: {response.text}")
-    
-    print("response: ", response)
-    response_data = response.json()
-
-    # import pdb;pdb.set_trace()
-    # action = json_numpy.loads(response_data)
-    # print(action)
-    return response_data
-
     # headers = {"Content-Type": "application/json"}
+    # response = requests.post(server_url, headers=headers, data=json_numpy.dumps(payload))
 
-    # while True:
-    #     response = requests.post(
-    #         server_url,
-    #         headers=headers,
-    #         data=json_numpy.dumps(payload),
-    #         timeout=120,          # keep whatever timeout you prefer
-    #     )
+    # if response.status_code != 200:
+    #     raise Exception(f"Server error: {response.text}")
+    
+    # print("response: ", response)
+    # response_data = response.json()
 
-    #     if response.status_code != 200:
-    #         raise Exception(f"Server error: {response.text}")
-
-    #     try:
-    #         response_data = response.json()
-    #     except ValueError:
-    #         # server sent non-JSON (e.g. empty) – try again
-    #         time.sleep(2)
-    #         continue
-
-    #     # The lightweight endpoints often reply {"status": "..."}
-    #     # while the heavy inference is still running.  Break out and
-    #     # return only once we get something OTHER than the status ping.
-    #     print(response_data)
-    #     if "status" not in response_data:
-    #         break
-
-    #     # still a status-only ping → wait a moment and poll again
-    #     time.sleep(2)
-
+    # # import pdb;pdb.set_trace()
+    # # action = json_numpy.loads(response_data)
+    # # print(action)
     # return response_data
+
+    headers = {"Content-Type": "application/json"}
+
+    while True:
+        response = requests.post(
+            server_url,
+            headers=headers,
+            data=json_numpy.dumps(payload),
+            timeout=120,          # keep whatever timeout you prefer
+        )
+
+        if response.status_code != 200:
+            raise Exception(f"Server error: {response.text}")
+
+        try:
+            response_data = response.json()
+        except ValueError:
+            # server sent non-JSON (e.g. empty) – try again
+            time.sleep(2)
+            continue
+
+        # The lightweight endpoints often reply {"status": "..."}
+        # while the heavy inference is still running.  Break out and
+        # return only once we get something OTHER than the status ping.
+        print(response_data)
+        if "status" not in response_data:
+            break
+
+        # still a status-only ping → wait a moment and poll again
+        time.sleep(2)
+
+    return response_data["action"]
 
 
 

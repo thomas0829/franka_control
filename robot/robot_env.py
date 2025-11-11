@@ -104,7 +104,7 @@ class RobotEnv(gym.Env):
         # self._reset_joint_qpos = np.array([-0.05065621, -0.35683179,  0.09318887, -2.59557033,  0.03949903,  2.31192923, 0.83653134])
         # self._reset_joint_qpos = np.array([-0.02742143, -0.42438987,  0.09396406, -1.84430289,  0.07455353,  1.58630955,  0.98055446]) # kitchen grasp molmo
         # self._reset_joint_qpos = np.array([-0.07754681, -0.74369407,  0.08529517, -1.94868267,  0.11395936,  1.4399184, 1.00746107]) # shelf env
-        self._reset_joint_qpos = np.array([-0.08541366, -0.5965547,   0.08149833, -2.47330618,  0.09316936,  1.97661602, 0.76252055])
+        self._reset_joint_qpos = np.array([-0.02441366, -0.5955547,   -0.0549833, -2.6330618,  -0.05316936,  2.06661602, 0.0])
         if self.DoF == 2:
             self._reset_joint_qpos = np.array(
                 # [
@@ -1015,6 +1015,18 @@ class RobotEnv(gym.Env):
                 )
                 if self.gripper
                 else current_state["current_pose"][:6]
+            )
+        elif self.DoF == 7:
+            # For 7-DoF joint control, use full current_pose (7D cartesian pose)
+            ee_pos = (
+                np.concatenate(
+                    [
+                        current_state["current_pose"][:7],
+                        gripper_width,
+                    ]
+                )
+                if self.gripper
+                else current_state["current_pose"][:7]
             )
 
         qpos = np.concatenate([current_state["joint_positions"], gripper_width])

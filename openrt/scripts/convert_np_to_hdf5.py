@@ -8,7 +8,7 @@ import h5py
 import hydra
 import numpy as np
 from tqdm import trange
-from robomimic.utils.lang_utils import get_lang_emb
+# from robomimic.utils.lang_utils import get_lang_emb
 
 def shortest_angle(angles):
     return (angles + np.pi) % (2 * np.pi) - np.pi
@@ -32,7 +32,7 @@ def run_experiment(cfg):
     from datetime import date
     todays_date = date.today() 
     #cfg.data_dir = f"{cfg.data_dir}{todays_date.month}{todays_date.day}/"
-    cfg.data_dir = f'{cfg.data_dir}99/'
+    # cfg.data_dir = f'{cfg.data_dir}99/'
 
     # create dataset paths
     dataset_paths = [
@@ -161,9 +161,9 @@ def run_experiment(cfg):
                         # print(f"WARNING: replacing '{obs_key}' with 'front_rgb'!")
                         obs_key = "front_rgb"
                     if obs_key == "language_instruction":
-                        lang_emb = get_lang_emb(obs[0])
-                        lang_emb = np.tile(lang_emb, (len(obs), 1))
-                        ep_obs_grp.create_dataset("lang_embed", data=lang_emb)
+                        # lang_emb = get_lang_emb(obs[0])
+                        # lang_emb = np.tile(lang_emb, (len(obs), 1))
+                        # ep_obs_grp.create_dataset("lang_embed", data=lang_emb)
                         obs = np.array(obs, dtype='S80')
 
                     ep_obs_grp.create_dataset(obs_key, data=obs)

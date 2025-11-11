@@ -151,8 +151,10 @@ def get_input_action(env, oculus, cfg):
         
     if oculus.vr_state["gripper"] > 0.5:
         act[-1] = 0.5
+        print(f"[DEBUG] Gripper CLOSED - act[-1] = {act[-1]}")
     else:
         act[-1] = 0
+        print(f"[DEBUG] Gripper OPEN - act[-1] = {act[-1]}")
     
     return act
 
@@ -322,18 +324,19 @@ def run_experiment(cfg):
                 qpos = env.unwrapped._robot.get_joint_positions()
                 print("qpos: ", qpos)
                 
-                visual_img = None
-                for camera_name in camera_names:
-                    if visual_img is None:
-                        visual_img = obs[f"{camera_name}_rgb"]
-                    else:
-                        visual_img = np.concatenate(
-                            (visual_img, obs[f"{camera_name}_rgb"]), axis=1
-                        )
+                # COMMENTED OUT: Image visualization (requires cameras)
+                # visual_img = None
+                # for camera_name in camera_names:
+                #     if visual_img is None:
+                #         visual_img = obs[f"{camera_name}_rgb"]
+                #     else:
+                #         visual_img = np.concatenate(
+                #             (visual_img, obs[f"{camera_name}_rgb"]), axis=1
+                #         )
                         
-                cv2.imshow('Real-time video', cv2.cvtColor(visual_img, cv2.COLOR_BGR2RGB))
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
+                # cv2.imshow('Real-time video', cv2.cvtColor(visual_img, cv2.COLOR_BGR2RGB))
+                # if cv2.waitKey(1) & 0xFF == ord('q'):
+                #     break
 
         # save trajectory if success
         if save:

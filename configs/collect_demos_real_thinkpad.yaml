@@ -13,7 +13,7 @@ gpu_id: 0
 
 episodes: 10
 # maximum timesteps to collect before auto-reset
-max_episode_length: 1000
+max_episode_length: 10000
 # std of action noise applied on top of input cmd
 act_noise_std: 0.001
 

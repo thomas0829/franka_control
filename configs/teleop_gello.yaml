@@ -1,0 +1,21 @@
+defaults:
+  - robot: real_7_dof_gello
+  - aug: crop_resize
+
+seed: 0
+gpu_id: 0
+
+# Data collection settings
+base_dir: "/home/robots/yuquand/polymetis_franka/openrt/scripts/logdir"
+exp_id: "gello_teleop"
+language_instruction: "GELLO teleoperation"
+episodes: 100
+max_episode_length: 10000
+
+# Controller settings
+act_noise_std: 0.0
+
+# No-ops detection (for auto-save)
+no_ops_threshold: 3.0
+no_ops_last_detected_time: 0.0
+mode: "manual"  # or "auto"

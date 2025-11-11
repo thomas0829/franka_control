@@ -72,7 +72,8 @@ def run_experiment(cfg):
         )
 
     #dataset_path = f"/media/marius/X9 Pro/0523_mujoco_data/{cfg.exp_id}/"
-    dataset_path = f"/home/joel/projects/polymetis_franka/data/{cfg.exp_id}/"
+    #dataset_path = f"/home/joel/projects/polymetis_franka/data/{cfg.exp_id}/"
+    dataset_path = cfg.get('dataset_path', "/home/robots/dataset/date_1031/None_hdf5")
     
     num_trajectories = 10
 
@@ -83,6 +84,8 @@ def run_experiment(cfg):
         stats = pickle.load(file)
     print(stats)
 
+    normalized_actions = stats.get("normalized", True)
+
     for demo_key in list(dataset.keys())[:num_trajectories]:
         
         episode = dataset[demo_key]
@@ -92,9 +95,14 @@ def run_experiment(cfg):
 
         obss = []
         acts = []
-
+# 
         actions = np.array(episode["actions"])
-        actions = unnormalize(actions, stats=stats["action"])
+        if normalized_actions:
+            actions = unnormalize(actions, stats=stats["action"])
+        print(f"\n[DEBUG] Actions after unnormalize:")
+        print(f"  Range: [{actions.min():.6f}, {actions.max():.6f}]")
+        print(f"  First 3 actions (mm): {actions[:3,:3]*1000}")
+        print(f"  Total Z: {actions[:,2].sum()*1000:.2f}mm\n")
         index = 0
         for act in tqdm(actions):
             import cv2
@@ -124,10 +132,12 @@ def run_experiment(cfg):
             print(f"Act {act} \nTook {np.around(time.time() - start_time, 3)}s")
         env.reset()
 
-        # visualize traj
+        # visualize traj (skip if no cameras)
+        '''
         img_obs = np.stack([obs[camera_names[0] + "_rgb"] for obs in obss])
         img_keys = [key for key in dataset[demo_key]["obs"].keys() if "rgb" in key]
         img_demo = np.array(dataset[demo_key]["obs"][img_keys[0]])
+        '''
         '''
         imageio.mimsave(os.path.join(logdir, f"demo_replay_{demo_key}.mp4"), np.concatenate((img_demo, img_obs), axis=2))
 

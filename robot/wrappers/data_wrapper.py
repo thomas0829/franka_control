@@ -417,7 +417,7 @@ class DataCollectionWrapper(gym.Wrapper):
                     "state": str(dic["lowdim_qpos"][i].tolist()),
                     "raw_action": str(actions[i].tolist()),
                 }
-                json_data_obs["image"] = img_paths["215122252864_rgb"][i]  # front view image path
+                # json_data_obs["image"] = img_paths["215122252864_rgb"][i]  # front view image path
                 json_data.append(json_data_obs)
 
             json_save_path = os.path.join(self.save_dir, 'unified.json')

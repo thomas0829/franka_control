@@ -307,6 +307,7 @@ def set_random_seed(seed):
 
 def invert_gripper(chunk):
     curr_gripper = chunk[-1]
+    print(curr_gripper)
     if curr_gripper > 0.5: 
         curr_gripper = 0
     else:

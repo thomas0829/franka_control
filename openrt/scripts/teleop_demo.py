@@ -82,8 +82,10 @@ def get_input_action(env, oculus, cfg):
         
     if oculus.vr_state["gripper"] > 0.5:
         act[-1] = 0.5
+        print(f"[DEBUG] Gripper CLOSED - act[-1] = {act[-1]}")
     else:
         act[-1] = 0
+        print(f"[DEBUG] Gripper OPEN - act[-1] = {act[-1]}")
     
     return act
 
@@ -123,7 +125,7 @@ def run_experiment(cfg):
     )
     env.reset_demo()
 
-    log_success("Hold on... Resetting tthe robot...")
+    log_success("Hold on... Resetting the robot...")
     
     # initialize oculus controller
     oculus = VRController(pos_action_gain=10, rot_action_gain=5) # sensitivity 

@@ -1,0 +1,36 @@
+control_hz: 10
+blocking_control: true
+DoF: 6  # use 6D cartesian pose for lowdim_ee
+gripper: true
+
+# Franka model: 'panda' 'fr3'
+robot_type: "panda"
+
+# randomize arm position on reset
+randomize_ee_on_reset: 0.0
+# allows user to pause to reset reset of the environment
+pause_after_reset: false
+
+# observation space configuration
+qpos: true
+ee_pos: true
+imgs: true
+normalize: false
+
+# IP address of Franka NUC
+ip_address: "192.168.1.6"
+
+# specify path length if resetting after a fixed length
+max_path_length: 20
+
+# camera type to use: 'realsense' 'zed'
+camera_model: "realsense"
+camera_resolution: null  # (128 128) -> HxW
+
+calibration_file: "/home/robots/yuquand/polymetis_franka/perception/cameras/calibration/logs/aruco/most_recent_calib.json"
+
+# Mujoco: model name
+model_name: "base_franka"
+
+# Disable on-screen rendering
+on_screen_rendering: false

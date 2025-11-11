@@ -11,7 +11,8 @@ def gather_realsense_cameras(hardware_reset=False, auto_exposure=False):
     all_rs_cameras = []
 
     if len(all_devices) == 0:
-        raise RuntimeError("No RealSense devices were found.")
+        # raise RuntimeError("No RealSense devices were found.")
+        print("No RealSense devices were found.")
     
     for device in all_devices:
         # if hardware_reset:

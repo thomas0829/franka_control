@@ -1,0 +1,8 @@
+Session: 20251121_140804
+Dataset: gello_demo
+Instruction: Put the banana on the cloth.
+Episode: 0
+Steps: 83
+Duration: 10.1s
+Max Duration: 60s
+Control Hz: 10

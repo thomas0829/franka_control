@@ -1,0 +1,8 @@
+Session: 20251120_170525
+Dataset: gello_demo
+Instruction: Fold the towel
+Episode: 0
+Steps: 159
+Duration: 19.4s
+Max Duration: 60s
+Control Hz: 10

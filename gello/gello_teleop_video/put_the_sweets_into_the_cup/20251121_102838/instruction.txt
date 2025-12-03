@@ -1,0 +1,8 @@
+Session: 20251121_102838
+Dataset: gello_demo
+Instruction: Put the sweets into the cup
+Episode: 1
+Steps: 205
+Duration: 25.1s
+Max Duration: 60s
+Control Hz: 10

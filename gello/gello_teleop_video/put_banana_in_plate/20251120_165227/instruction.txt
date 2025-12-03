@@ -1,0 +1,8 @@
+Session: 20251120_165227
+Dataset: gello_demo
+Instruction: Put banana in plate.
+Episode: 0
+Steps: 130
+Duration: 15.9s
+Max Duration: 60s
+Control Hz: 10

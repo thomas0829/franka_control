@@ -1,0 +1,7 @@
+Session: 20251130_194335
+Model: pi05_droid_jointpos
+Instruction: Pick up the toy car.
+Episode: 1 (Progress: 0/3 completed)
+Steps: 658
+Control Frequency: 5.0 Hz
+Success: Yes

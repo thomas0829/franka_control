@@ -1,0 +1,6 @@
+Session: 20251126_142325
+Model: pi0_droid
+Instruction: Pick up the cube on the plate.
+Episode: 1 (Progress: 0/5 completed)
+Steps: 417
+Control Frequency: 15 Hz

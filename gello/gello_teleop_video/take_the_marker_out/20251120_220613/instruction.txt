@@ -1,0 +1,8 @@
+Session: 20251120_220613
+Dataset: gello_demo
+Instruction: Take the marker out
+Episode: 1
+Steps: 89
+Duration: 10.8s
+Max Duration: 60s
+Control Hz: 10

@@ -1,0 +1,6 @@
+Session: 20251119_162015
+Model: pi05_droid
+Instruction: Put the doll on the cloth.
+Episode: 3 (Progress: 2/3 completed)
+Steps: 1000
+Control Frequency: 15 Hz

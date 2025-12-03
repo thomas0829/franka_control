@@ -1,0 +1,8 @@
+Session: 20251120_220907
+Dataset: gello_demo
+Instruction: Put tools into box
+Episode: 2
+Steps: 131
+Duration: 16.1s
+Max Duration: 60s
+Control Hz: 10

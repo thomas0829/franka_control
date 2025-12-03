@@ -1,0 +1,8 @@
+Session: 20251121_144636
+Dataset: gello_demo
+Instruction: Remove the cube from the plate.
+Episode: 0
+Steps: 69
+Duration: 8.3s
+Max Duration: 60s
+Control Hz: 10

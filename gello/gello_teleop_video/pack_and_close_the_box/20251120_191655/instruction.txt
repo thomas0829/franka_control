@@ -1,0 +1,8 @@
+Session: 20251120_191655
+Dataset: gello_demo
+Instruction: Pack and close the box
+Episode: 2
+Steps: 187
+Duration: 22.9s
+Max Duration: 60s
+Control Hz: 10

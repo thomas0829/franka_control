@@ -1,0 +1,8 @@
+Session: 20251121_143643
+Dataset: gello_demo
+Instruction: Put the can on the plate.
+Episode: 0
+Steps: 88
+Duration: 10.7s
+Max Duration: 60s
+Control Hz: 10

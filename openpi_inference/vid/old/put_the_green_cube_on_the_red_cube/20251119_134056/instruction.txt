@@ -1,0 +1,6 @@
+Session: 20251119_134056
+Model: pi05_droid
+Instruction: Put the green cube on the red cube.
+Episode: 2 / 3
+Steps: 516
+Control Frequency: 15 Hz

@@ -1,0 +1,8 @@
+Session: 20251120_165612
+Dataset: gello_demo
+Instruction: Rotate the banana by 90 degree.
+Episode: 2
+Steps: 178
+Duration: 21.8s
+Max Duration: 60s
+Control Hz: 10

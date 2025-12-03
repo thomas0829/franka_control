@@ -1,0 +1,6 @@
+Session: 20251119_164410
+Model: pi05_droid
+Instruction: Put the gummy cubes on the bowl.
+Episode: 3 (Progress: 2/3 completed)
+Steps: 363
+Control Frequency: 15 Hz

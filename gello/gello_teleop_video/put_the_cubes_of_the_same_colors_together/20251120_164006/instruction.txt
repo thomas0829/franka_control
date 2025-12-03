@@ -1,0 +1,8 @@
+Session: 20251120_164006
+Dataset: gello_demo
+Instruction: Put the cubes of the same colors together.
+Episode: 1
+Steps: 279
+Duration: 34.2s
+Max Duration: 60s
+Control Hz: 10

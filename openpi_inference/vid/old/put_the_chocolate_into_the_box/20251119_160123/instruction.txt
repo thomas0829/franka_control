@@ -1,0 +1,6 @@
+Session: 20251119_160123
+Model: pi05_droid
+Instruction: Put the chocolate into the box.
+Episode: 3 (Progress: 2/3 completed)
+Steps: 767
+Control Frequency: 15 Hz

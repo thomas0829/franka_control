@@ -1,0 +1,7 @@
+Session: 20251130_144433
+Model: pi05_droid_jointpos
+Instruction: Pick up the lemon.
+Episode: 3 (Progress: 2/3 completed)
+Steps: 120
+Control Frequency: 5.0 Hz
+Success: Yes

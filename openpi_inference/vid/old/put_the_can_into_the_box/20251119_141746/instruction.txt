@@ -1,0 +1,6 @@
+Session: 20251119_141746
+Model: pi05_droid
+Instruction: Put the can into the box.
+Episode: 3 / 3
+Steps: 701
+Control Frequency: 15 Hz

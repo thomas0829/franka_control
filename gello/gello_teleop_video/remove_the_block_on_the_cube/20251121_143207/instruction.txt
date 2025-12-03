@@ -1,0 +1,8 @@
+Session: 20251121_143207
+Dataset: gello_demo
+Instruction: Remove the block on the cube.
+Episode: 0
+Steps: 101
+Duration: 12.2s
+Max Duration: 60s
+Control Hz: 10

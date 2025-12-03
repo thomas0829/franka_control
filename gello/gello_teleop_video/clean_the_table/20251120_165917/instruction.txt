@@ -1,0 +1,8 @@
+Session: 20251120_165917
+Dataset: gello_demo
+Instruction: Clean the table
+Episode: 1
+Steps: 173
+Duration: 21.1s
+Max Duration: 60s
+Control Hz: 10

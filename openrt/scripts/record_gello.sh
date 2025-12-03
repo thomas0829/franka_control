@@ -2,20 +2,23 @@
 # GELLO Data Collection
 # Usage: ./record_gello.sh [exp_id] [episodes] [start_traj]
 
-cd /home/robots/yuquand/polymetis_franka
+cd /home/duanj1/thomas/franka_control
 
 # Fix dataset directory permissions if needed
-if [ -d "/home/robots/dataset" ]; then
-    sudo chown -R robots:robots /home/robots/dataset 2>/dev/null || true
+if [ -d "/home/duanj1/dataset" ]; then
+    sudo chown -R robots:robots /home/duanj1/dataset 2>/dev/null || true
 fi
 
 # Fix USB device permissions
 sudo chmod 666 /dev/ttyUSB0 2>/dev/null || true
 
-/home/robots/miniconda3/envs/polytf/bin/python openrt/scripts/collect_demos_gello.py \
+/home/duanj1/anaconda3/envs/franka/bin/python openrt/scripts/collect_demos_gello.py \
     robot=franka_real_gello \
     robot.imgs=false \
     exp_id=${1:-gello_demo} \
-    episodes=${2:-1} \
+    episodes=${2:-3} \
     start_traj=${3:-0} \
-    hydra.run.dir=/home/robots/yuquand/polymetis_franka/openrt/scripts/outputs/\${now:%Y-%m-%d}/\${now:%H-%M-%S}
+    +rec=true \
+    +max_duration=60 \
+    +instruction="Put the cube into the plate." \
+    hydra.run.dir=/home/duanj1/thomas/franka_control/openrt/scripts/outputs/\${now:%Y-%m-%d}/\${now:%H-%M-%S}

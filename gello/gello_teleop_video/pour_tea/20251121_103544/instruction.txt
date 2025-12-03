@@ -1,0 +1,8 @@
+Session: 20251121_103544
+Dataset: gello_demo
+Instruction: Pour tea
+Episode: 0
+Steps: 153
+Duration: 18.7s
+Max Duration: 60s
+Control Hz: 10

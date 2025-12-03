@@ -1,0 +1,8 @@
+Session: 20251121_143824
+Dataset: gello_demo
+Instruction: Remove the can from the plate.
+Episode: 0
+Steps: 113
+Duration: 13.7s
+Max Duration: 60s
+Control Hz: 10

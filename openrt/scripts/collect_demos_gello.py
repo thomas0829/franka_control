@@ -9,18 +9,24 @@ Usage:
         robot=real_7_dof_gello \
         robot.imgs=true \
         exp_id=pick_cube \
-        episodes=10
+        episodes=10 \
+        rec=true \
+        preview=true \
+        max_duration=60 \
+        instruction="Pick up the cube"
 """
 import os
 import sys
 import time
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 
 import hydra
 import numpy as np
 import torch
 from tqdm import tqdm
 import pygame
+import cv2
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -29,6 +35,166 @@ from robot.controllers.gello_controller import GelloController
 from robot.wrappers.data_wrapper import DataCollectionWrapper
 from robot.sim.vec_env.vec_env import make_env
 from utils.experiment import hydra_to_dict
+
+# Import ZED SDK
+try:
+    import pyzed.sl as sl
+    ZED_AVAILABLE = True
+except ImportError:
+    print("Warning: ZED SDK not found. Video recording will not be available.")
+    ZED_AVAILABLE = False
+
+# ============================================================================
+# ZED Camera Functions
+# ============================================================================
+
+# ZED Camera Configuration (matching openpi_bridge_velocity.py)
+ZED_EXTERNAL_SN = 26706125  # ZED 2 (external/shoulder view)
+ZED_WRIST_SN = 14943057     # ZED Mini (wrist view)
+WIDTH, HEIGHT, FPS = 1280, 720, 15  # ZED HD720 mode @ 15fps
+
+# Global camera references for cleanup
+_zed_ext = None
+_zed_wri = None
+
+def cleanup_cameras():
+    """Clean up camera resources"""
+    global _zed_ext, _zed_wri
+    if _zed_ext is not None:
+        _zed_ext.close()
+        _zed_ext = None
+    if _zed_wri is not None:
+        _zed_wri.close()
+        _zed_wri = None
+
+def open_zed_camera(serial_number, width=1280, height=720, fps=15):
+    """
+    Open ZED camera with specific serial number
+    
+    Args:
+        serial_number: Camera serial number
+        width, height: Resolution
+        fps: Frame rate
+    
+    Returns:
+        (zed_camera, runtime_parameters)
+    """
+    if not ZED_AVAILABLE:
+        raise RuntimeError("ZED SDK is not available")
+    
+    zed = sl.Camera()
+    
+    # Set initialization parameters
+    init_params = sl.InitParameters()
+    init_params.camera_resolution = sl.RESOLUTION.HD720
+    init_params.camera_fps = fps
+    init_params.depth_mode = sl.DEPTH_MODE.NONE
+    init_params.coordinate_units = sl.UNIT.METER
+    init_params.set_from_serial_number(serial_number)
+    
+    # Try to open with retries
+    MAX_RETRIES = 3
+    RETRY_DELAY = 2.0
+    
+    for attempt in range(MAX_RETRIES):
+        err = zed.open(init_params)
+        if err == sl.ERROR_CODE.SUCCESS:
+            break
+        
+        print(f"   ⚠ Attempt {attempt + 1}/{MAX_RETRIES} failed: {err}")
+        if attempt < MAX_RETRIES - 1:
+            print(f"   Retrying in {RETRY_DELAY}s...")
+            time.sleep(RETRY_DELAY)
+        else:
+            raise RuntimeError(f"Failed to open ZED camera SN {serial_number}: {err}")
+    
+    # Get camera information
+    cam_info = zed.get_camera_information()
+    camera_model = cam_info.camera_model
+    
+    print(f"   ✓ Opened {camera_model} (SN: {serial_number})")
+    print(f"   Resolution: {width}x{height} @ {fps}fps")
+    
+    # Create runtime parameters
+    runtime = sl.RuntimeParameters()
+    runtime.enable_depth = False
+    
+    return zed, runtime
+
+def get_zed_image(zed, runtime):
+    """
+    Capture and return image from ZED camera
+    
+    Args:
+        zed: ZED camera object
+        runtime: Runtime parameters
+    
+    Returns:
+        numpy array: BGR image (H, W, 3)
+    """
+    image_zed = sl.Mat()
+    
+    # Grab frame
+    if zed.grab(runtime) == sl.ERROR_CODE.SUCCESS:
+        zed.retrieve_image(image_zed, sl.VIEW.LEFT)
+        frame_np = image_zed.get_data()
+        
+        # Convert BGRA to BGR
+        if frame_np.shape[2] == 4:
+            frame_np = cv2.cvtColor(frame_np, cv2.COLOR_BGRA2BGR)
+        
+        return frame_np
+    else:
+        return None
+
+# =========================================================================
+# Combined Preview Utilities (single window like velocity bridge)
+# =========================================================================
+def build_combined_preview(ext_img, wri_img, height=360):
+    """Return a single side-by-side preview frame with labels.
+    Args:
+        ext_img: shoulder/external image (BGR) or None
+        wri_img: wrist image (BGR) or None
+        height: target unified height for stacking
+    Returns:
+        combined BGR frame
+    """
+    def _prep(img, fallback_text):
+        if img is None:
+            canvas = np.zeros((height, height*16//9, 3), dtype=np.uint8)
+            cv2.putText(canvas, fallback_text, (30, height//2), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,0,255), 2)
+            return canvas
+        h, w = img.shape[:2]
+        scale = height / h
+        new_w = int(w * scale)
+        resized = cv2.resize(img, (new_w, height))
+        return resized
+
+    ext_panel = _prep(ext_img, 'No Shoulder Frame')
+    wri_panel = _prep(wri_img, 'No Wrist Frame')
+
+    # Pad panels to same width if very different
+    max_w = max(ext_panel.shape[1], wri_panel.shape[1])
+    def _pad(panel):
+        if panel.shape[1] == max_w:
+            return panel
+        pad_w = max_w - panel.shape[1]
+        pad = np.zeros((height, pad_w, 3), dtype=np.uint8)
+        return np.concatenate([panel, pad], axis=1)
+
+    ext_panel = _pad(ext_panel)
+    wri_panel = _pad(wri_panel)
+    combined = np.hstack([ext_panel, wri_panel])
+
+    # Labels
+    cv2.putText(combined, 'Shoulder', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), 2)
+    cv2.putText(combined, 'Wrist', (ext_panel.shape[1] + 20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), 2)
+    return combined
+
+def show_preview_single_window(ext_img, wri_img):
+    frame = build_combined_preview(ext_img, wri_img, height=360)
+    cv2.imshow('Teleop Preview', frame)
+    cv2.waitKey(1)
 
 # Setup logger (matching oculus version)
 import logging
@@ -92,10 +258,11 @@ class KeyboardInterface:
     
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((600, 300))
+        self.screen = pygame.display.set_mode((700, 420))
         pygame.display.set_caption("GELLO Data Collection")
-        self.font_large = pygame.font.Font(None, 36)
-        self.font_small = pygame.font.Font(None, 24)
+        self.font_large = pygame.font.Font(None, 40)
+        self.font_medium = pygame.font.Font(None, 32)
+        self.font_small = pygame.font.Font(None, 28)
         self.current_state = "READY"
         self.trajectory_count = 0
         self.total_trajectories = 0
@@ -116,37 +283,46 @@ class KeyboardInterface:
         
         # Draw state
         state_text = self.font_large.render(f"State: {self.current_state}", True, color)
-        self.screen.blit(state_text, (20, 20))
+        self.screen.blit(state_text, (20, 15))
         
         # Draw progress
         if self.total_trajectories > 0:
-            progress_text = self.font_small.render(
+            progress_text = self.font_medium.render(
                 f"Progress: {self.trajectory_count}/{self.total_trajectories}", 
                 True, (200, 200, 200)
             )
-            self.screen.blit(progress_text, (20, 70))
+            self.screen.blit(progress_text, (20, 60))
         
-        # Draw key hints
+        # Draw key hints (compact layout)
         hints = [
-            ("S", "Start/Continue collecting", (100, 255, 100)),
-            ("C", "Save trajectory (SUCCESS)", (100, 200, 255)),
-            ("Q", "Discard trajectory (FAILURE)", (255, 100, 100)),
+            ("S", "Start episode", (100, 255, 100)),
+            ("C", "Save (SUCCESS)", (100, 200, 255)),
+            ("Q", "Discard (FAIL)", (255, 100, 100)),
+            ("P", "Toggle preview", (200, 150, 255)),
+            ("ESC", "Exit program", (255, 100, 100)),
         ]
         
-        y_offset = 120
+        y_offset = 110
         for key, description, key_color in hints:
-            # Draw key with background
-            key_bg = pygame.Rect(20, y_offset, 40, 35)
+            # Draw key box
+            key_width = 85 if key == "ESC" else 45
+            key_height = 40
+            key_bg = pygame.Rect(20, y_offset, key_width, key_height)
             pygame.draw.rect(self.screen, (50, 50, 60), key_bg)
             pygame.draw.rect(self.screen, key_color, key_bg, 2)
             
-            key_text = self.font_large.render(key, True, key_color)
-            self.screen.blit(key_text, (30, y_offset + 5))
+            # Center key text in box (both horizontally and vertically)
+            key_text = self.font_medium.render(key, True, key_color)
+            key_x = 20 + (key_width - key_text.get_width()) // 2
+            key_y = y_offset + (key_height - key_text.get_height()) // 2
+            self.screen.blit(key_text, (key_x, key_y))
             
+            # Description text (vertically centered with box)
             desc_text = self.font_small.render(description, True, (200, 200, 200))
-            self.screen.blit(desc_text, (70, y_offset + 8))
+            desc_y = y_offset + (key_height - desc_text.get_height()) // 2
+            self.screen.blit(desc_text, (20 + key_width + 15, desc_y))
             
-            y_offset += 50
+            y_offset += 52
         
         pygame.display.flip()
     
@@ -160,26 +336,50 @@ class KeyboardInterface:
         self._update_display()
     
     def get_info(self):
-        """Poll keyboard events (matching oculus.get_info() API)."""
+        """Poll keyboard events and categorize actions.
+        Returns dict keys:
+          start: press 'S' to start an episode when WAITING
+          save: press 'C' to commit/save trajectory while COLLECTING
+          discard: press 'Q' to discard trajectory while COLLECTING
+          toggle_preview: press 'P' to toggle camera preview anytime
+        """
         info = {
-            'success': False,
-            'failure': False,
+            'start': False,
+            'save': False,
+            'discard': False,
+            'toggle_preview': False,
             'movement_enabled': True,
             'controller_on': True,
         }
-        
-        pygame.event.pump()  # Process event queue
+
+        pygame.event.pump()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 raise KeyboardInterrupt("Window closed")
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_s:  # S = start/continue
-                    info['success'] = True
-                elif event.key == pygame.K_c:  # C = continue (also success)
-                    info['success'] = True
-                elif event.key == pygame.K_q:  # Q = quit/discard
-                    info['failure'] = True
-        
+                if event.key == pygame.K_s:
+                    info['start'] = True
+                elif event.key == pygame.K_c:
+                    info['save'] = True
+                elif event.key == pygame.K_q:
+                    info['discard'] = True
+                elif event.key == pygame.K_p:
+                    info['toggle_preview'] = True
+                elif event.key == pygame.K_ESCAPE:
+                    raise KeyboardInterrupt("ESC pressed - exiting program")
+
+        # Fallback polling (in case KEYDOWN event missed) - DO NOT toggle preview repeatedly here
+        keys = pygame.key.get_pressed()
+        if keys:
+            if keys[pygame.K_ESCAPE]:
+                raise KeyboardInterrupt("ESC pressed - exiting program")
+            if keys[pygame.K_s]:
+                info['start'] = True
+            if keys[pygame.K_c]:
+                info['save'] = True
+            if keys[pygame.K_q]:
+                info['discard'] = True
+
         return info
     
     def close(self):
@@ -216,6 +416,31 @@ def run_experiment(cfg):
     # Comment out for testing without camera
     # assert cfg.robot.imgs, "ERROR: set robot.imgs=true to record image observations!"
     
+    # ========================================================================
+    # Video Recording Parameters
+    # ========================================================================
+    rec = cfg.get('rec', False)
+    max_duration = cfg.get('max_duration', 60)  # Maximum episode duration in seconds (default 60s = 1 min)
+    instruction = cfg.get('instruction', cfg.language_instruction)
+    preview = cfg.get('preview', False)  # live camera preview windows
+    # runtime toggle for preview (user can press 'P')
+    preview_active = preview
+    last_preview_toggle_time = 0.0
+    PREVIEW_TOGGLE_COOLDOWN = 0.3  # seconds
+    
+    if rec or preview:
+        log_important("\n" + "="*70)
+        if rec:
+            log_important("📹 VIDEO RECORDING MODE ENABLED")
+        if preview:
+            log_important("🖥 LIVE CAMERA PREVIEW ENABLED")
+        log_important("="*70)
+        log_config(f"Max duration per episode: {max_duration}s ({max_duration/60:.1f} min)")
+        log_config(f"Instruction: {instruction}")
+        log_config(f"ZED 2 (shoulder): SN {ZED_EXTERNAL_SN}")
+        log_config(f"ZED Mini (wrist): SN {ZED_WRIST_SN}")
+        log_important("="*70 + "\n")
+    
     # configs (matching oculus version)
     log_config(f"language instruction: {cfg.language_instruction}")
     log_config(f"number of episodes: {cfg.episodes}")
@@ -224,9 +449,9 @@ def run_experiment(cfg):
     log_config(f"dataset name: {cfg.exp_id}")
     savedir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}/{cfg.exp_id}"
     
-    # Check if directory already exists
+    # Check if directory already exists (skip check if rec=true, video-only mode)
     pickle_dir = f"{savedir}_pickle"
-    if os.path.exists(pickle_dir) and len(os.listdir(pickle_dir)) > 0:
+    if not rec and os.path.exists(pickle_dir) and len(os.listdir(pickle_dir)) > 0:
         log_failure(f"\n{'='*70}")
         log_failure(f"⚠️  WARNING: Dataset directory already exists!")
         log_failure(f"   Path: {pickle_dir}")
@@ -377,6 +602,50 @@ def run_experiment(cfg):
             log_failure("Exiting...")
             return
     
+    # ========================================================================
+    # Initialize ZED Cameras (if recording video)
+    # ========================================================================
+    global _zed_ext, _zed_wri
+    zed_ext = None
+    zed_ext_runtime = None
+    zed_wri = None
+    zed_wri_runtime = None
+    
+    if rec or preview:
+        if not ZED_AVAILABLE:
+            log_failure("ERROR: ZED SDK not available but rec/preview requested")
+            log_failure("Install ZED SDK or set rec=false preview=false")
+            return
+        
+        log_connect("\n[ZED] Initializing cameras...")
+        log_config("Camera setup: 2x ZED cameras")
+        log_config(f"  - ZED 2 (shoulder view): SN {ZED_EXTERNAL_SN}")
+        log_config(f"  - ZED Mini (wrist view): SN {ZED_WRIST_SN}")
+        
+        try:
+            # Open shoulder camera (ZED 2)
+            log_config("\n  Opening shoulder camera...")
+            zed_ext, zed_ext_runtime = open_zed_camera(
+                serial_number=ZED_EXTERNAL_SN,
+                width=WIDTH, height=HEIGHT, fps=FPS
+            )
+            _zed_ext = zed_ext
+            
+            # Open wrist camera (ZED Mini)
+            log_config("\n  Opening wrist camera...")
+            zed_wri, zed_wri_runtime = open_zed_camera(
+                serial_number=ZED_WRIST_SN,
+                width=WIDTH, height=HEIGHT, fps=FPS
+            )
+            _zed_wri = zed_wri
+            
+            log_success("✓ ZED cameras initialized\n")
+            
+        except Exception as e:
+            log_failure(f"ERROR: Failed to initialize ZED cameras: {e}")
+            cleanup_cameras()
+            return
+    
     # Initialize keyboard interface
     keyboard = KeyboardInterface()
     assert keyboard.get_info()["controller_on"], "ERROR: keyboard controller off"
@@ -405,12 +674,28 @@ def run_experiment(cfg):
             keyboard.set_state("WAITING", traj_count=n_traj)
             
             # time to reset the scene
-            while True:
-                time.sleep(0.01)  # Small delay to prevent CPU spinning
-                keyboard.set_state("WAITING", traj_count=n_traj)  # Keep updating display
+            while True:  # WAITING state loop
+                time.sleep(0.01)
+                keyboard.set_state("WAITING", traj_count=n_traj)
                 info = keyboard.get_info()
-                if info["success"]:
-                    # reset w/ recording obs after resetting the scene
+                if info['toggle_preview'] and (time.time() - last_preview_toggle_time) > PREVIEW_TOGGLE_COOLDOWN:
+                    preview_active = not preview_active
+                    last_preview_toggle_time = time.time()
+                    if preview_active:
+                        log_config("[Preview] Camera preview ON")
+                    else:
+                        log_config("[Preview] Camera preview OFF")
+                        try: cv2.destroyAllWindows()
+                        except Exception: pass
+                # Show preview frames even while waiting
+                if preview_active and zed_ext and zed_wri:
+                    ext_img = get_zed_image(zed_ext, zed_ext_runtime)
+                    wri_img = get_zed_image(zed_wri, zed_wri_runtime)
+                    try:
+                        show_preview_single_window(ext_img, wri_img)
+                    except Exception:
+                        pass
+                if info['start']:
                     obs = trim_lowdim(env.reset())
                     
                     # Re-calibrate GELLO for this episode
@@ -435,6 +720,60 @@ def run_experiment(cfg):
                         log_failure(f"⚠️  WARNING: LARGE CALIBRATION ERROR: {diff:.4f} rad ({diff*57.3:.2f}°)")
                     print("="*70 + "\n")
                     
+                    # ========================================================================
+                    # Setup video recording for this episode (if rec=true)
+                    # ========================================================================
+                    shoulder_video = None
+                    wrist_video = None
+                    video_dir = None
+                    
+                    if rec:
+                        # Setup base directory for video recording (matching openpi_bridge_velocity structure)
+                        script_dir = Path(__file__).parent  # scripts directory
+                        vid_base_dir = script_dir / "gello_teleop_video"
+                        vid_base_dir.mkdir(exist_ok=True)
+                        
+                        # Create task-based folder (matching openpi structure)
+                        # Convert instruction to folder name (e.g., "Pick up the cube" -> "pick_up_the_cube")
+                        task_folder_name = instruction.lower().replace(" ", "_").replace(".", "").replace(",", "")
+                        task_dir = vid_base_dir / task_folder_name
+                        task_dir.mkdir(exist_ok=True)
+                        
+                        # Create timestamped session directory for this episode
+                        session_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        video_dir = task_dir / session_timestamp
+                        video_dir.mkdir(parents=True, exist_ok=True)
+                        
+                        # Save instruction file
+                        instruction_file = video_dir / "instruction.txt"
+                        episode_start_time = time.time()  # Track episode start time
+                        with open(instruction_file, "w") as f:
+                            f.write(f"Session: {session_timestamp}\n")
+                            f.write(f"Dataset: {cfg.exp_id}\n")
+                            f.write(f"Instruction: {instruction}\n")
+                            f.write(f"Episode: {n_traj}\n")
+                            f.write(f"Steps: TBD\n")  # Will be updated at the end
+                            f.write(f"Duration: TBD\n")  # Will be updated at the end
+                            f.write(f"Max Duration: {max_duration}s\n")
+                            f.write(f"Control Hz: {cfg.robot.control_hz}\n")
+                        
+                        # Initialize video writers
+                        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                        shoulder_video = cv2.VideoWriter(
+                            str(video_dir / "shoulder_view.mp4"),
+                            fourcc, FPS, (WIDTH, HEIGHT)
+                        )
+                        wrist_video = cv2.VideoWriter(
+                            str(video_dir / "wrist_view.mp4"),
+                            fourcc, FPS, (WIDTH, HEIGHT)
+                        )
+                        
+                        log_config(f"\n📹 Video recording:")
+                        log_config(f"   Task folder: {task_dir}")
+                        log_config(f"   Session: {video_dir}")
+                        log_config(f"   Shoulder: shoulder_view.mp4")
+                        log_config(f"   Wrist: wrist_view.mp4\n")
+                    
                     log_instruction("🎬 START COLLECTING TRAJECTORY {}".format(n_traj))
                     keyboard.set_state("COLLECTING", traj_count=n_traj)
                     break
@@ -453,83 +792,47 @@ def run_experiment(cfg):
                 position=0,
             )
             
-            for j in pbar:
+            # Edge state for preview toggle
+            prev_p_pressed = False
+            for j in pbar:  # COLLECTING state loop
+                
+                # Check if max duration exceeded
+                elapsed_time = time.time() - episode_start_time
+                if elapsed_time >= max_duration:
+                    pbar.write(f"\n⏱️  Max duration ({max_duration}s) reached. Stopping episode...")
+                    break
                 
                 # Keep updating display during collection
                 keyboard.set_state("COLLECTING", traj_count=n_traj)
                 
                 # wait for controller input (matching oculus)
                 info = keyboard.get_info()
+                if info['toggle_preview'] and (time.time() - last_preview_toggle_time) > PREVIEW_TOGGLE_COOLDOWN:
+                    preview_active = not preview_active
+                    last_preview_toggle_time = time.time()
+                    if preview_active:
+                        log_config("[Preview] Camera preview ON")
+                    else:
+                        log_config("[Preview] Camera preview OFF")
+                        try: cv2.destroyAllWindows()
+                        except Exception: pass
                 
-                while (not info["success"] and not info["failure"]) and not info["movement_enabled"]:
+                # Wait for save/discard action (skip if movement enabled)
+                while (not info['save'] and not info['discard']) and not info["movement_enabled"]:
                     info = keyboard.get_info()
                 
                 # press '→' to indicate success (matching oculus)
-                if info["success"]:
+                if info['save']:
                     save = True
-                    break  # Exit loop to save
-                # press '←' to indicate failure (matching oculus)
-                elif info["failure"]:
+                    break
+                if info['discard']:
                     save = False
-                    break  # Exit loop to discard
+                    break
                 
                 # check if movement enabled (matching oculus)
                 if info["movement_enabled"]:
-                    
                     # ============================================================
-                    # VERSION 1: Joint Control (Original - COMMENTED OUT)
-                    # ============================================================
-                    # # Get action using teleop_gello_direct.py's proven method
-                    # act = get_input_action(env, gello, cfg)
-                    # 
-                    # # check if no-ops (matching oculus)
-                    # if cfg.mode == "standard":
-                    #     act_norm = np.linalg.norm(act)
-                    #     
-                    #     # first no-ops detected
-                    #     if act_norm < no_ops_threshold and first_no_ops_detected:
-                    #         first_no_ops_detected = False
-                    #         no_ops_start_time = time.time()
-                    #     # no-ops detected
-                    #     elif act_norm < no_ops_threshold and not first_no_ops_detected:
-                    #         if time.time() - no_ops_start_time >= no_ops_last_detected_time:
-                    #             pbar.write(f"⚠️  No operation for over {round(time.time() - no_ops_start_time, 2)} secs")
-                    #             break
-                    #     # no-ops not detected (reset)
-                    #     else:
-                    #         first_no_ops_detected = True
-                    #         no_ops_start_time = 0
-                    # 
-                    # # Use direct joint control (EXACTLY matching teleop_gello_direct.py)
-                    # target_joints = act[:7]
-                    # gello_gripper = act[7]
-                    # 
-                    # # Send commands directly to robot (bypassing env cartesian control)
-                    # env.unwrapped._robot.update_joints(
-                    #     target_joints.tolist(), velocity=False, blocking=False
-                    # )
-                    # env.unwrapped._robot.update_gripper(
-                    #     gello_gripper, velocity=False, blocking=False
-                    # )
-                    # 
-                    # # Sleep to maintain control frequency
-                    # time.sleep(1.0 / cfg.robot.control_hz)
-                    # 
-                    # # Get observation after robot moves
-                    # next_obs = env.unwrapped.get_observation()
-                    # 
-                    # # Manually record to DataCollectionWrapper buffer
-                    # # (Matching DataCollectionWrapper.step() behavior)
-                    # # Each buffer item contains: obs_t + language_instruction + action_t
-                    # obs["language_instruction"] = cfg.language_instruction
-                    # obs["action"] = act
-                    # env.buffer.append(obs.copy())
-                    # 
-                    # # Update obs for next iteration
-                    # obs = next_obs
-                    # ============================================================
-                    # VERSION 3: Joint Control + Measure Cartesian Delta
-                    # (This is the method that worked for test_4!)
+                    # Joint Control + Measure Cartesian Delta
                     # ============================================================
                     from utils.transformations import angle_diff
                     
@@ -553,6 +856,23 @@ def run_experiment(cfg):
                     
                     # Sleep to maintain control frequency
                     time.sleep(1.0 / cfg.robot.control_hz)
+                    
+                    # ============================================================
+                    # Capture video frames (if recording)
+                    # ============================================================
+                    if (rec or preview_active) and zed_ext and zed_wri:
+                        ext_img = get_zed_image(zed_ext, zed_ext_runtime)
+                        wri_img = get_zed_image(zed_wri, zed_wri_runtime)
+                        if rec:
+                            if ext_img is not None:
+                                shoulder_video.write(ext_img)
+                            if wri_img is not None:
+                                wrist_video.write(wri_img)
+                        if preview_active:
+                            try:
+                                show_preview_single_window(ext_img, wri_img)
+                            except Exception as e:
+                                pbar.write(f"Preview error: {e}")
                     
                     # Step 2: Get the new observation and calculate actual EE delta
                     next_obs = trim_lowdim(env.unwrapped.get_observation())
@@ -604,6 +924,36 @@ def run_experiment(cfg):
                         qpos = env.unwrapped._robot.get_joint_positions()
                         pbar.set_postfix({'joints': f'{qpos[:3].round(2).tolist()}...'}, refresh=False)
             
+            # ============================================================
+            # Close video files for this episode (if recording)
+            # ============================================================
+            if rec and shoulder_video is not None and wrist_video is not None:
+                shoulder_video.release()
+                wrist_video.release()
+                
+                # Update instruction file with actual step count and duration
+                if video_dir:
+                    instruction_file = video_dir / "instruction.txt"
+                    try:
+                        actual_duration = time.time() - episode_start_time
+                        with open(instruction_file, "r") as f:
+                            content = f.read()
+                        content = content.replace("Steps: TBD", f"Steps: {j+1}")
+                        content = content.replace("Duration: TBD", f"Duration: {actual_duration:.1f}s")
+                        with open(instruction_file, "w") as f:
+                            f.write(content)
+                    except Exception as e:
+                        log_failure(f"Failed to update instruction file: {e}")
+                
+                if save:
+                    log_config(f"📹 Videos saved to: {video_dir}")
+                else:
+                    # Delete video directory if trajectory was discarded
+                    import shutil
+                    if video_dir and video_dir.exists():
+                        shutil.rmtree(video_dir)
+                        log_config(f"📹 Videos discarded (deleted): {video_dir}")
+            
             # save trajectory if success (matching oculus)
             if save:
                 keyboard.set_state("SAVED", traj_count=n_traj)
@@ -627,6 +977,16 @@ def run_experiment(cfg):
     finally:
         keyboard.close()
         
+        # Clean up cameras
+        if rec or preview:
+            cleanup_cameras()
+            log_config("ZED cameras closed")
+        if preview_active:
+            try:
+                cv2.destroyAllWindows()
+            except Exception:
+                pass
+        
         # Only save/process if not interrupted
         if not interrupted:
             env.reset()
@@ -646,7 +1006,6 @@ def run_experiment(cfg):
                 import glob
                 import h5py
                 import pickle
-                import datetime
                 
                 # Prepare paths
                 data_base_dir = f"{cfg.base_dir}/date_{date.today().month}{date.today().day}"
@@ -715,7 +1074,7 @@ def run_experiment(cfg):
                 grp.attrs["episodes"] = len(file_names)
                 grp.attrs["env_args"] = '{"env_type": "franka", "type": "real"}'
                 grp.attrs["type"] = "real"
-                now = datetime.datetime.now()
+                now = datetime.now()
                 grp.attrs["date"] = "{}-{}-{}".format(now.month, now.day, now.year)
                 grp.attrs["time"] = "{}:{}:{}".format(now.hour, now.minute, now.second)
                 

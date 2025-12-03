@@ -1,0 +1,8 @@
+Session: 20251121_141333
+Dataset: gello_demo
+Instruction: Put the cube on the cookie package.
+Episode: 0
+Steps: 95
+Duration: 11.5s
+Max Duration: 60s
+Control Hz: 10

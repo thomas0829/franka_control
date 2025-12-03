@@ -1,0 +1,6 @@
+Session: 20251119_153111
+Model: pi05_droid
+Instruction: Put the doll into the box.
+Episode: 3 (Progress: 2/3 completed)
+Steps: 242
+Control Frequency: 15 Hz

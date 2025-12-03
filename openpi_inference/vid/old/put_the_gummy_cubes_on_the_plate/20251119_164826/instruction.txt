@@ -1,0 +1,6 @@
+Session: 20251119_164826
+Model: pi05_droid
+Instruction: Put the gummy cubes on the plate.
+Episode: 3 (Progress: 2/3 completed)
+Steps: 1000
+Control Frequency: 15 Hz

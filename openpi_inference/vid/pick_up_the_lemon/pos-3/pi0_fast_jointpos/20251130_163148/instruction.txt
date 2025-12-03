@@ -1,0 +1,7 @@
+Session: 20251130_163148
+Model: pi0_fast_jointpos
+Instruction: Pick up the lemon.
+Episode: 1 (Progress: 0/3 completed)
+Steps: 407
+Control Frequency: 5.0 Hz
+Success: No

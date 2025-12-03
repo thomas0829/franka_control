@@ -1,0 +1,6 @@
+Session: 20251126_150426
+Model: pi0_droid
+Instruction: Pick up the mug on the plate.
+Episode: 1 (Progress: 0/2 completed)
+Steps: 624
+Control Frequency: 15 Hz

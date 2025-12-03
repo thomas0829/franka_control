@@ -1,0 +1,7 @@
+Session: 20251130_192856
+Model: pi05_droid
+Instruction: Pick up the toy car.
+Episode: 1 (Progress: 0/3 completed)
+Steps: 282
+Control Frequency: 15 Hz
+Success: No

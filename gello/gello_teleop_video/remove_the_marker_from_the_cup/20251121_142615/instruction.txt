@@ -1,0 +1,8 @@
+Session: 20251121_142615
+Dataset: gello_demo
+Instruction: Remove the marker from the cup.
+Episode: 0
+Steps: 124
+Duration: 15.1s
+Max Duration: 60s
+Control Hz: 10

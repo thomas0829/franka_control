@@ -1,0 +1,8 @@
+Session: 20251120_164858
+Dataset: gello_demo
+Instruction: built a pyramid with cubes.
+Episode: 0
+Steps: 257
+Duration: 31.4s
+Max Duration: 60s
+Control Hz: 10

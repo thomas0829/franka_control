@@ -1,0 +1,8 @@
+Session: 20251120_171715
+Dataset: gello_demo
+Instruction: Put marker into holder
+Episode: 0
+Steps: 115
+Duration: 14.0s
+Max Duration: 60s
+Control Hz: 10

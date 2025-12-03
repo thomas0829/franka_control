@@ -1,0 +1,8 @@
+Session: 20251121_150015
+Dataset: gello_demo
+Instruction: Put the candy on the cloth.
+Episode: 2
+Steps: 90
+Duration: 11.0s
+Max Duration: 60s
+Control Hz: 10

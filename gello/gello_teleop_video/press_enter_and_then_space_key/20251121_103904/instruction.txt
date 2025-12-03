@@ -1,0 +1,8 @@
+Session: 20251121_103904
+Dataset: gello_demo
+Instruction: Press enter and then space key
+Episode: 1
+Steps: 106
+Duration: 12.9s
+Max Duration: 60s
+Control Hz: 10

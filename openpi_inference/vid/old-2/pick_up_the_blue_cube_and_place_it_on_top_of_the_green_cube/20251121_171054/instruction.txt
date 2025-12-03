@@ -1,0 +1,6 @@
+Session: 20251121_171054
+Model: pi05_droid
+Instruction: pick up the blue cube and place it on top of the green cube.
+Episode: 1 (Progress: 0/3 completed)
+Steps: 1000
+Control Frequency: 15 Hz

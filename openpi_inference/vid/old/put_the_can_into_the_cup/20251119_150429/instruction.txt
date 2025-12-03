@@ -1,0 +1,6 @@
+Session: 20251119_150429
+Model: pi05_droid
+Instruction: Put the can into the cup.
+Episode: 1 (Progress: 0/3 completed)
+Steps: 1000
+Control Frequency: 15 Hz

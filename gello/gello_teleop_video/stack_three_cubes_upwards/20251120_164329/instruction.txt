@@ -1,0 +1,8 @@
+Session: 20251120_164329
+Dataset: gello_demo
+Instruction: stack three cubes upwards.
+Episode: 0
+Steps: 222
+Duration: 27.2s
+Max Duration: 60s
+Control Hz: 10

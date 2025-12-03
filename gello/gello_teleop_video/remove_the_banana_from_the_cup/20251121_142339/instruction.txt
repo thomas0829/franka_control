@@ -1,0 +1,8 @@
+Session: 20251121_142339
+Dataset: gello_demo
+Instruction: Remove the banana from the cup.
+Episode: 1
+Steps: 152
+Duration: 18.6s
+Max Duration: 60s
+Control Hz: 10

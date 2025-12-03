@@ -1,0 +1,8 @@
+Session: 20251121_141608
+Dataset: gello_demo
+Instruction: Put the cookie on the cloth.
+Episode: 0
+Steps: 101
+Duration: 12.3s
+Max Duration: 60s
+Control Hz: 10

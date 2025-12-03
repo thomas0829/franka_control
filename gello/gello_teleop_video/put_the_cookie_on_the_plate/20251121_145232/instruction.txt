@@ -1,0 +1,8 @@
+Session: 20251121_145232
+Dataset: gello_demo
+Instruction: Put the cookie on the plate.
+Episode: 0
+Steps: 153
+Duration: 18.7s
+Max Duration: 60s
+Control Hz: 10

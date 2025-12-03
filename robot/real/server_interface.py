@@ -42,8 +42,9 @@ class ServerInterface:
     def kill_controller(self):
         self.server.kill_controller()
 
-    def update_command(self, command, action_space="cartesian_velocity", blocking=False):
-        action_dict = self.server.update_command(command, action_space, blocking)
+    def update_command(self, command, action_space="cartesian_velocity", gripper_action_space=None, blocking=False, use_true_velocity=False, model_type=None):
+        # Support both official DROID and velocity control
+        action_dict = self.server.update_command(command, action_space, gripper_action_space, blocking, use_true_velocity, model_type)
         return action_dict
 
     def create_action_dict(self, command, action_space="cartesian_velocity"):

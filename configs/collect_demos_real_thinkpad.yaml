@@ -31,7 +31,8 @@ cam_name: 215122252864
 # base_dir: "/media/yuquand/Extreme\ SSD/demo_data"
 # base_dir: "/home/prior/data_collection/data"
 # base_dir: "/home/prior/dataset"
-base_dir: "/home/robots/dataset"
+# base_dir: "/home/robots/dataset"
+base_dir: "/home/duanj1/dataset"
 save_info: true
 control_hz: 20 # 10
 exp_id: null

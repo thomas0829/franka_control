@@ -1,0 +1,6 @@
+Session: 20251119_152535
+Model: pi05_droid
+Instruction: Put the cup into the box.
+Episode: 1 (Progress: 0/3 completed)
+Steps: 354
+Control Frequency: 15 Hz

@@ -1,0 +1,6 @@
+Session: 20251119_141123
+Model: pi05_droid
+Instruction: Put the toy car into the box.
+Episode: 3 / 3
+Steps: 1000
+Control Frequency: 15 Hz

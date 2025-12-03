@@ -1,0 +1,8 @@
+Session: 20251120_191100
+Dataset: gello_demo
+Instruction: Pack the snacks into the box
+Episode: 0
+Steps: 172
+Duration: 21.1s
+Max Duration: 60s
+Control Hz: 10

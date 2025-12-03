@@ -1,0 +1,7 @@
+Session: 20251130_143939
+Model: pi0_fast
+Instruction: Pick up the lemon.
+Episode: 3 (Progress: 2/3 completed)
+Steps: 1000
+Control Frequency: 15 Hz
+Success: No

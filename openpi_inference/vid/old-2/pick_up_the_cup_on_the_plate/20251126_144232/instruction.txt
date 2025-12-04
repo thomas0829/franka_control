@@ -1,6 +1,0 @@
-Session: 20251126_144232
-Model: pi05_droid
-Instruction: Pick up the cup on the plate.
-Episode: 1 (Progress: 0/2 completed)
-Steps: 1689
-Control Frequency: 15 Hz

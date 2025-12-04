@@ -1,8 +1,0 @@
-Session: 20251121_143443
-Dataset: gello_demo
-Instruction: Remove the banana on the cloth.
-Episode: 2
-Steps: 86
-Duration: 10.5s
-Max Duration: 60s
-Control Hz: 10

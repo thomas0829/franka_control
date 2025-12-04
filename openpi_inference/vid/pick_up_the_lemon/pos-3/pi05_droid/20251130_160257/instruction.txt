@@ -1,7 +1,0 @@
-Session: 20251130_160257
-Model: pi05_droid
-Instruction: Pick up the lemon.
-Episode: 1 (Progress: 0/3 completed)
-Steps: 937
-Control Frequency: 15 Hz
-Success: No

@@ -1,6 +1,0 @@
-Session: 20251119_162648
-Model: pi05_droid
-Instruction: Put the cookie on the cloth.
-Episode: 3 (Progress: 2/3 completed)
-Steps: 840
-Control Frequency: 15 Hz

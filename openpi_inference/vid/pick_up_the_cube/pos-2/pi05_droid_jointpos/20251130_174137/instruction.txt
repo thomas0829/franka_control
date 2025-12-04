@@ -1,7 +1,0 @@
-Session: 20251130_174137
-Model: pi05_droid_jointpos
-Instruction: Pick up the cube.
-Episode: 2 (Progress: 1/3 completed)
-Steps: 275
-Control Frequency: 5.0 Hz
-Success: Yes

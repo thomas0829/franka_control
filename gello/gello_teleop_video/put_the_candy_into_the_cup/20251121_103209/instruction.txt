@@ -1,8 +1,0 @@
-Session: 20251121_103209
-Dataset: gello_demo
-Instruction: Put the candy into the cup
-Episode: 1
-Steps: 108
-Duration: 13.2s
-Max Duration: 60s
-Control Hz: 10

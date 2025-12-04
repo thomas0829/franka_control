@@ -1,6 +1,0 @@
-Session: 20251119_141935
-Model: pi05_droid
-Instruction: Put the can on the plate.
-Episode: 1 / 3
-Steps: 248
-Control Frequency: 15 Hz

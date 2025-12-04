@@ -1,8 +1,0 @@
-Session: 20251121_145607
-Dataset: gello_demo
-Instruction: Put the candy on the plate.
-Episode: 1
-Steps: 109
-Duration: 13.3s
-Max Duration: 60s
-Control Hz: 10

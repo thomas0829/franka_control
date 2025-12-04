@@ -1,8 +1,0 @@
-Session: 20251121_145755
-Dataset: gello_demo
-Instruction: Remove the candy on the plate.
-Episode: 1
-Steps: 103
-Duration: 12.5s
-Max Duration: 60s
-Control Hz: 10

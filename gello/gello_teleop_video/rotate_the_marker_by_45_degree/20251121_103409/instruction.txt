@@ -1,8 +1,0 @@
-Session: 20251121_103409
-Dataset: gello_demo
-Instruction: Rotate the marker by 45 degree
-Episode: 1
-Steps: 114
-Duration: 13.9s
-Max Duration: 60s
-Control Hz: 10

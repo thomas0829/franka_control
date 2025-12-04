@@ -1,8 +1,0 @@
-Session: 20251120_163000
-Dataset: gello_demo
-Instruction: Put all the cubes into the cup.
-Episode: 0
-Steps: TBD
-Duration: TBD
-Max Duration: 60s
-Control Hz: 10

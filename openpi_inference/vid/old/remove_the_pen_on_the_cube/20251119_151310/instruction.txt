@@ -1,6 +1,0 @@
-Session: 20251119_151310
-Model: pi05_droid
-Instruction: Remove the pen on the cube.
-Episode: 3 (Progress: 2/3 completed)
-Steps: 402
-Control Frequency: 15 Hz

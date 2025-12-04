@@ -1,6 +1,0 @@
-Session: 20251126_161149
-Model: pi05_droid_jointpos
-Instruction: Pick up the jello box.
-Episode: 2 (Progress: 1/3 completed)
-Steps: 1000
-Control Frequency: 5.0 Hz

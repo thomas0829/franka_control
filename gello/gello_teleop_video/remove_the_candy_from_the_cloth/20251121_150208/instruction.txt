@@ -1,8 +1,0 @@
-Session: 20251121_150208
-Dataset: gello_demo
-Instruction: Remove the candy from the cloth.
-Episode: 2
-Steps: 122
-Duration: 14.9s
-Max Duration: 60s
-Control Hz: 10

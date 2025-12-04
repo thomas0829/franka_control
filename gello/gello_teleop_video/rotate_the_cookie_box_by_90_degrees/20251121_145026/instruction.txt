@@ -1,8 +1,0 @@
-Session: 20251121_145026
-Dataset: gello_demo
-Instruction: Rotate the cookie box by 90 degrees.
-Episode: 1
-Steps: 137
-Duration: 16.7s
-Max Duration: 60s
-Control Hz: 10

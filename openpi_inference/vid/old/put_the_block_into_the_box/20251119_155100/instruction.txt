@@ -1,6 +1,0 @@
-Session: 20251119_155100
-Model: pi05_droid
-Instruction: Put the block into the box.
-Episode: 3 (Progress: 2/3 completed)
-Steps: 696
-Control Frequency: 15 Hz

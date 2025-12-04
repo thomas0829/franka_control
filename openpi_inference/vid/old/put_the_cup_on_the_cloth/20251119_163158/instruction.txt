@@ -1,6 +1,0 @@
-Session: 20251119_163158
-Model: pi05_droid
-Instruction: Put the cup on the cloth.
-Episode: 3 (Progress: 2/3 completed)
-Steps: 497
-Control Frequency: 15 Hz

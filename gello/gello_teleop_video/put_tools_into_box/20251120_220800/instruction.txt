@@ -1,8 +1,0 @@
-Session: 20251120_220800
-Dataset: gello_demo
-Instruction: Put tools into box
-Episode: 0
-Steps: 130
-Duration: 15.8s
-Max Duration: 60s
-Control Hz: 10

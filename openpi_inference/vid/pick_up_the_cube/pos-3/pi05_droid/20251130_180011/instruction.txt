@@ -1,7 +1,0 @@
-Session: 20251130_180011
-Model: pi05_droid
-Instruction: Pick up the cube.
-Episode: 3 (Progress: 2/3 completed)
-Steps: 661
-Control Frequency: 15 Hz
-Success: No

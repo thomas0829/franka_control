@@ -1,8 +1,0 @@
-Session: 20251120_163711
-Dataset: gello_demo
-Instruction: Put the rd cube into the cup.
-Episode: 2
-Steps: 150
-Duration: 18.2s
-Max Duration: 60s
-Control Hz: 10

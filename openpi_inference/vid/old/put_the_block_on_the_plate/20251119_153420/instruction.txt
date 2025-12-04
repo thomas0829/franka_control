@@ -1,6 +1,0 @@
-Session: 20251119_153420
-Model: pi05_droid
-Instruction: Put the block on the plate.
-Episode: 1 (Progress: 0/3 completed)
-Steps: 486
-Control Frequency: 15 Hz

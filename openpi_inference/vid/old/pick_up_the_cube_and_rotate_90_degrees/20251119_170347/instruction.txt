@@ -1,6 +1,0 @@
-Session: 20251119_170347
-Model: pi05_droid
-Instruction: Pick up the cube and rotate 90 degrees.
-Episode: 2 (Progress: 1/3 completed)
-Steps: 1000
-Control Frequency: 15 Hz

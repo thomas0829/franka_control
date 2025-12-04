@@ -1,6 +1,0 @@
-Session: 20251126_165319
-Model: pi0_droid
-Instruction: Pick up the green cube.
-Episode: 3 (Progress: 2/3 completed)
-Steps: 1000
-Control Frequency: 15 Hz

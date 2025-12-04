@@ -1,6 +1,0 @@
-Session: 20251119_163341
-Model: pi05_droid
-Instruction: Put the toy car on the cloth.
-Episode: 1 (Progress: 0/3 completed)
-Steps: 677
-Control Frequency: 15 Hz

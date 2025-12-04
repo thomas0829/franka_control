@@ -1,6 +1,0 @@
-Session: 20251119_145605
-Model: pi05_droid
-Instruction: Put the cube into the cup.
-Episode: 1 (Progress: 0/3 completed)
-Steps: 631
-Control Frequency: 15 Hz

@@ -1,6 +1,0 @@
-Session: 20251119_150106
-Model: pi05_droid
-Instruction: Put the doll on the plate.
-Episode: 1 (Progress: 0/3 completed)
-Steps: 272
-Control Frequency: 15 Hz

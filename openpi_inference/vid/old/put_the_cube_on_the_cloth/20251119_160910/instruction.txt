@@ -1,6 +1,0 @@
-Session: 20251119_160910
-Model: pi05_droid
-Instruction: Put the cube on the cloth.
-Episode: 2 (Progress: 1/3 completed)
-Steps: 386
-Control Frequency: 15 Hz

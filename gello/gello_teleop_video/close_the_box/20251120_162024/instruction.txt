@@ -1,8 +1,0 @@
-Session: 20251120_162024
-Dataset: gello_demo
-Instruction: Close the box.
-Episode: 2
-Steps: 110
-Duration: 13.3s
-Max Duration: 60s
-Control Hz: 10

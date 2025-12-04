@@ -1,6 +1,0 @@
-Session: 20251125_135304
-Model: pi05_droid
-Instruction: Fold the towel.
-Episode: 1 (Progress: 0/3 completed)
-Steps: 988
-Control Frequency: 15 Hz

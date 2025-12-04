@@ -1,8 +1,0 @@
-Session: 20251120_220445
-Dataset: gello_demo
-Instruction: put pocky into box
-Episode: 2
-Steps: 79
-Duration: 9.6s
-Max Duration: 60s
-Control Hz: 10

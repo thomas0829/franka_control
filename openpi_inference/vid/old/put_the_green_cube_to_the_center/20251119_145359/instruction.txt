@@ -1,6 +1,0 @@
-Session: 20251119_145359
-Model: pi05_droid
-Instruction: Put the green cube to the center.
-Episode: 3 (Progress: 2/3 completed)
-Steps: 1000
-Control Frequency: 15 Hz

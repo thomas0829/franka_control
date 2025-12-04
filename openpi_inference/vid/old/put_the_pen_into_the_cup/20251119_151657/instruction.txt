@@ -1,6 +1,0 @@
-Session: 20251119_151657
-Model: pi05_droid
-Instruction: Put the pen into the cup.
-Episode: 3 (Progress: 2/3 completed)
-Steps: 1000
-Control Frequency: 15 Hz

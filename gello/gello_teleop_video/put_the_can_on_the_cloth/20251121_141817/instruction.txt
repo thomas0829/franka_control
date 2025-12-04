@@ -1,8 +1,0 @@
-Session: 20251121_141817
-Dataset: gello_demo
-Instruction: Put the can on the cloth.
-Episode: 0
-Steps: 110
-Duration: 13.4s
-Max Duration: 60s
-Control Hz: 10

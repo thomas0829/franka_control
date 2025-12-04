@@ -1,7 +1,0 @@
-Session: 20251120_153105
-Dataset: gello_demo
-Instruction: Pick up the cube.
-Episode: 0
-Steps: 111
-Max Steps: 500
-Control Hz: 10

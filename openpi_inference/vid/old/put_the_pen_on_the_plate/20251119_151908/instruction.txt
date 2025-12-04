@@ -1,6 +1,0 @@
-Session: 20251119_151908
-Model: pi05_droid
-Instruction: Put the pen on the plate.
-Episode: 1 (Progress: 0/3 completed)
-Steps: 349
-Control Frequency: 15 Hz

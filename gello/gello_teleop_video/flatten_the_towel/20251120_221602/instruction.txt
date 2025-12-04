@@ -1,8 +1,0 @@
-Session: 20251120_221602
-Dataset: gello_demo
-Instruction: Flatten the towel
-Episode: 0
-Steps: 466
-Duration: 57.2s
-Max Duration: 60s
-Control Hz: 10

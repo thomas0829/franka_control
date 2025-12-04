@@ -1,8 +1,0 @@
-Session: 20251121_142016
-Dataset: gello_demo
-Instruction: Put the can into the cup.
-Episode: 0
-Steps: 111
-Duration: 13.5s
-Max Duration: 60s
-Control Hz: 10

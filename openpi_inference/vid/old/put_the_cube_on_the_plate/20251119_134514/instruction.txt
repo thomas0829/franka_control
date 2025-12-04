@@ -1,6 +1,0 @@
-Session: 20251119_134514
-Model: pi05_droid
-Instruction: Put the cube on the plate.
-Episode: 3 / 3
-Steps: 466
-Control Frequency: 15 Hz

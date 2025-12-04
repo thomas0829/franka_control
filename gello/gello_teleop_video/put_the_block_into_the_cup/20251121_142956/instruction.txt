@@ -1,8 +1,0 @@
-Session: 20251121_142956
-Dataset: gello_demo
-Instruction: Put the block into the cup.
-Episode: 2
-Steps: 118
-Duration: 14.4s
-Max Duration: 60s
-Control Hz: 10

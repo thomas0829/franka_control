@@ -1,6 +1,0 @@
-Session: 20251125_135521
-Model: pi05_droid
-Instruction: Pick up the cube with the animal.
-Episode: 1 (Progress: 0/3 completed)
-Steps: 906
-Control Frequency: 15 Hz

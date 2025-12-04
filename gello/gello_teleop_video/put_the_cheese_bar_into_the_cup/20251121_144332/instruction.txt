@@ -1,8 +1,0 @@
-Session: 20251121_144332
-Dataset: gello_demo
-Instruction: Put the cheese bar into the cup.
-Episode: 1
-Steps: 106
-Duration: 12.9s
-Max Duration: 60s
-Control Hz: 10

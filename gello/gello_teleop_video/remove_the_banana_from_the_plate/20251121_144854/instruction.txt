@@ -1,8 +1,0 @@
-Session: 20251121_144854
-Dataset: gello_demo
-Instruction: Remove the banana from the plate.
-Episode: 2
-Steps: 88
-Duration: 10.7s
-Max Duration: 60s
-Control Hz: 10

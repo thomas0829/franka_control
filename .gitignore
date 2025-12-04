@@ -9,9 +9,25 @@ logdir_dep/
 build/
 slurm/
 
+# Video and data files
 *.gif
 *.png
 *.zip
 *.egg-info/
+*.mp4
+*.avi
+*.mov
+*.jpg
+*.jpeg
+
+# Excel logs
+*.xlsx
+*.xls
+
+# Video recording directories
+openpi_inference/vid/
+openpi_inference/debug_*.jpg
+gello/gello_teleop_video/
+gello/outputs/
 
 tmp

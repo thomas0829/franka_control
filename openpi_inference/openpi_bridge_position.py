@@ -27,6 +27,7 @@ import sys
 import os
 import signal
 import atexit
+import subprocess
 import numpy as np
 import cv2
 from datetime import datetime
@@ -73,12 +74,35 @@ except ImportError:
 
 # ============ Configuration ============
 # Model Selection: pi05_droid_jointpos or pi0_droid_jointpos or pi0_fast_jointpos"
-MODEL_TYPE = "pi0_fast_jointpos"  # Using PI0.5 (works for grasping)
+MODEL_TYPE = "pi05_droid_jointpos"  # Using PI0.5 (works for grasping)
+
+# ============ Auto Server Management ============
+# Set to True to automatically start/stop OpenPI server based on MODEL_TYPE
+AUTO_START_SERVER = True  # True: Auto manage server, False: Manual (like before)
+
+# Model server configurations - maps MODEL_TYPE to server startup command
+MODEL_SERVER_CONFIGS = {
+    "pi05_droid_jointpos": {
+        "dir": "/home/duanj1/thomas/openpi_joint_position_pi05",
+        "cmd": "uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi05_droid_jointpos --policy.dir=./pi05_droid_jointpos",
+        "display_name": "Pi0.5-position"
+    },
+    "pi0_droid_jointpos": {
+        "dir": "/home/duanj1/thomas/openpi_joint_position_pi0",
+        "cmd": "uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi0_droid --policy.dir=./pi0_droid_jointpos",
+        "display_name": "Pi0-position"
+    },
+    "pi0_fast_jointpos": {
+        "dir": "/home/duanj1/thomas/openpi_joint_position_pi0",
+        "cmd": "uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi0_fast_droid --policy.dir=./pi0_fast_droid_jointpos",
+        "display_name": "Pi0-fast-position"
+    }
+}
 
 NUC_IP = "192.168.1.6"              # Polymetis zerorpc server IP (port 4242)
 OPENPI_HOST = "127.0.0.1"           # OpenPI server IP
 OPENPI_PORT = 8000                  # OpenPI Joint Position server port (default 8000)
-PROMPT = "Pick up the BuildingBlock035."
+PROMPT = "Pick up the orange."
 
 # ============ Loop Recording Configuration ============
 # Set LOOP to the number of episodes you want to record
@@ -94,7 +118,7 @@ LOOP = 3  # Number of episodes to record per position per model
 # - Each model runs 9 times: 3 initial positions × 3 videos per position
 # - Total: 6 models × 9 runs = 54 videos per task
 ENABLE_POSITION_VARIANT = True  # Set to True to use position variants and log to Excel
-POSITION_VARIANT = "pos-2"  # Current position: "pos-1", "pos-2", or "pos-3" (only used if ENABLE_POSITION_VARIANT is True)
+POSITION_VARIANT = "pos-1"  # Current position: "pos-1", "pos-2", or "pos-3" (only used if ENABLE_POSITION_VARIANT is True)
 
 # ============ Excel Logging Configuration ============
 # Set to True to enable Excel logging of episode metadata
@@ -155,6 +179,96 @@ if OUTPUT_IS_DELTA:
 print(f"EMA smoothing: {'enabled (alpha=' + str(EMA_ALPHA) + ')' if USE_EMA_SMOOTHING else 'disabled'}")
 # =======================================
 
+# ============ Auto Server Management Functions ============
+_server_process = None  # Global variable to track server process
+
+def start_openpi_server(model_type):
+    """Start OpenPI server for the specified model type"""
+    global _server_process
+    
+    if model_type not in MODEL_SERVER_CONFIGS:
+        raise ValueError(f"Unknown model type: {model_type}. Available: {list(MODEL_SERVER_CONFIGS.keys())}")
+    
+    config = MODEL_SERVER_CONFIGS[model_type]
+    display_name = config.get('display_name', model_type)
+    
+    print(f"\n{'='*60}")
+    print(f"🚀 Starting OpenPI server")
+    print(f"{'='*60}")
+    print(f"Model: {display_name} ({model_type})")
+    print(f"Directory: {config['dir']}")
+    print(f"Command: {config['cmd']}")
+    print(f"Port: {OPENPI_PORT}")
+    print()
+    
+    # Start server process
+    _server_process = subprocess.Popen(
+        config['cmd'],
+        shell=True,
+        cwd=config['dir'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        preexec_fn=os.setsid  # Create new process group for easy cleanup
+    )
+    
+    print(f"Server process started (PID: {_server_process.pid})")
+    print(f"Waiting for {display_name} server to be ready", end="", flush=True)
+    
+    # Wait for server to be ready (check if port is listening)
+    import socket
+    max_wait = 120  # Wait up to 2 minutes
+    for i in range(max_wait):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            result = sock.connect_ex(('127.0.0.1', OPENPI_PORT))
+            sock.close()
+            if result == 0:
+                print(" ✓")
+                print(f"{display_name} server is ready on port {OPENPI_PORT}!")
+                time.sleep(3)  # Extra wait to ensure fully initialized
+                return True
+        except:
+            pass
+        print(".", end="", flush=True)
+        time.sleep(1)
+    
+    print(" ✗")
+    print(f"⚠️  Warning: Server did not respond within {max_wait} seconds")
+    return False
+
+def stop_openpi_server():
+    """Stop the currently running OpenPI server"""
+    global _server_process
+    
+    if _server_process is None:
+        return
+    
+    print(f"\n🛑 Stopping OpenPI server (PID: {_server_process.pid})...")
+    
+    try:
+        # Kill entire process group (includes all child processes)
+        os.killpg(os.getpgid(_server_process.pid), signal.SIGTERM)
+        _server_process.wait(timeout=10)
+        print("Server stopped successfully")
+    except subprocess.TimeoutExpired:
+        print("Server didn't stop gracefully, forcing...")
+        try:
+            os.killpg(os.getpgid(_server_process.pid), signal.SIGKILL)
+        except:
+            pass
+    except Exception as e:
+        print(f"Error stopping server: {e}")
+    
+    _server_process = None
+    time.sleep(2)  # Wait for port to be released
+
+def cleanup_server():
+    """Cleanup function to ensure server is stopped on exit"""
+    stop_openpi_server()
+
+# Register cleanup function
+atexit.register(cleanup_server)
 
 # Global camera references for cleanup
 _zed_ext = None
@@ -277,13 +391,28 @@ def bgr_to_rgb(img):
 def main():
     global _emergency_stop, _zed_ext, _zed_wri
     
+    # Get display name for model
+    model_display_name = MODEL_SERVER_CONFIGS.get(MODEL_TYPE, {}).get('display_name', MODEL_TYPE)
+    
     print("=" * 60)
-    print("OpenPI-Polymetis Bridge")
+    print("OpenPI-Polymetis Bridge (Joint Position)")
     print("=" * 60)
+    print(f"Model: {model_display_name} ({MODEL_TYPE})")
+    print(f"Auto start server: {AUTO_START_SERVER}")
     print(f"NUC IP: {NUC_IP}:4242 (zerorpc)")
     print(f"OpenPI: {OPENPI_HOST}:{OPENPI_PORT}")
     print(f"Task: {PROMPT}")
     print("=" * 60)
+    
+    # Auto start OpenPI server if enabled
+    if AUTO_START_SERVER:
+        print(f"\n[0/4] Auto-starting OpenPI server for {MODEL_TYPE}...")
+        if not start_openpi_server(MODEL_TYPE):
+            print("⚠️  Server startup failed or timed out")
+            print("You can try:")
+            print("  1. Set AUTO_START_SERVER = False and start server manually")
+            print("  2. Check if model directory and command are correct")
+            return
     
     # Connect to OpenPI server
     print("\n[1/4] Connecting to OpenPI server...")
@@ -294,7 +423,10 @@ def main():
         print(f"  Server metadata: {server_metadata}")
     except Exception as e:
         print(f"✗ OpenPI connection failed: {e}")
-        print("Make sure OpenPI server is running on port 5555")
+        if AUTO_START_SERVER:
+            print("Server was auto-started but connection failed.")
+        else:
+            print("Make sure OpenPI server is running on port 8000")
         return
     
     # Connect to robot (same as GELLO: launch=True will auto-start robot on NUC)
@@ -976,7 +1108,7 @@ def main():
                             'Position': POSITION_VARIANT if ENABLE_POSITION_VARIANT else None,
                             'Episode': current_episode,
                             'Success': success_str,
-                            'Video_Path': str(session_dir.relative_to(vid_base_dir)),
+                            'Video_Path': str((session_dir / 'shoulder_view.mp4').relative_to(Path(__file__).parent)),
                             'Steps': step
                         }
                         

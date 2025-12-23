@@ -61,7 +61,7 @@ try:
     from openpi_client.websocket_client_policy import WebsocketClientPolicy
 except ImportError:
     print("Error: openpi_client not found. Please install it:")
-    print("  cd /home/duanj1/thomas/openpi/packages/openpi-client && pip install -e .")
+    print("  Install with: uv pip install -e /path/to/openpi/packages/openpi-client --system")
     sys.exit(1)
 
 # Import ZED SDK
@@ -81,19 +81,23 @@ MODEL_TYPE = "pi05_droid_jointpos"  # Using PI0.5 (works for grasping)
 AUTO_START_SERVER = True  # True: Auto manage server, False: Manual (like before)
 
 # Model server configurations - maps MODEL_TYPE to server startup command
+# Compute openpi directory relative to this script
+OPENPI_JOINT_POS_PI05_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'openpi_joint_position_pi05'))
+OPENPI_JOINT_POS_PI0_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'openpi_joint_position_pi0'))
+
 MODEL_SERVER_CONFIGS = {
     "pi05_droid_jointpos": {
-        "dir": "/home/duanj1/thomas/openpi_joint_position_pi05",
+        "dir": OPENPI_JOINT_POS_PI05_DIR,
         "cmd": "uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi05_droid_jointpos --policy.dir=./pi05_droid_jointpos",
         "display_name": "Pi0.5-position"
     },
     "pi0_droid_jointpos": {
-        "dir": "/home/duanj1/thomas/openpi_joint_position_pi0",
+        "dir": OPENPI_JOINT_POS_PI0_DIR,
         "cmd": "uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi0_droid --policy.dir=./pi0_droid_jointpos",
         "display_name": "Pi0-position"
     },
     "pi0_fast_jointpos": {
-        "dir": "/home/duanj1/thomas/openpi_joint_position_pi0",
+        "dir": OPENPI_JOINT_POS_PI0_DIR,
         "cmd": "uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi0_fast_droid --policy.dir=./pi0_fast_droid_jointpos",
         "display_name": "Pi0-fast-position"
     }

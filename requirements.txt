@@ -57,6 +57,10 @@ plotly==6.4.0
 zerorpc==0.6.3
 gevent==24.2.1
 
+# OpenPI Dependencies
+typing_extensions>=4.5.0
+websockets>=10.0
+
 # Utilities
 tqdm==4.67.1
 termcolor
@@ -69,6 +73,7 @@ accelerate
 numba
 PyYAML==6.0.3
 click==8.1.8
+gdown>=5.0.0
 
 # JAX (for some DM control features)
 jax==0.4.13
@@ -81,3 +86,10 @@ glfw==2.10.0
 # GELLO Software Installation (run separately after pip install -r requirements.txt)
 # git clone https://github.com/wuphilipp/gello_software.git ~/gello_software
 # cd ~/gello_software && pip install -e .
+
+# OpenPI Client (install from local workspace)
+# cd ~/thomas/openpi && uv pip install -e packages/openpi-client --system
+
+# ZED SDK (requires manual installation from Stereolabs)
+# Download and install from: https://www.stereolabs.com/developers/release
+# After installing ZED SDK, pyzed will be available automatically

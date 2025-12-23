@@ -54,7 +54,7 @@ try:
     from openpi_client.websocket_client_policy import WebsocketClientPolicy
 except ImportError:
     print("Error: openpi_client not found. Please install it:")
-    print("  cd /home/duanj1/thomas/openpi/packages/openpi-client && pip install -e .")
+    print("  Install with: uv pip install -e /path/to/openpi/packages/openpi-client --system")
     sys.exit(1)
 
 # Import ZED SDK
@@ -74,19 +74,22 @@ MODEL_TYPE = "pi05_droid"
 AUTO_START_SERVER = True  # True: Auto manage server, False: Manual (like before)
 
 # Model server configurations - maps MODEL_TYPE to server startup command
+# Compute openpi directory relative to this script
+OPENPI_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'openpi'))
+
 MODEL_SERVER_CONFIGS = {
     "pi05_droid": {
-        "dir": "/home/duanj1/thomas/openpi",
+        "dir": OPENPI_DIR,
         "cmd": "uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi05_droid --policy.dir=gs://openpi-assets/checkpoints/pi05_droid",
         "display_name": "Pi0.5-velocity"
     },
     "pi0_droid": {
-        "dir": "/home/duanj1/thomas/openpi",
+        "dir": OPENPI_DIR,
         "cmd": "uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi0_droid --policy.dir=gs://openpi-assets/checkpoints/pi0_droid",
         "display_name": "Pi0-velocity"
     },
     "pi0_fast": {
-        "dir": "/home/duanj1/thomas/openpi",
+        "dir": OPENPI_DIR,
         "cmd": "uv run scripts/serve_policy.py policy:checkpoint --policy.config=pi0_fast_droid --policy.dir=gs://openpi-assets/checkpoints/pi0_fast_droid",
         "display_name": "Pi0-fast-velocity"
     }
@@ -660,7 +663,8 @@ def main():
             cv2.putText(combined, "External (ZED 2)", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             cv2.putText(combined, "Wrist (ZED Mini)", (ext_resized.shape[1] + 20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             
-            cv2.imwrite("/home/duanj1/thomas/franka_control/openpi_inference/debug_cameras.jpg", combined)
+            debug_path = Path(__file__).parent / "debug_cameras.jpg"
+            cv2.imwrite(str(debug_path), combined)
             print("  ✓ Saved: debug_cameras.jpg (combined view)\n")
         
     except Exception as e:
@@ -760,8 +764,10 @@ def main():
     last_gripper_cmd = None
     
     # ===== Setup base directory for loop recording =====
-    vid_base_dir = Path("/home/duanj1/thomas/franka_control/openpi_inference/vid")
-    vid_base_dir.mkdir(exist_ok=True)
+    # Use relative path based on script location
+    script_dir = Path(__file__).parent
+    vid_base_dir = script_dir / "vid"
+    vid_base_dir.mkdir(exist_ok=True, parents=True)
     
     # Create task-based folder with position for all recording modes
     if LOOP > 0:
@@ -1098,7 +1104,8 @@ def main():
                                 cv2.putText(combined, f"Step {step}, J5={current_joints[5]:.2f}", (20, combined.shape[0] - 20), 
                                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
                             
-                                cv2.imwrite("/home/duanj1/thomas/franka_control/openpi_inference/debug_approach.jpg", combined)
+                                debug_path = Path(__file__).parent / "debug_approach.jpg"
+                                cv2.imwrite(str(debug_path), combined)
                                 print(f"📸 Updated approach image (J5={current_joints[5]:.3f})")
                             except:
                                 pass

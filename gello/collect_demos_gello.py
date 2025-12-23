@@ -841,6 +841,7 @@ def run_experiment(cfg):
                     target_joints = gello_state[:7]
                     gello_gripper = gello_state[7]
                     
+                    
                     # Get current EE pose (position + euler angles)
                     current_pos = obs["lowdim_ee"][:3]
                     current_angle = obs["lowdim_ee"][3:6]
@@ -853,6 +854,7 @@ def run_experiment(cfg):
                     env.unwrapped._robot.update_gripper(
                         gello_gripper, velocity=False, blocking=False
                     )
+                    print(env.unwrapped._robot._grasping)
                     
                     # Sleep to maintain control frequency
                     time.sleep(1.0 / cfg.robot.control_hz)

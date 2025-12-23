@@ -1,0 +1,7 @@
+Session: 20251120_154243
+Dataset: gello_demo
+Instruction: Put the cube into the plate.
+Episode: 0
+Steps: 127
+Max Steps: 500
+Control Hz: 10

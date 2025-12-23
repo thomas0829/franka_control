@@ -52,7 +52,7 @@ class GelloController:
             # cd /home/robots/gello_software
             # sudo python scripts/gello_get_offset.py --port /dev/ttyUSB0 \
             #   --start-joints 0 0 0 -1.5708 0 1.5708 0 --joint-signs 1 1 1 1 1 -1 1 --gripper
-            joint_offsets = np.array([1.571, 3.142, 6.283, 4.712, 3.142, 1.571, 3.142])
+            joint_offsets = np.array([1.571, 3.142, 6.283, 4.712, 3.142, 4.712, 3.142])
         if joint_signs is None:
             # Joint 6 (index 5) is inverted
             joint_signs = np.array([1, 1, 1, 1, 1, -1, 1])
@@ -105,7 +105,7 @@ class GelloController:
             # Normalize gripper to [0, 1]
             # Actual measured range: [2.542 (closed), 3.513 (open)]
             # Map: 3.513 (open) -> 0, 2.542 (closed) -> 1
-            gripper_min = 2.542  # Pressed/closed
+            gripper_min = 2.77 #2.542  # Pressed/closed
             gripper_max = 3.513  # Released/open
             gripper_normalized = np.clip((gripper_raw - gripper_min) / (gripper_max - gripper_min), 0, 1)
             gripper_normalized = 1.0 - gripper_normalized  # Invert: 0=open, 1=closed

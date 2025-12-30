@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 OpenPI-Polymetis Bridge
-Connects OpenPI server (5555) to Franka robot via Polymetis (NUC)
+Connects OpenPI server (8000) to Franka robot via Polymetis (NUC)
 Connects to existing robot services without re-launching them
 
 Supported Models:

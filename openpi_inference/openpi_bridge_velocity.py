@@ -48,13 +48,22 @@ signal.signal(signal.SIGINT, signal_handler)
 
 # Add project path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+OPENPI_CLIENT_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', '..', 'openpi', 'packages', 'openpi-client')
+)
 
 # Import OpenPI client
 try:
     from openpi_client.websocket_client_policy import WebsocketClientPolicy
 except ImportError:
-    print("Error: openpi_client not found. Please install it:")
-    print("  Install with: uv pip install -e /path/to/openpi/packages/openpi-client --system")
+    print("Error: openpi_client not found in this Python environment:")
+    print(f"  Python: {sys.executable}")
+    if os.path.isdir(OPENPI_CLIENT_DIR):
+        print("  Install with one of:")
+        print(f"    {sys.executable} -m pip install -e {OPENPI_CLIENT_DIR}")
+        print(f"    uv pip install -e {OPENPI_CLIENT_DIR} --python {sys.executable}")
+    else:
+        print("  Install openpi-client into the same Python interpreter used to run this script.")
     sys.exit(1)
 
 # Import ZED SDK
@@ -106,21 +115,21 @@ USE_REALSENSE_WRIST = False         # No RealSense cameras
 NUC_IP = "192.168.1.6"              # Polymetis zerorpc server IP (port 4242)
 OPENPI_HOST = "127.0.0.1"           # OpenPI server IP
 OPENPI_PORT = 8000                  # OpenPI server port
-PROMPT = "Pick up the orange."  # Task instruction for OpenPI
+PROMPT = "Put the doll on the plate."  # Task instruction for OpenPI
 # ============ Loop Recording Configuration ============
 # Set LOOP to the number of episodes you want to record
 # LOOP = 0: Stop record
 # LOOP = 1: Record 1 episode (single recording)
 # LOOP = 3: Record 3 episodes (will loop 3 times)
 # Each episode will be saved in a separate timestamped folder under a task-named directory
-LOOP = 3  # Number of episodes to record per position per model
+LOOP = 0  # Number of episodes to record per position per model
 
 # ============ Position Configuration ============
 # New recording scheme:
 # - 6 models (3 velocity: pi0, pi0_fast, pi05 + 3 position: pi0, pi0_fast, pi05)
 # - Each model runs 9 times: 3 initial positions × 3 videos per position
 # - Total: 6 models × 9 runs = 54 videos per task
-ENABLE_POSITION_VARIANT = True  # Set to True to use position variants and log to Excel
+ENABLE_POSITION_VARIANT = False  # Set to True to use position variants and log to Excel
 POSITION_VARIANT = "pos-1"  # Current position: "pos-1", "pos-2", or "pos-3" (only used if ENABLE_POSITION_VARIANT is True)
 
 # ============ Excel Logging Configuration ============
@@ -130,22 +139,32 @@ POSITION_VARIANT = "pos-1"  # Current position: "pos-1", "pos-2", or "pos-3" (on
 # - Success status (yes/no)
 # Data logged: Task, Episode, Model, Success, Video Path, Timestamp
 # Excel file will be saved in the vid directory as "episode_log.xlsx"
-ENABLE_EXCEL_LOGGING = True  # True: Enable logging, False: Disable
+ENABLE_EXCEL_LOGGING = False  # True: Enable logging, False: Disable
 
 # ZED Camera Configuration (Official OpenPI DROID Setup)
 # Both cameras now working on USB 3.0
 # Using Serial Numbers instead of IDs for stability (IDs can change after reconnection)
+# If a camera was replaced, re-check current serial numbers with:
+#   python - <<'PY'
+#   import pyzed.sl as sl
+#   for d in sl.Camera.get_device_list():
+#       print(d.camera_model, d.serial_number, d.camera_state, d.path)
+#   PY
+# If a camera shows up as NOT AVAILABLE, inspect USB-level serials with:
+#   for dev in $(lsusb -d 2b03: | awk '{print $6}'); do
+#       echo "== $dev =="; lsusb -v -d "$dev" 2>/dev/null | rg 'iProduct|iSerial'
+#   done
 ZED_EXTERNAL_ID = None              # Not using ID, using SN instead
 ZED_EXTERNAL_SN = 26706125          # ZED 2 (external/shoulder view)
 ZED_WRIST_ID = None                 # Not using ID, using SN instead
-ZED_WRIST_SN = 14943057             # ZED Mini (wrist view)
+ZED_WRIST_SN = 15679333             # ZED Mini (wrist view)
 WIDTH, HEIGHT, FPS = 1280, 720, 15  # ZED HD720 mode @ 15fps (official DROID config)
 # Note: Using SN ensures cameras are always correctly identified even after USB reconnection
 
 DROID_CONTROL_FREQUENCY = 15  # Hz
 
 # Maximum steps before stopping
-MAX_STEPS = 1000
+MAX_STEPS = 10000
 
 # Action horizon (official OpenPI settings):
 # PI0/PI0_FAST: action_horizon=10 (official training), PI05: action_horizon=16 
@@ -258,6 +277,35 @@ print(f"Policy query frequency: ~{CTRL_HZ / OPEN_LOOP_HORIZON:.2f} Hz")
 print(f"Open loop horizon: {OPEN_LOOP_HORIZON} steps")
 print(f"Velocity control mode: TRUE_VELOCITY (direct velocity commands)")
 print(f"Velocity scale: {VELOCITY_SCALE:.2f} (safety factor)")
+
+def print_zed_sn_lookup_help():
+    """Print commands for checking current ZED serial numbers."""
+    print("  To check current ZED serial numbers:")
+    print("    python - <<'PY'")
+    print("    import pyzed.sl as sl")
+    print("    for d in sl.Camera.get_device_list():")
+    print("        print(d.camera_model, d.serial_number, d.camera_state, d.path)")
+    print("    PY")
+    print("  If a camera shows NOT AVAILABLE, check USB-level serials:")
+    print("    for dev in $(lsusb -d 2b03: | awk '{print $6}'); do")
+    print("        echo \"== $dev ==\"; lsusb -v -d \"$dev\" 2>/dev/null | rg 'iProduct|iSerial'")
+    print("    done")
+
+def print_zed_device_list():
+    """Print the current device list seen by the ZED SDK."""
+    if not ZED_AVAILABLE:
+        return
+    try:
+        devices = sl.Camera.get_device_list()
+    except Exception as exc:
+        print(f"  Could not query ZED device list: {exc}")
+        return
+    print("  ZED SDK device list:")
+    if not devices:
+        print("    <empty>")
+        return
+    for i, dev in enumerate(devices):
+        print(f"    [{i}] model={dev.camera_model} sn={dev.serial_number} state={dev.camera_state} path={dev.path}")
 
 def open_zed_camera(camera_id=None, serial_number=None, width=1280, height=720, fps=30):
     """Open ZED camera with optimized settings
@@ -606,6 +654,8 @@ def main():
             print(f"✗ External ZED camera initialization failed (attempt {attempt+1}/{MAX_RETRIES}): {e}")
             if attempt == MAX_RETRIES - 1:
                 print("✗ External camera failed after all retries")
+                print_zed_device_list()
+                print_zed_sn_lookup_help()
                 cleanup_cameras()
                 return
     
@@ -633,6 +683,8 @@ def main():
             print(f"✗ Wrist ZED camera initialization failed (attempt {attempt+1}/{MAX_RETRIES}): {e}")
             if attempt == MAX_RETRIES - 1:
                 print("✗ Wrist camera failed after all retries")
+                print_zed_device_list()
+                print_zed_sn_lookup_help()
                 cleanup_cameras()
                 return
     

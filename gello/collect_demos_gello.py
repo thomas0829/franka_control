@@ -50,7 +50,7 @@ except ImportError:
 
 # ZED Camera Configuration (matching openpi_bridge_velocity.py)
 ZED_EXTERNAL_SN = 26706125  # ZED 2 (external/shoulder view)
-ZED_WRIST_SN = 14943057     # ZED Mini (wrist view)
+ZED_WRIST_SN = 15679333     # ZED Mini (wrist view)
 WIDTH, HEIGHT, FPS = 1280, 720, 15  # ZED HD720 mode @ 15fps
 
 # Global camera references for cleanup

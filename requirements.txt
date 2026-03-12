@@ -1,4 +1,5 @@
 # Core Dependencies for Franka Control Project
+# Requires Python 3.9.x. The pinned DM robotics stack does not resolve on Python 3.13.
 # Install with: pip install -r requirements.txt
 
 # Deep Learning
@@ -27,7 +28,8 @@ omegaconf==2.3.0
 wandb==0.23.0
 
 # Computer Vision & Cameras
-opencv-python==4.12.0.88
+# 4.12+ requires numpy>=2 on Python 3.9+, which conflicts with the pinned DM robotics stack.
+opencv-python==4.11.0.86
 pyrealsense2==2.55.1.6486
 open3d==0.19.0
 pillow==10.2.0
@@ -36,7 +38,7 @@ pillow==10.2.0
 dynamixel-sdk==3.8.4
 pygame==2.6.1
 pyserial==3.5
-oculus-reader==1.0.0
+oculus_reader @ git+https://github.com/rail-berkeley/oculus_reader.git
 pyquaternion==0.9.9
 pyzmq==27.1.0
 pure-python-adb==0.3.0.dev0
@@ -77,7 +79,7 @@ gdown>=5.0.0
 
 # JAX (for some DM control features)
 jax==0.4.13
-jaxlib==0.4.13
+jaxlib==0.4.17
 
 # 3D Graphics
 PyOpenGL==3.1.10

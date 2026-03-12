@@ -136,10 +136,20 @@ ENABLE_EXCEL_LOGGING = True  # True: Enable logging, False: Disable
 # ZED Camera Configuration (Official OpenPI DROID Setup)
 # Both cameras now working on USB 3.0
 # Using Serial Numbers instead of IDs for stability (IDs can change after reconnection)
+# If a camera was replaced, re-check current serial numbers with:
+#   python - <<'PY'
+#   import pyzed.sl as sl
+#   for d in sl.Camera.get_device_list():
+#       print(d.camera_model, d.serial_number, d.camera_state, d.path)
+#   PY
+# If a camera shows up as NOT AVAILABLE, inspect USB-level serials with:
+#   for dev in $(lsusb -d 2b03: | awk '{print $6}'); do
+#       echo "== $dev =="; lsusb -v -d "$dev" 2>/dev/null | rg 'iProduct|iSerial'
+#   done
 ZED_EXTERNAL_ID = None              # Not using ID, using SN instead
 ZED_EXTERNAL_SN = 26706125          # ZED 2 (external/shoulder view)
 ZED_WRIST_ID = None                 # Not using ID, using SN instead
-ZED_WRIST_SN = 14943057             # ZED Mini (wrist view)
+ZED_WRIST_SN = 15679333             # ZED Mini (wrist view)
 WIDTH, HEIGHT, FPS = 1280, 720, 15  # ZED HD720 mode @ 15fps (official DROID config)
 # Note: Using SN ensures cameras are always correctly identified even after USB reconnection
 
@@ -182,6 +192,35 @@ if OUTPUT_IS_DELTA:
     print(f"Delta scale: {DELTA_SCALE:.1f} (SAFETY: scaling down delta for testing)")
 print(f"EMA smoothing: {'enabled (alpha=' + str(EMA_ALPHA) + ')' if USE_EMA_SMOOTHING else 'disabled'}")
 # =======================================
+
+def print_zed_sn_lookup_help():
+    """Print commands for checking current ZED serial numbers."""
+    print("  To check current ZED serial numbers:")
+    print("    python - <<'PY'")
+    print("    import pyzed.sl as sl")
+    print("    for d in sl.Camera.get_device_list():")
+    print("        print(d.camera_model, d.serial_number, d.camera_state, d.path)")
+    print("    PY")
+    print("  If a camera shows NOT AVAILABLE, check USB-level serials:")
+    print("    for dev in $(lsusb -d 2b03: | awk '{print $6}'); do")
+    print("        echo \"== $dev ==\"; lsusb -v -d \"$dev\" 2>/dev/null | rg 'iProduct|iSerial'")
+    print("    done")
+
+def print_zed_device_list():
+    """Print the current device list seen by the ZED SDK."""
+    if not ZED_AVAILABLE:
+        return
+    try:
+        devices = sl.Camera.get_device_list()
+    except Exception as exc:
+        print(f"  Could not query ZED device list: {exc}")
+        return
+    print("  ZED SDK device list:")
+    if not devices:
+        print("    <empty>")
+        return
+    for i, dev in enumerate(devices):
+        print(f"    [{i}] model={dev.camera_model} sn={dev.serial_number} state={dev.camera_state} path={dev.path}")
 
 # ============ Auto Server Management Functions ============
 _server_process = None  # Global variable to track server process
@@ -507,6 +546,8 @@ def main():
             get_zed_image(zed_ext, zed_ext_runtime)
     except Exception as e:
         print(f"✗ External ZED camera initialization failed: {e}")
+        print_zed_device_list()
+        print_zed_sn_lookup_help()
         cleanup_cameras()
         return
     
@@ -526,6 +567,8 @@ def main():
             get_zed_image(zed_wri, zed_wri_runtime)  # No rotation
     except Exception as e:
         print(f"✗ Wrist ZED camera initialization failed: {e}")
+        print_zed_device_list()
+        print_zed_sn_lookup_help()
         cleanup_cameras()
         return
     

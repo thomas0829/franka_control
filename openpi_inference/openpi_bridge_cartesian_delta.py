@@ -87,10 +87,10 @@ def main():
     try:
         openpi_client = WebsocketClientPolicy(host=OPENPI_HOST, port=OPENPI_PORT)
         server_metadata = openpi_client.get_server_metadata()
-        print(f"✓ OpenPI connected")
+        print(f"[OK] OpenPI connected")
         print(f"  Server metadata: {server_metadata}")
     except Exception as e:
-        print(f"✗ OpenPI connection failed: {e}")
+        print(f"[ERR] OpenPI connection failed: {e}")
         print("Make sure OpenPI server is running on port 5555")
         return
     
@@ -103,12 +103,12 @@ def main():
         print(f"  Connecting to zerorpc at {NUC_IP}:4242...")
         print("  (This will auto-launch Polymetis robot_server on NUC)")
         robot = ServerInterface(ip_address=NUC_IP)  # launch=True by default!
-        print("  ✓ Robot launched and connected")
+        print("  [OK] Robot launched and connected")
         
         # Test connection by getting robot state
         print("  Testing robot state...")
         joint_pos = robot.get_joint_positions()
-        print(f"  ✓ Got joint positions: {joint_pos[:3]}... (showing first 3)")
+        print(f"  [OK] Got joint positions: {joint_pos[:3]}... (showing first 3)")
         
         # Reset to home position at startup
         print("\n  Resetting robot to home position...")
@@ -129,12 +129,12 @@ def main():
         
         # Open gripper (0.0 = open for Robotiq)
         robot.update_gripper(command=0.0, velocity=False, blocking=True)
-        print("  ✓ Robot reset to home position")
+        print("  [OK] Robot reset to home position")
         
-        print("✓ Robot interface ready")
+        print("[OK] Robot interface ready")
         
     except Exception as e:
-        print(f"✗ Robot connection failed: {e}")
+        print(f"[ERR] Robot connection failed: {e}")
         import traceback
         traceback.print_exc()
         return
@@ -143,22 +143,22 @@ def main():
     print("\n[3/4] Initializing RealSense cameras...")
     try:
         ext_p = open_color_pipeline(EXT_SN, WIDTH, HEIGHT, FPS)
-        print(f"✓ External camera (SN: {EXT_SN})")
+        print(f"[OK] External camera (SN: {EXT_SN})")
         # Warm up camera (skip first few frames for auto-exposure to stabilize)
         for _ in range(10):
             ext_p.wait_for_frames()
     except Exception as e:
-        print(f"✗ External camera connection failed: {e}")
+        print(f"[ERR] External camera connection failed: {e}")
         return
     
     try:
         wri_p = open_color_pipeline(WRIST_SN, WIDTH, HEIGHT, FPS)
-        print(f"✓ Wrist camera (SN: {WRIST_SN})")
+        print(f"[OK] Wrist camera (SN: {WRIST_SN})")
         # Warm up camera
         for _ in range(10):
             wri_p.wait_for_frames()
     except Exception as e:
-        print(f"✗ Wrist camera connection failed: {e}")
+        print(f"[ERR] Wrist camera connection failed: {e}")
         ext_p.stop()
         return
     
@@ -172,7 +172,7 @@ def main():
     print("  - Robot is at home position")
     print("  - Scene is set up correctly")
     print("=" * 60)
-    print("\n👁️  Press ENTER when ready to start inference, or Ctrl+C to quit")
+    print("\n[READY]  Press ENTER when ready to start inference, or Ctrl+C to quit")
     
     try:
         # Preview loop - show cameras until user presses Enter
@@ -209,18 +209,18 @@ def main():
             # Check for Enter key or window close (check every frame for responsiveness)
             key = cv2.waitKey(1)  # 1ms instead of 30ms for better responsiveness
             if key == 13:  # Enter key
-                print("\n✓ Starting inference...")
+                print("\n[OK] Starting inference...")
                 cv2.destroyAllWindows()  # Close the preview window
                 break
             elif key == 27:  # ESC key
-                print("\n✗ Cancelled by user")
+                print("\n[ERR] Cancelled by user")
                 cv2.destroyAllWindows()
                 ext_p.stop()
                 wri_p.stop()
                 return
                 
     except KeyboardInterrupt:
-        print("\n✗ Cancelled by user")
+        print("\n[ERR] Cancelled by user")
         cv2.destroyAllWindows()
         ext_p.stop()
         wri_p.stop()
@@ -274,7 +274,7 @@ def main():
                 out = openpi_client.infer(obs)
             except Exception as e:
                 if time.time() - last_print_time > 1.0:
-                    print(f"⚠ OpenPI inference error: {e}")
+                    print(f"[WARN] OpenPI inference error: {e}")
                     last_print_time = time.time()
                 time.sleep(dt)
                 continue
@@ -283,12 +283,12 @@ def main():
             # OpenPI returns: {"actions": (10, 8)} where each action is [dq1...dq7, gripper]
             try:
                 if "actions" not in out:
-                    print(f"✗ No 'actions' key in output: {out.keys()}")
+                    print(f"[ERR] No 'actions' key in output: {out.keys()}")
                     break
                 
                 actions = out["actions"]  # shape: (horizon, 8)
                 if len(actions.shape) != 2 or actions.shape[1] != 8:
-                    print(f"✗ Unexpected action shape: {actions.shape}, expected (N, 8)")
+                    print(f"[ERR] Unexpected action shape: {actions.shape}, expected (N, 8)")
                     break
                 
                 # Use first action (index 0)
@@ -329,7 +329,7 @@ def main():
                 execution_ratio = np.linalg.norm(actual_dq) / (np.linalg.norm(dq) + 1e-6)
                 
                 if step % 10 == 0 and execution_ratio < 0.5:
-                    print(f"  ⚠ Action underexecuted: commanded {np.linalg.norm(dq):.4f}, "
+                    print(f"  [WARN] Action underexecuted: commanded {np.linalg.norm(dq):.4f}, "
                           f"actual {np.linalg.norm(actual_dq):.4f} (ratio: {execution_ratio:.2f})")
                 
                 # ===== Intelligent Gripper Control =====
@@ -350,7 +350,7 @@ def main():
                 if last_gripper_state is None:
                     # First step - initialize gripper
                     should_update_gripper = True
-                    print(f"  🔧 Initializing gripper: {desired_state}")
+                    print(f"  [GRIP] Initializing gripper: {desired_state}")
                 elif desired_state != last_gripper_state:
                     # State transition detected
                     # Only act if the change is significant (hysteresis)
@@ -358,7 +358,7 @@ def main():
                         change = abs(gripper_openpi - last_gripper_value)
                         if change > GRIPPER_CHANGE_THRESHOLD:
                             should_update_gripper = True
-                            print(f"  🔧 Gripper state change: {last_gripper_state} -> {desired_state} (Δ={change:.3f})")
+                            print(f"  [GRIP] Gripper state change: {last_gripper_state} -> {desired_state} (Δ={change:.3f})")
                 elif step % GRIPPER_UPDATE_INTERVAL == 0 and step > 0:
                     # Periodic update to ensure gripper maintains position
                     # Only if value has changed significantly
@@ -402,7 +402,7 @@ def main():
                               f"{dq[4]:+.3f},{dq[5]:+.3f},{dq[6]:+.3f}] grip={grip_display}")
             
             except Exception as e:
-                print(f"✗ Action execution error: {e}")
+                print(f"[ERR] Action execution error: {e}")
                 import traceback
                 traceback.print_exc()
                 break
@@ -414,12 +414,12 @@ def main():
             
             # Monitor loop time
             if elapsed > dt * 1.5 and step % 10 == 0:
-                print(f"⚠ Loop time too long: {elapsed*1000:.1f}ms (target: {dt*1000:.1f}ms)")
+                print(f"[WARN] Loop time too long: {elapsed*1000:.1f}ms (target: {dt*1000:.1f}ms)")
             
     except KeyboardInterrupt:
         print("\n\nReceived stop signal")
     except Exception as e:
-        print(f"\n✗ Error: {e}")
+        print(f"\n[ERR] Error: {e}")
         import traceback
         traceback.print_exc()
     finally:
@@ -445,23 +445,23 @@ def main():
                 velocity=False,
                 blocking=True
             )
-            print("  ✓ Moved to home position")
+            print("  [OK] Moved to home position")
             
             # Open gripper (0.0 = open for Robotiq)
             print("  Opening gripper...")
             robot.update_gripper(command=0.0, velocity=False, blocking=True)
-            print("  ✓ Gripper opened")
+            print("  [OK] Gripper opened")
             
-            print("✓ Robot reset complete")
+            print("[OK] Robot reset complete")
         except Exception as e:
-            print(f"  ⚠ Failed to reset robot: {e}")
+            print(f"  [WARN] Failed to reset robot: {e}")
         
         # Close cameras and windows
         cv2.destroyAllWindows()
         ext_p.stop()
         wri_p.stop()
-        print("✓ Cameras and display closed")
-        print(f"✓ Total steps: {step}")
+        print("[OK] Cameras and display closed")
+        print(f"[OK] Total steps: {step}")
         print("Program ended")
 
 

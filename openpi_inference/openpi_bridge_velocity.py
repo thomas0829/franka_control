@@ -41,7 +41,7 @@ def signal_handler(signum, frame):
     """Handle Ctrl+C by setting emergency stop flag"""
     global _emergency_stop
     _emergency_stop = True
-    print("\n\n🛑 Ctrl+C detected - Emergency stop triggered!", flush=True)
+    print("\n\n[STOP] Ctrl+C detected - Emergency stop triggered!", flush=True)
 
 # Register signal handler
 signal.signal(signal.SIGINT, signal_handler)
@@ -195,7 +195,7 @@ def start_openpi_server(model_type):
     display_name = config.get('display_name', model_type)
     
     print(f"\n{'='*60}")
-    print(f"🚀 Starting OpenPI server")
+    print(f"[START] Starting OpenPI server")
     print(f"{'='*60}")
     print(f"Model: {display_name} ({model_type})")
     print(f"Directory: {config['dir']}")
@@ -226,7 +226,7 @@ def start_openpi_server(model_type):
             result = sock.connect_ex(('127.0.0.1', OPENPI_PORT))
             sock.close()
             if result == 0:
-                print(" ✓")
+                print(" [OK]")
                 print(f"{display_name} server is ready on port {OPENPI_PORT}!")
                 time.sleep(3)  # Extra wait to ensure fully initialized
                 return True
@@ -235,8 +235,8 @@ def start_openpi_server(model_type):
         print(".", end="", flush=True)
         time.sleep(1)
     
-    print(" ✗")
-    print(f"⚠️  Warning: Server did not respond within {max_wait} seconds")
+    print(" [ERR]")
+    print(f"[WARN]  Warning: Server did not respond within {max_wait} seconds")
     return False
 
 def stop_openpi_server():
@@ -246,7 +246,7 @@ def stop_openpi_server():
     if _server_process is None:
         return
     
-    print(f"\n🛑 Stopping OpenPI server (PID: {_server_process.pid})...")
+    print(f"\n[STOP] Stopping OpenPI server (PID: {_server_process.pid})...")
     
     try:
         # Kill entire process group (includes all child processes)
@@ -399,18 +399,18 @@ def cleanup_cameras():
     try:
         if _zed_ext is not None:
             _zed_ext.close()
-            print("  ✓ External ZED camera closed")
+            print("  [OK] External ZED camera closed")
             _zed_ext = None
     except Exception as e:
-        print(f"  ⚠ Error closing external camera: {e}")
+        print(f"  [WARN] Error closing external camera: {e}")
     
     try:
         if _zed_wri is not None:
             _zed_wri.close()
-            print("  ✓ Wrist ZED camera closed")
+            print("  [OK] Wrist ZED camera closed")
             _zed_wri = None
     except Exception as e:
-        print(f"  ⚠ Error closing wrist camera: {e}")
+        print(f"  [WARN] Error closing wrist camera: {e}")
     
     # Add a small delay to ensure cleanup completes
     time.sleep(0.5)
@@ -423,7 +423,7 @@ def emergency_stop_robot():
         return
     
     try:
-        print("\n🛑 Emergency stop - Stopping robot...")
+        print("\n[STOP] Emergency stop - Stopping robot...")
         
         # Just stop any motion - don't try to move anywhere
         zero_velocity = [0.0] * 7 + [0.0]
@@ -434,9 +434,9 @@ def emergency_stop_robot():
             blocking=False
         )
         time.sleep(0.2)
-        print("   ✓ Robot stopped")
+        print("   [OK] Robot stopped")
     except Exception as e:
-        print(f"   ⚠ Error stopping robot: {e}")
+        print(f"   [WARN] Error stopping robot: {e}")
 
 def reset_robot_to_home():
     """Reset robot to home position safely (only for normal completion)"""
@@ -446,22 +446,22 @@ def reset_robot_to_home():
         return
     
     try:
-        print("\n🔄 Returning robot to home position...")
+        print("\n[RESET] Returning robot to home position...")
         
         # Use the same home position as everywhere else in the code
         home_joints = np.array([0.0, -0.5, 0.0, -2.40, 0.0, 1.90, 0.0])
         # Use blocking=True for slower, safer movement
         _robot_ref.update_joints(command=home_joints.tolist(), velocity=False, blocking=True)
         _robot_ref.update_gripper(command=0.0, velocity=False, blocking=True)
-        print("   ✓ Robot returned to home position")
+        print("   [OK] Robot returned to home position")
     except Exception as e:
-        print(f"   ⚠ Error resetting robot: {e}")
+        print(f"   [WARN] Error resetting robot: {e}")
 
 def signal_handler(sig, frame):
     """Handle termination signals"""
     global _emergency_stop
     
-    print(f"\n\n🛑 SIGNAL RECEIVED: {sig}")
+    print(f"\n\n[STOP] SIGNAL RECEIVED: {sig}")
     print("   Setting emergency stop flag...")
     
     # Set emergency stop flag
@@ -534,14 +534,14 @@ def main():
     print(f"NUC IP: {NUC_IP}:4242 (zerorpc)")
     print(f"OpenPI: {OPENPI_HOST}:{OPENPI_PORT}")
     print(f"Task: {PROMPT}")
-    print(f"🔁 Episodes to record: {LOOP}")
+    print(f"[LOOP] Episodes to record: {LOOP}")
     print("=" * 60)
     
     # Auto start OpenPI server if enabled
     if AUTO_START_SERVER:
         print(f"\n[0/4] Auto-starting OpenPI server for {MODEL_TYPE}...")
         if not start_openpi_server(MODEL_TYPE):
-            print("⚠️  Server startup failed or timed out")
+            print("[WARN]  Server startup failed or timed out")
             print("You can try:")
             print("  1. Set AUTO_START_SERVER = False and start server manually")
             print("  2. Check if model directory and command are correct")
@@ -552,10 +552,10 @@ def main():
     try:
         openpi_client = WebsocketClientPolicy(host=OPENPI_HOST, port=OPENPI_PORT)
         server_metadata = openpi_client.get_server_metadata()
-        print(f"✓ OpenPI connected")
+        print(f"[OK] OpenPI connected")
         print(f"  Server metadata: {server_metadata}")
     except Exception as e:
-        print(f"✗ OpenPI connection failed: {e}")
+        print(f"[ERR] OpenPI connection failed: {e}")
         if AUTO_START_SERVER:
             print("Server was auto-started but connection failed.")
         else:
@@ -572,12 +572,12 @@ def main():
         print("  (This will auto-launch Polymetis robot_server on NUC)")
         robot = ServerInterface(ip_address=NUC_IP)  # launch=True by default!
         _robot_ref = robot  # Store global reference for emergency cleanup
-        print("  ✓ Robot launched and connected")
+        print("  [OK] Robot launched and connected")
         
         # Test connection by getting robot state
         print("  Testing robot state...")
         joint_pos = robot.get_joint_positions()
-        print(f"  ✓ Got joint positions: {joint_pos[:3]}... (showing first 3)")
+        print(f"  [OK] Got joint positions: {joint_pos[:3]}... (showing first 3)")
         
         # Reset to home position at startup
         print("\n  Resetting robot to home position...")
@@ -601,12 +601,12 @@ def main():
         
         # Open gripper (0.0 = open for Robotiq)
         robot.update_gripper(command=0.0, velocity=False, blocking=True)
-        print("  ✓ Robot reset to home position")
+        print("  [OK] Robot reset to home position")
         
-        print("✓ Robot interface ready")
+        print("[OK] Robot interface ready")
         
     except Exception as e:
-        print(f"✗ Robot connection failed: {e}")
+        print(f"[ERR] Robot connection failed: {e}")
         import traceback
         traceback.print_exc()
         return
@@ -644,16 +644,16 @@ def main():
                 fps=FPS
             )
             _zed_ext = zed_ext  # Store for cleanup
-            print(f"✓ External ZED camera (SN: {ext_sn})")
+            print(f"[OK] External ZED camera (SN: {ext_sn})")
             print(f"  Model: {ext_model}")
             # Warm up camera
             for _ in range(10):
                 get_zed_image(zed_ext, zed_ext_runtime)
             break  # Success, exit retry loop
         except Exception as e:
-            print(f"✗ External ZED camera initialization failed (attempt {attempt+1}/{MAX_RETRIES}): {e}")
+            print(f"[ERR] External ZED camera initialization failed (attempt {attempt+1}/{MAX_RETRIES}): {e}")
             if attempt == MAX_RETRIES - 1:
-                print("✗ External camera failed after all retries")
+                print("[ERR] External camera failed after all retries")
                 print_zed_device_list()
                 print_zed_sn_lookup_help()
                 cleanup_cameras()
@@ -673,16 +673,16 @@ def main():
                 fps=FPS
             )
             _zed_wri = zed_wri  # Store for cleanup
-            print(f"✓ Wrist ZED camera (SN: {wri_sn})")
+            print(f"[OK] Wrist ZED camera (SN: {wri_sn})")
             print(f"  Model: {wri_model}")
             # Warm up camera
             for _ in range(10):
                 get_zed_image(zed_wri, zed_wri_runtime)  # No rotation
             break  # Success, exit retry loop
         except Exception as e:
-            print(f"✗ Wrist ZED camera initialization failed (attempt {attempt+1}/{MAX_RETRIES}): {e}")
+            print(f"[ERR] Wrist ZED camera initialization failed (attempt {attempt+1}/{MAX_RETRIES}): {e}")
             if attempt == MAX_RETRIES - 1:
-                print("✗ Wrist camera failed after all retries")
+                print("[ERR] Wrist camera failed after all retries")
                 print_zed_device_list()
                 print_zed_sn_lookup_help()
                 cleanup_cameras()
@@ -717,10 +717,10 @@ def main():
             
             debug_path = Path(__file__).parent / "debug_cameras.jpg"
             cv2.imwrite(str(debug_path), combined)
-            print("  ✓ Saved: debug_cameras.jpg (combined view)\n")
+            print("  [OK] Saved: debug_cameras.jpg (combined view)\n")
         
     except Exception as e:
-        print(f"  ⚠️  Failed to save debug image: {e}\n")
+        print(f"  [WARN]  Failed to save debug image: {e}\n")
     
     # Preview cameras and wait for confirmation
     print("\n[4/5] Camera Preview")
@@ -732,7 +732,7 @@ def main():
     print("  - Robot is at home position")
     print("  - Scene is set up correctly")
     print("=" * 60)
-    print("\n👁️  Press ENTER when ready to start inference, or Ctrl+C to quit")
+    print("\n[READY]  Press ENTER when ready to start inference, or Ctrl+C to quit")
     
     try:
         # Preview loop - show cameras until user presses Enter
@@ -788,17 +788,17 @@ def main():
             # Check for Enter key or window close (check every frame for responsiveness)
             key = cv2.waitKey(1)  # 1ms instead of 30ms for better responsiveness
             if key == 13:  # Enter key
-                print("\n✓ Starting inference...")
+                print("\n[OK] Starting inference...")
                 cv2.destroyAllWindows()  # Close the preview window
                 break
             elif key == 27:  # ESC key
-                print("\n✗ Cancelled by user")
+                print("\n[ERR] Cancelled by user")
                 cv2.destroyAllWindows()
                 cleanup_cameras()
                 return
                 
     except KeyboardInterrupt:
-        print("\n✗ Cancelled by user")
+        print("\n[ERR] Cancelled by user")
         cv2.destroyAllWindows()
         cleanup_cameras()
         return
@@ -807,7 +807,7 @@ def main():
     print(f"\n[5/5] Starting control loop")
     print(f"Control Frequency: {CTRL_HZ} Hz (DROID official)")
     print(f"Policy Query Frequency: ~{CTRL_HZ / OPEN_LOOP_HORIZON:.1f} Hz (every {OPEN_LOOP_HORIZON} steps)")
-    print("\n⌨️  Controls:")
+    print("\n[KEYS]  Controls:")
     print("  - Press 'Q' to stop current episode early (saves and continues to next)")
     print("  - Press Ctrl+C to emergency stop (saves and exits program)")
     print("-" * 60)
@@ -834,15 +834,15 @@ def main():
         task_dir = model_dir  # Final directory for this session
         task_dir.mkdir(parents=True, exist_ok=True)
         if LOOP > 1:
-            print(f"\n🔁 Recording {LOOP} episodes")
+            print(f"\n[LOOP] Recording {LOOP} episodes")
         else:
-            print(f"\n🔁 Recording 1 episode")
+            print(f"\n[LOOP] Recording 1 episode")
         if ENABLE_POSITION_VARIANT:
             print(f"   Position: {POSITION_VARIANT}")
         print(f"   Model: {MODEL_TYPE}")
         print(f"   Save to: {task_dir}")
     else:
-        print(f"\n♾️  Infinite inference mode (LOOP=0)")
+        print(f"\n[INF]  Infinite inference mode (LOOP=0)")
         print(f"   Press Ctrl+C to stop anytime")
         print(f"   No video recording")
     
@@ -862,7 +862,7 @@ def main():
     while completed_episodes < num_iterations:
         # Check emergency stop at start of each episode
         if _emergency_stop:
-            print("\n🛑 Emergency stop - Exiting episode loop", flush=True)
+            print("\n[STOP] Emergency stop - Exiting episode loop", flush=True)
             break
         
         if LOOP > 1:
@@ -924,7 +924,7 @@ def main():
             
             # Verify writers are opened successfully
             if not shoulder_video.isOpened() or not wrist_video.isOpened():
-                print(f"   ⚠ ERROR: Failed to open video writers!")
+                print(f"   [WARN] ERROR: Failed to open video writers!")
                 print(f"   Codec: mp4v")
                 print(f"   This may cause video recording to fail")
             
@@ -932,14 +932,14 @@ def main():
             print(f"   Wrist video: {session_dir / 'wrist_view.mp4'}")
             print(f"   Recording will stop after {MAX_STEPS} steps\n")
         else:
-            print(f"\n🚀 Starting inference (no recording)")
+            print(f"\n[START] Starting inference (no recording)")
             print(f"   Will run until Ctrl+C or max {MAX_STEPS} steps\n")
         
         try:
             while step < MAX_STEPS:
                 # Check emergency stop IMMEDIATELY at start of loop
                 if _emergency_stop:
-                    print("\n🛑 Emergency stop detected - Exiting control loop gracefully", flush=True)
+                    print("\n[STOP] Emergency stop detected - Exiting control loop gracefully", flush=True)
                     break  # Exit loop gracefully instead of raising exception
                 
                 t0 = time.time()
@@ -950,7 +950,7 @@ def main():
                 if select.select([sys.stdin], [], [], 0.0)[0]:
                     key = sys.stdin.read(1)
                     if key.lower() == 'q':
-                        print("\n\n⏹️  'Q' key pressed - Stopping current episode early")
+                        print("\n\n[STOP]  'Q' key pressed - Stopping current episode early")
                         break
                 
                 # Get External ZED image
@@ -1016,13 +1016,13 @@ def main():
                         query_time = time.time() - query_start
                     
                         if "actions" not in out:
-                            print(f"✗ No 'actions' key in output: {out.keys()}")
+                            print(f"[ERR] No 'actions' key in output: {out.keys()}")
                             break
                     
                         pred_action_chunk = out["actions"]  # shape: (horizon, 8)
                     
                         if len(pred_action_chunk.shape) != 2 or pred_action_chunk.shape[1] != 8:
-                            print(f"✗ Unexpected action shape: {pred_action_chunk.shape}, expected (N, 8)")
+                            print(f"[ERR] Unexpected action shape: {pred_action_chunk.shape}, expected (N, 8)")
                             break
                     
                         # if step % 10 == 0:  # Print every 10 steps
@@ -1031,7 +1031,7 @@ def main():
                         
                     except Exception as e:
                         if time.time() - last_print_time > 1.0:
-                            print(f"⚠ OpenPI inference error: {e}")
+                            print(f"[WARN] OpenPI inference error: {e}")
                             last_print_time = time.time()
                         time.sleep(dt)
                         continue
@@ -1043,7 +1043,7 @@ def main():
                 try:
                     # Check emergency stop before executing action
                     if _emergency_stop:
-                        print("\n🛑 Emergency stop detected - Exiting action execution", flush=True)
+                        print("\n[STOP] Emergency stop detected - Exiting action execution", flush=True)
                         break  # Exit loop gracefully instead of raising exception
                     
                     action = pred_action_chunk[actions_from_chunk_completed]  # shape: (8,)
@@ -1062,7 +1062,7 @@ def main():
                     # Monitoring for awareness, but NOT blocking policy actions
                     # if step % 20 == 0:  # Just print status occasionally
                     #     if current_joints[1] > -0.15:
-                    #         print(f"  ℹ️  J1={current_joints[1]:+.3f} rad ({np.degrees(current_joints[1]):+.2f}°) - LOW position")
+                    #         print(f"  [INFO]  J1={current_joints[1]:+.3f} rad ({np.degrees(current_joints[1]):+.2f}°) - LOW position")
                 
                     # NO VELOCITY LIMITS - let policy control freely
                 
@@ -1072,7 +1072,7 @@ def main():
                         if joint_velocities[3] > 0:  # Moving toward limit (less negative)
                             joint_velocities[3] = 0.0  # Hard stop
                             if step % 10 == 0:
-                                print(f"  🛑 J3={current_joints[3]:+.3f} at limit, blocking extension")
+                                print(f"  [STOP] J3={current_joints[3]:+.3f} at limit, blocking extension")
                     elif current_joints[3] > -2.3:
                         if joint_velocities[3] > 0:
                             joint_velocities[3] *= 0.3  # Slow down
@@ -1083,12 +1083,12 @@ def main():
                         if joint_velocities[5] > 0:  # Moving forward (increasing)
                             joint_velocities[5] = 0.0  # Hard stop
                             if step % 10 == 0:
-                                print(f"  🛑 J5={current_joints[5]:+.3f} at limit, blocking forward")
+                                print(f"  [STOP] J5={current_joints[5]:+.3f} at limit, blocking forward")
                     elif current_joints[5] > 2.8:
                         if joint_velocities[5] > 0:
                             joint_velocities[5] *= 0.3  # Slow down
                             if step % 20 == 0:
-                                print(f"  ⚠️  J5={current_joints[5]:+.3f} approaching limit")
+                                print(f"  [WARN]  J5={current_joints[5]:+.3f} approaching limit")
                 
                     # === PI0-specific table height compensation ===
                     # PI0 was trained on DROID official table height, our table is ~2cm higher
@@ -1188,10 +1188,10 @@ def main():
                     # 
                     #     # 2. After gripper processing (model-specific)
                     #     if MODEL_TYPE == "pi0_droid":
-                    #         log_msg += f"\n🔄 AFTER GRIPPER PROCESSING (PI0 - ANALOG):\n"
+                    #         log_msg += f"\n[RESET] AFTER GRIPPER PROCESSING (PI0 - ANALOG):\n"
                     #         log_msg += f"   Gripper: {action[7]:.6f} (continuous 0-1)\n"
                     #     else:
-                    #         log_msg += f"\n🔄 AFTER BINARIZATION (PI05):\n"
+                    #         log_msg += f"\n[RESET] AFTER BINARIZATION (PI05):\n"
                     #         log_msg += f"   Gripper: {action[7]:.6f} → {'1.0 (OPEN)' if action[7] > 0.5 else '0.0 (CLOSED)'}\n"
                     # 
                     #     # 3. Current robot state
@@ -1270,7 +1270,7 @@ def main():
                     # ===== End Gripper Control =====
                 
                 except Exception as e:
-                    print(f"✗ Action execution error: {e}")
+                    print(f"[ERR] Action execution error: {e}")
                     import traceback
                     traceback.print_exc()
                     break
@@ -1286,7 +1286,7 @@ def main():
             
                 # Check if we've reached max steps
                 if step >= MAX_STEPS:
-                    print(f"\n✓ Reached maximum steps ({MAX_STEPS}). Stopping...")
+                    print(f"\n[OK] Reached maximum steps ({MAX_STEPS}). Stopping...")
                     break
             
                 # Sleep to match DROID control frequency (official approach)
@@ -1297,10 +1297,10 @@ def main():
             
                 # Monitor loop time
                 if elapsed_time > dt * 1.5 and step % 10 == 0:
-                    print(f"⚠ Loop running slow: {elapsed_time*1000:.1f}ms (target: {dt*1000:.1f}ms)")
+                    print(f"[WARN] Loop running slow: {elapsed_time*1000:.1f}ms (target: {dt*1000:.1f}ms)")
                     
         except KeyboardInterrupt:
-            print("\n\n🛑 EMERGENCY STOP - Ctrl+C pressed")
+            print("\n\n[STOP] EMERGENCY STOP - Ctrl+C pressed")
             print("   Stopping robot immediately...")
             
             # PRIORITY 1: Stop robot immediately by sending zero velocity
@@ -1313,25 +1313,25 @@ def main():
                     blocking=False
                 )
                 time.sleep(0.1)  # Give it a moment to stop
-                print("   ✓ Robot stopped")
+                print("   [OK] Robot stopped")
             except Exception as e:
-                print(f"   ⚠ Stop error: {e}")
+                print(f"   [WARN] Stop error: {e}")
             
             # PRIORITY 1.5: Reset OpenPI client to stop inference
             try:
                 openpi_client.reset()
-                print("   ✓ OpenPI client reset")
+                print("   [OK] OpenPI client reset")
             except Exception as e:
-                print(f"   ⚠ OpenPI reset error: {e}")
+                print(f"   [WARN] OpenPI reset error: {e}")
             
             # PRIORITY 2: Save videos (skip if infinite mode)
             if not infinite_mode:
                 try:
                     shoulder_video.release()
                     wrist_video.release()
-                    print(f"   ✓ Videos saved to: {session_dir}")
+                    print(f"   [OK] Videos saved to: {session_dir}")
                 except Exception as e:
-                    print(f"   ⚠ Video save error: {e}")
+                    print(f"   [WARN] Video save error: {e}")
                 
                 # Update instruction file
                 try:
@@ -1350,17 +1350,17 @@ def main():
                 home_joints = np.array([0.0, -0.5, 0.0, -2.40, 0.0, 1.90, 0.0])
                 robot.update_joints(command=home_joints.tolist(), velocity=False, blocking=True)
                 robot.update_gripper(command=0.0, velocity=False, blocking=True)
-                print("   ✓ Robot returned to home position")
+                print("   [OK] Robot returned to home position")
             except Exception as e:
-                print(f"   ⚠ Reset error: {e}")
+                print(f"   [WARN] Reset error: {e}")
             
             # Exit immediately
             cleanup_cameras()
-            print("\n✓ Program terminated by user")
+            print("\n[OK] Program terminated by user")
             sys.exit(0)  # Force exit to prevent any continued execution
             
         except Exception as e:
-            print(f"\n✗ Error: {e}")
+            print(f"\n[ERR] Error: {e}")
             import traceback
             traceback.print_exc()
         finally:
@@ -1375,9 +1375,9 @@ def main():
                         shoulder_video.release()
                     if 'wrist_video' in locals() and wrist_video is not None:
                         wrist_video.release()
-                    print(f"   ✓ Videos saved to: {session_dir}")
+                    print(f"   [OK] Videos saved to: {session_dir}")
                 except Exception as e:
-                    print(f"   ⚠ Video save error: {e}")
+                    print(f"   [WARN] Video save error: {e}")
                 
                 # Update instruction file with actual step count
                 try:
@@ -1393,12 +1393,12 @@ def main():
                     if modified:
                         with open(instruction_file, "w") as f:
                             f.write(content)
-                        print(f"   ✓ Instruction file updated")
+                        print(f"   [OK] Instruction file updated")
                 except Exception as e:
-                    print(f"   ⚠ File save error: {e}")
+                    print(f"   [WARN] File save error: {e}")
         
         # Reset robot to home position after each episode
-        print(f"\n🔄 Resetting robot...")
+        print(f"\n[RESET] Resetting robot...")
         try:
             # Move to home position
             home_joints = np.array([
@@ -1419,21 +1419,21 @@ def main():
             
             # Open gripper
             robot.update_gripper(command=0.0, velocity=False, blocking=True)
-            print("  ✓ Robot reset complete")
+            print("  [OK] Robot reset complete")
             
             # Check emergency stop before asking for input
             if _emergency_stop:
-                print("\n🛑 Emergency stop detected - Exiting without prompting")
+                print("\n[STOP] Emergency stop detected - Exiting without prompting")
                 break
             
             # In infinite mode (LOOP=0), just exit after reset - no re-recording option
             if infinite_mode:
-                print("\n✓ Episode complete (infinite mode)")
+                print("\n[OK] Episode complete (infinite mode)")
                 print("   Exiting program...")
                 break
             
             # Ask user what to do next (only for LOOP > 0)
-            print(f"\n⏸️  Episode {current_episode} complete (Progress: {completed_episodes}/{LOOP}). Options:")
+            print(f"\n[PAUSE]  Episode {current_episode} complete (Progress: {completed_episodes}/{LOOP}). Options:")
             if completed_episodes < num_iterations - 1:
                 # Not the last episode yet
                 print(f"   Press ENTER to continue to next episode")
@@ -1449,12 +1449,12 @@ def main():
                 user_input = input("   Your choice: ").strip().lower()
             except (KeyboardInterrupt, EOFError):
                 # User pressed Ctrl+C or Ctrl+D during input
-                print("\n\n🛑 User interrupted - Exiting...")
+                print("\n\n[STOP] User interrupted - Exiting...")
                 _emergency_stop = True
                 break
             
             if user_input == 'r':
-                print(f"\n🔄 Re-recording episode {current_episode}...")
+                print(f"\n[RESET] Re-recording episode {current_episode}...")
                 # Delete the current episode's videos (session_dir is guaranteed to exist here since infinite_mode=False)
                 import shutil
                 import time as time_module
@@ -1467,22 +1467,22 @@ def main():
                         print(f"   Deleting: {session_dir}")
                         if session_dir.exists():
                             shutil.rmtree(session_dir)
-                            print(f"   ✓ Deleted previous recording")
+                            print(f"   [OK] Deleted previous recording")
                         else:
-                            print(f"   ⚠ Directory not found: {session_dir}")
+                            print(f"   [WARN] Directory not found: {session_dir}")
                     else:
-                        print(f"   ⚠ No session directory to delete (infinite mode?)")
+                        print(f"   [WARN] No session directory to delete (infinite mode?)")
                 except PermissionError as e:
-                    print(f"   ✗ Permission denied - files may still be in use")
+                    print(f"   [ERR] Permission denied - files may still be in use")
                     print(f"   Waiting and retrying...")
                     time_module.sleep(1.0)
                     try:
                         shutil.rmtree(session_dir)
-                        print(f"   ✓ Deleted on retry")
+                        print(f"   [OK] Deleted on retry")
                     except Exception as e2:
-                        print(f"   ✗ Still failed: {e2}")
+                        print(f"   [ERR] Still failed: {e2}")
                 except Exception as e:
-                    print(f"   ✗ Could not delete: {e}")
+                    print(f"   [ERR] Could not delete: {e}")
                     import traceback
                     traceback.print_exc()
                 
@@ -1493,7 +1493,7 @@ def main():
                 # Excel logging (if enabled)
                 if ENABLE_EXCEL_LOGGING and 'session_dir' in locals():
                     if not PANDAS_AVAILABLE:
-                        print("\n⚠ Excel logging enabled but pandas not installed. Skipping log.")
+                        print("\n[WARN] Excel logging enabled but pandas not installed. Skipping log.")
                         print("   Install with: pip install pandas openpyxl")
                     else:
                         try:
@@ -1661,7 +1661,7 @@ def main():
                                     ws.add_image(img)
                                 
                                 wb.save(excel_path)
-                                print(f"   ✓ Logged to: {excel_path}")
+                                print(f"   [OK] Logged to: {excel_path}")
                             except ImportError:
                                 # Fallback: save without images if openpyxl not available
                                 import pandas as pd
@@ -1673,10 +1673,10 @@ def main():
                                 else:
                                     df = pd.DataFrame([fallback_data])
                                 df.to_excel(excel_path, index=False)
-                                print(f"   ⚠ openpyxl not available - saved without preview image")
-                                print(f"   ✓ Logged to: {excel_path}")
+                                print(f"   [WARN] openpyxl not available - saved without preview image")
+                                print(f"   [OK] Logged to: {excel_path}")
                             except Exception as e:
-                                print(f"   ⚠ Image embedding failed: {e}")
+                                print(f"   [WARN] Image embedding failed: {e}")
                                 import traceback
                                 traceback.print_exc()
                                 # Still save the data even if image embedding fails
@@ -1689,18 +1689,18 @@ def main():
                                 else:
                                     df = pd.DataFrame([fallback_data])
                                 df.to_excel(excel_path, index=False)
-                                print(f"   ✓ Logged to: {excel_path} (data only)")
+                                print(f"   [OK] Logged to: {excel_path} (data only)")
                         except KeyboardInterrupt:
                             print("\n   ⊘ Logging cancelled")
                         except Exception as e:
-                            print(f"\n   ✗ Logging failed: {e}")
+                            print(f"\n   [ERR] Logging failed: {e}")
                 
                 completed_episodes += 1
                 current_episode += 1
-                print(f"   ✓ Episode accepted ({completed_episodes}/{LOOP} completed)")
+                print(f"   [OK] Episode accepted ({completed_episodes}/{LOOP} completed)")
             
         except Exception as e:
-            print(f"  ✗ Reset failed: {e}")
+            print(f"  [ERR] Reset failed: {e}")
             break
     
     # All episodes complete - final cleanup
@@ -1708,7 +1708,7 @@ def main():
     
     # Check if exited due to emergency stop
     if _emergency_stop:
-        print("🛑 Exited due to emergency stop")
+        print("[STOP] Exited due to emergency stop")
         print("   Performing cleanup...")
     elif LOOP > 1:
         print(f"🎉 All {LOOP} episodes completed!")
@@ -1742,22 +1742,22 @@ def main():
         )
         
         robot.update_gripper(command=0.0, velocity=False, blocking=True)
-        print("  ✓ Robot at home position")
+        print("  [OK] Robot at home position")
         
     except Exception as e:
-        print(f"  ✗ Reset failed: {e}")
+        print(f"  [ERR] Reset failed: {e}")
     
     try:
         # PRIORITY 2: Close cameras
         print("  [2/2] Closing cameras...")
         cv2.destroyAllWindows()
         cleanup_cameras()
-        print("  ✓ Cameras closed")
+        print("  [OK] Cameras closed")
         
     except Exception as e:
-        print(f"  ⚠ Cleanup error: {e}")
+        print(f"  [WARN] Cleanup error: {e}")
     
-    print("\n✓ Program ended successfully")
+    print("\n[OK] Program ended successfully")
 
 
 if __name__ == "__main__":
